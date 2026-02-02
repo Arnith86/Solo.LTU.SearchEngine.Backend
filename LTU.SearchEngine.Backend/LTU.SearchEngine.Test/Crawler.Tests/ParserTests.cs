@@ -1,4 +1,5 @@
-﻿using LTU.SearchEngine.Infrastructure;
+﻿
+using LTU.SearchEngine.Infrastructure;
 
 namespace LTU.SearchEngine.Test.Crawler.Tests;
 
