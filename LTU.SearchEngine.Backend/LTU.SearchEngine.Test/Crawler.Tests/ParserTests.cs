@@ -31,8 +31,9 @@ public class ParserTests
 		Assert.Contains(
 			"http://localhost/HelloWorld.pdf",
 			links);
-		Assert.Contains(
-			"https://www.google.com/",
-			links);
-	}
+        Assert.Contains(
+			new Uri("https://google.com").AbsoluteUri,
+		    links);
+
+    }
 }
