@@ -17,7 +17,7 @@ public class CrawlerSettings
 
 		if (maxConcurrencyPerDomain <= 0)
 			throw new ArgumentOutOfRangeException(
-				nameof(maxConcurrencyPerDomain) + " must be grater than zero."
+				nameof(maxConcurrencyPerDomain) + " must be greater than zero."
 			);
 
 		if (minDelayMs < 0)
