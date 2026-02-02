@@ -10,4 +10,8 @@
     <ProjectReference Include="..\LTU.SearchEngine.Backend.Core\LTU.SearchEngine.Backend.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
+  </ItemGroup>
+
 </Project>
