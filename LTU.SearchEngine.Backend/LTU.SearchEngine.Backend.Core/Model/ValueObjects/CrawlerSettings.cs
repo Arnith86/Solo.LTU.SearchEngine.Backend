@@ -49,7 +49,7 @@ public class CrawlerSettings
 			throw new ArgumentException(nameof(retryIntervals), "must contain at least one time interval!");
 
 		if (retryIntervals.Any(x => x <= TimeSpan.Zero))
-			throw new ArgumentException(nameof(retryIntervals), " cannot not contain negative values!");
+			throw new ArgumentOutOfRangeException(nameof(retryIntervals), " cannot not contain negative values!");
 
 		UserAgent = userAgent; 
 		MaxConcurrencyPerDomain = maxConcurrencyPerDomain;
