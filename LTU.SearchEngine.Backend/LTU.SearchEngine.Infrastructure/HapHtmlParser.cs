@@ -61,7 +61,28 @@ namespace LTU.SearchEngine.Infrastructure
 
         public string ExtractTitle(string html)
         {
-            throw new NotImplementedException();
+            if(string.IsNullOrWhiteSpace(html))
+            {
+                return string.Empty;
+            }
+
+            //Load HTML in HtmlAgilityPack
+            var doc = new HtmlDocument();
+            doc.LoadHtml(html);
+
+            //Find <title> 
+            var titleNode = doc.DocumentNode.SelectSingleNode("//title");
+
+            //handle if tag is missing
+            if(titleNode == null)
+            {
+                return string.Empty;
+            }
+
+            //Get text, decode HTML entities and trim whitespace
+            string titleText = titleNode.InnerText;
+
+            return HtmlEntity.DeEntitize(titleText).Trim();
         }
     }
 }
