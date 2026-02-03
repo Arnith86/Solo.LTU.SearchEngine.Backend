@@ -22,8 +22,10 @@ namespace LTU.SearchEngine.Backend.Core.Model;
 /// including network latency and response handling.
 /// </param>
 public sealed record CrawlResult(
-	string Url, 
-	string HTMLContent, 
+	string Url,
+	string? Title,
+	string Language,
+	string Words, 
 	List<string> ExtractedLinks, 
 	HttpStatusCode StatusCode, 
 	long TimeTakenMs
