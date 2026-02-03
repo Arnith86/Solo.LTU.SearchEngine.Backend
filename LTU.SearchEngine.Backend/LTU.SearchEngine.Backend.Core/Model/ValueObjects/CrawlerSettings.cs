@@ -67,7 +67,7 @@ public class CrawlerSettings
 	/// If <paramref name="attemptNumber"/> exceeds the number of configured intervals,
 	/// the last configured interval is returned.
 	/// </remarks>
-	public TimeSpan GetRetryDelay(int attemptNumber)
+	public TimeSpan GetRetryDelayInterval(int attemptNumber)
 	{
 		if (attemptNumber <= 0)
 			throw new ArgumentOutOfRangeException(nameof(attemptNumber), " cannot be a value less then 1!");
