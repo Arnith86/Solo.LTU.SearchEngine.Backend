@@ -7,14 +7,14 @@ namespace LTU.SearchEngine.Infrastructure.Crawler;
 /// </summary>
 public interface ICrawler
 {
-	/// <summary>
-	/// Fetches the content located at the specified URL and performs <br />
-	/// crawling-related processing on the retrieved resource.
-	/// </summary>
-	/// <param name="url">The URL of the resource to fetch.</param>
-	/// <returns>
-	/// A <see cref="CrawlResult"/> containing the fetched content, <br />
-	/// metadata, and any crawl-related information.
-	/// </returns>
-	CrawlResult Fetch(string url);  
+    /// <summary>
+    /// Fetches the content located at the specified URL and performs <br />
+    /// crawling-related processing on the retrieved resource.
+    /// </summary>
+    /// <param name="url">The URL of the resource to fetch.</param>
+    /// <returns>
+    /// A <see cref="CrawlResult"/> containing the fetched content, <br />
+    /// metadata, and any crawl-related information.
+    /// </returns>
+    Task<CrawlResult> FetchAsync(string url);
 }
