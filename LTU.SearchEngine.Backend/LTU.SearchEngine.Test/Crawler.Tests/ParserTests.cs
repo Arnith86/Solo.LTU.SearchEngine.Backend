@@ -66,7 +66,6 @@ public class ParserTests
         Assert.Equal("Student & Forskning är viktigt", result);
     }
 
-	//test trim
 	[Fact]
 	public async Task ExtractTitle_ShouldTrimWhiteSpaces()
 	{
@@ -81,8 +80,19 @@ public class ParserTests
 		Assert.Equal("Test: Text Extraction Quality", result);
 	}
 
-	//test whitespace
+	[Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void ExtractTitle_ShouldReturnEmpty_WhenInputIsInvalid(string badHtml)
+	{
+        //Arrange
+        var parser = new HapHtmlParser();
 
-	//test tom sträng
-	//test null input
+        // Act
+        string result = parser.ExtractTitle(badHtml);
+
+        // Assert
+        Assert.Equal(string.Empty, result);
+    }
 }
