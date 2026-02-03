@@ -148,4 +148,49 @@ public class CrawlerSettingsTests
 			intervals)
 		);
 	}
+
+	[Theory]
+	[InlineData(1)]
+	[InlineData(2)]
+	[InlineData(3)]
+	public void GetRetryDelayInterval_ValidAttempt_ShouldPass(int attemptNr)
+	{
+		// Arrange
+		CrawlerSettings sut = CreateSut();
+
+		// Act
+		TimeSpan delay = sut.GetRetryDelayInterval(attemptNr);
+
+		// Assert
+		Assert.Equal(retryIntervals[attemptNr - 1], delay);
+	}
+
+	[Theory]
+	[InlineData(0)]
+	[InlineData(-100)]
+	public void GetRetryDelayInterval_LessThenAllowed_ShouldThrow_ArgumentOutOfRangeException(int attemptNr)
+	{
+		// Arrange
+		CrawlerSettings sut = CreateSut();
+
+		// Act & Assert
+		Assert.Throws<ArgumentOutOfRangeException>(() => sut.GetRetryDelayInterval(attemptNr)); 
+	}
+
+	[Theory]
+	[InlineData(4)]
+	[InlineData(100)]
+	[InlineData(100000)]
+	public void GetRetryDelayInterval_MoreThenAllowed_ShouldThrow_ArgumentOutOfRangeException(int attemptNr)
+	{
+		// Arrange
+		CrawlerSettings sut = CreateSut();
+
+		// Act
+		TimeSpan delay = sut.GetRetryDelayInterval(attemptNr);
+
+		// Assert
+		Assert.Equal(retryIntervals[2], delay);
+
+	}
 }
