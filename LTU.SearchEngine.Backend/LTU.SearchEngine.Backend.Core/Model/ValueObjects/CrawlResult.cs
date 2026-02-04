@@ -25,7 +25,9 @@ public sealed record CrawlResult(
 	string Url,
 	string? Title,
 	string Language,
-	string Words, 
+	IEnumerable<IndexedTerm> indexedTerms,
+	string Type,
+	byte[] Content,
 	List<string> ExtractedLinks, 
 	HttpStatusCode StatusCode, 
 	long TimeTakenMs
