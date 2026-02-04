@@ -1,6 +1,6 @@
 ﻿using System.Net;
 
-namespace LTU.SearchEngine.Backend.Core.Model;
+namespace LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 
 /// <summary>
 /// Represents the result of a single crawl (fetch) attempt for a URL.
