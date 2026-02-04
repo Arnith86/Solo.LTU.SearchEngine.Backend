@@ -1,5 +1,5 @@
 ﻿using HtmlAgilityPack;
-using LTU.SearchEngine.Infrastructure.Crawler;
+using LTU.SearchEngine.Infrastructure.Crawling;
 using System;
 using System.Collections.Generic;
 using System.Text;

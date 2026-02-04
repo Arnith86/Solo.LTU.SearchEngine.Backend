@@ -1,4 +1,4 @@
-﻿namespace LTU.SearchEngine.Infrastructure.Crawler;
+﻿namespace LTU.SearchEngine.Infrastructure.Crawling;
 
 /// <summary>
 /// Defines functionality for parsing HTML documents and extracting
