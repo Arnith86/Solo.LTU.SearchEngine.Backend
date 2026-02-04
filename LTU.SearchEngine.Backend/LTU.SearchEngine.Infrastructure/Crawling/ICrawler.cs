@@ -1,6 +1,6 @@
 ﻿using LTU.SearchEngine.Backend.Core.Model;
 
-namespace LTU.SearchEngine.Infrastructure.Crawler;
+namespace LTU.SearchEngine.Infrastructure.Crawling;
 
 /// <summary>
 /// Defines functionality for fetching and crawling web resources.
