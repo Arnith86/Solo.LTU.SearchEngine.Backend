@@ -18,6 +18,7 @@
   <ItemGroup>
     <ProjectReference Include="..\LTU.SearchEngine.Backend.Core\LTU.SearchEngine.Backend.Core.csproj" />
     <ProjectReference Include="..\LTU.SearchEngine.Infrastructure\LTU.SearchEngine.Infrastructure.csproj" />
+    <ProjectReference Include="..\LTU.SearchEngine.Application\LTU.SearchEngine.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>
