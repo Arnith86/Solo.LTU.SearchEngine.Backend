@@ -21,10 +21,10 @@ public class JsonCrawlerSettingsLoader : ICrawlerSettingsLoader
 			?? throw new InvalidOperationException("CrawlerSettings section is missing from the configuration.");
 
 		return new CrawlerSettings(
-			userAgent: dto.UserAgent,
+			userAgent: dto.UserAgent!,
 			maxConcurrencyPerDomain: dto.MaxConcurrencyPerDomain,
 			minDelayMs: dto.MinDelayMs,
-			retryIntervals: dto.RetryIntervals
+			retryIntervals: dto.RetryIntervals!
 		);
 	}
 }

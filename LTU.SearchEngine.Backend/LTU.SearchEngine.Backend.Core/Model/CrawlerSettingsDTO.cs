@@ -6,5 +6,4 @@ public class CrawlerSettingsDTO
 	public int MaxConcurrencyPerDomain { get; set; }
 	public int MinDelayMs { get; set; }
 	public List<TimeSpan>? RetryIntervals { get; set; }
-	
 }

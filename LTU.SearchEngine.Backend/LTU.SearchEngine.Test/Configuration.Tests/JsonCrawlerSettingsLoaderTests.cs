@@ -51,4 +51,23 @@ public class JsonCrawlerSettingsLoaderTests
 		Assert.Equal(_c_minDelayMs, crawlerSettings.MinDelayMs);
 		Assert.Equal(retryIntervalsList, crawlerSettings.RetryIntervals);
 	}
+	
+	[Fact]
+	public void Load_InValidConfiguration_ShouldThrow_InvalidOperationException()
+	{
+		// Arrange
+		string invalidJsonConfig = $$"""
+			{
+				"SomeSettings": {}
+			}
+			""";
+
+		IConfiguration configuration = InMemoryJSONBuildConfiguration.BuildConfiguration(invalidJsonConfig);
+		ICrawlerSettingsLoader sut = new JsonCrawlerSettingsLoader(configuration);
+
+		// Act & Assert
+		Assert.Throws<InvalidOperationException>(() => sut.Load());
+	}
+
+
 }
