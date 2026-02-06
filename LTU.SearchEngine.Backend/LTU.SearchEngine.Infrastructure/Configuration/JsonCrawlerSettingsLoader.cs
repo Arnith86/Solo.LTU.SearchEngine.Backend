@@ -4,6 +4,15 @@ using Microsoft.Extensions.Configuration;
 
 namespace LTU.SearchEngine.Infrastructure.Configuration;
 
+/// <summary>
+/// Loads crawler settings from a JSON configuration source via <see cref="IConfiguration"/>. <br />
+/// Implements the <see cref="ICrawlerSettingsLoader"/> interface.
+/// </summary>
+/// <remarks>
+/// Expects a configuration section named "CrawlerSettings" that can be mapped <br />
+/// to a <see cref="CrawlerSettingsDTO"/>. Throws an <see cref="InvalidOperationException"/> <br />
+/// if the section is missing.
+/// </remarks>
 public class JsonCrawlerSettingsLoader : ICrawlerSettingsLoader
 {
 	private IConfiguration _configuration;
@@ -13,6 +22,7 @@ public class JsonCrawlerSettingsLoader : ICrawlerSettingsLoader
 		_configuration = configuration;
 	}
 
+	/// <inheritdoc/>
 	public CrawlerSettings Load() 
 	{
 		var dto = _configuration
