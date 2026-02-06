@@ -1,7 +1,8 @@
 <Solution>
-  <Project Path="LTU.SearchEngine.BackgroundServices/LTU.SearchEngine.BackgroundServices.csproj" /> 
-  <Project Path="LTU.SearchEngine.Infrastructure/LTU.SearchEngine.Infrastructure.csproj" />
+  <Project Path="LTU.SearchEngine.Api/LTU.SearchEngine.Api.csproj" Id="076f707e-e02a-48c1-897e-2c59a2a04a36" />
   <Project Path="LTU.SearchEngine.Application/LTU.SearchEngine.Application.csproj" Id="704017a4-b6d8-4210-bc29-4b803d5069a5" />
   <Project Path="LTU.SearchEngine.Backend.Core/LTU.SearchEngine.Backend.Core.csproj" />
+  <Project Path="LTU.SearchEngine.BackgroundServices/LTU.SearchEngine.BackgroundServices.csproj" />
+  <Project Path="LTU.SearchEngine.Infrastructure/LTU.SearchEngine.Infrastructure.csproj" />
   <Project Path="LTU.SearchEngine.Test/LTU.SearchEngine.Test.csproj" />
 </Solution>

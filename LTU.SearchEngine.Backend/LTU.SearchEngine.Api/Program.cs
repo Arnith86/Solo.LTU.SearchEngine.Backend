@@ -1,6 +1,3 @@
-
-using Microsoft.Extensions.DependencyInjection;
-
 namespace LTU.SearchEngine.Backend.Api;
 
 public class Program
