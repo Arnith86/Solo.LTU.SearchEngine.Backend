@@ -22,4 +22,8 @@
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\LTU.SearchEngine.Infrastructure\LTU.SearchEngine.Infrastructure.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -1,3 +1,7 @@
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using LTU.SearchEngine.Infrastructure.Configuration;
+using System.Diagnostics;
+
 namespace LTU.SearchEngine.Backend.Api;
 
 public class Program
@@ -10,6 +14,15 @@ public class Program
 
         builder.Services.AddControllers();
         // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+
+        builder.Services.AddSingleton<ICrawlerSettingsLoader, JsonCrawlerSettingsLoader>();
+
+        builder.Services.AddSingleton(serviceProvider =>
+        {
+            var crawlerSettingsLoader = serviceProvider.GetRequiredService<ICrawlerSettingsLoader>();
+            return crawlerSettingsLoader.Load();
+        });
+        
         builder.Services.AddOpenApi();
 
         var app = builder.Build();
