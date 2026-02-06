@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Hosting;
 
-namespace LTU.SearchEngine.Test;
+namespace LTU.SearchEngine.Test.HelperClasses;
 
 public class WebHostBuilder
 {

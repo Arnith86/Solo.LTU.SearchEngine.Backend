@@ -1,4 +1,5 @@
 ﻿using LTU.SearchEngine.Infrastructure;
+using LTU.SearchEngine.Test.HelperClasses;
 
 namespace LTU.SearchEngine.Test.Crawling.Tests;
 
