@@ -1,4 +1,6 @@
 ﻿using HtmlAgilityPack;
+using LTU.SearchEngine.Backend.Core.Model;
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure.Crawling;
 using System;
 using System.Collections.Generic;
@@ -52,6 +54,78 @@ namespace LTU.SearchEngine.Infrastructure
             }
             // Return distinct links to avoid processing the same URL multiple times.
             return internalLinks.Distinct().ToList();
+        }
+
+        public IEnumerable<IndexedTerm> ExtractTerms(string html)
+        {
+            var terms = new List<IndexedTerm>();
+            var doc = new HtmlDocument();
+            doc.LoadHtml(html);
+
+            // --- 1. CLEANUP
+            // Remove non-content nodes (scripts, styles, metadata, navigation) 
+            // to prevent indexing code or irrelevant UI elements.
+            var garbageNodes = doc.DocumentNode.SelectNodes("//script|//style|//meta|//noscript|//header|//footer|//nav");
+
+            if (garbageNodes != null)
+            {
+                foreach (var node in garbageNodes)
+                {
+                    node.Remove();
+                }
+            }
+
+            // --- 2. EXTRACT TITLE (High Ranking Priority) ---
+            // The <title> tag contains the most relevant keywords for the page
+            // We use SelectSingleNode since a valid HTML document only has one title.
+            var titleNode = doc.DocumentNode.SelectSingleNode("//title");
+            if (titleNode != null)
+            {
+                AddTerms(terms, titleNode.InnerText, TermSource.Title);
+                titleNode.Remove(); 
+            }
+
+            // --- 3. EXTRACT HEADERS (Medium Ranking Priority) ---
+            // H1-H6 tags represent section headers and are weighted higher than body text.
+            var headerNodes = doc.DocumentNode.SelectNodes("//h1|//h2|//h3|//h4|//h5|//h6");
+            if (headerNodes != null)
+            {
+                foreach (var node in headerNodes)
+                {
+                    AddTerms(terms, node.InnerText, TermSource.Header);
+
+                    node.Remove();
+                }
+            }
+
+            // --- 4. EXTRACT BODY TEXT (Low/Standard Ranking Priority) ---
+            // At this stage, scripts, titles, and headers have been removed.
+            // InnerText now contains only the remaining "Body" content (paragraphs, lists, divs).
+
+            var bodyText = doc.DocumentNode.InnerText;
+            AddTerms(terms, bodyText, TermSource.Body);
+
+            return terms;
+        }
+
+        // Helper method for Tokenization and Object Creation
+        private void AddTerms(List<IndexedTerm> terms, string text, TermSource source)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return;
+
+            var decodedText = System.Net.WebUtility.HtmlDecode(text);
+
+            var words = decodedText.Split(
+                new[] { ' ', '\r', '\n', '\t' },
+                StringSplitOptions.RemoveEmptyEntries
+            );
+
+            foreach (var word in words)
+            {
+
+                terms.Add(new IndexedTerm(word.Trim(), source));
+        
+            }
         }
 
         public string ExtractText(string html)
