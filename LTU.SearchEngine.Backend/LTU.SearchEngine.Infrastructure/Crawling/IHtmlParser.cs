@@ -1,4 +1,6 @@
-﻿namespace LTU.SearchEngine.Infrastructure.Crawling;
+﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+
+namespace LTU.SearchEngine.Infrastructure.Crawling;
 
 /// <summary>
 /// Defines functionality for parsing HTML documents and extracting
@@ -35,5 +37,7 @@ public interface IHtmlParser
 	/// The value of the HTML <c>&lt;title&gt;</c> element, or an empty <br />
 	/// string if no title is present.
 	/// </returns>
-	string ExtractTitle(string html); 
+	string ExtractTitle(string html);
+
+	IEnumerable<IndexedTerm> ExtractTerms(string html);
 }
