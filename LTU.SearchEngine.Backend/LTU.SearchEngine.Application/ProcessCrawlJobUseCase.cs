@@ -6,6 +6,20 @@ using LTU.SearchEngine.Infrastructure.Crawling;
 
 namespace LTU.SearchEngine.Application;
 
+/// <summary>
+/// Concrete implementation of <see cref="IProcessCrawlJobUseCase"/>. <br />
+/// Processes a crawl job by fetching content, validating domains.
+/// </summary>
+/// <remarks>
+/// <para>
+/// This use case is responsible for executing the full lifecycle of a crawl job:
+/// it validates the <see cref="CrawlJob"/>, fetches the content using an <see cref="ICrawler"/>,
+/// and passes the fetched content to an <see cref="IIndexer"/> for indexing.
+/// </para>
+/// <para>
+/// Exceptions are thrown for invalid jobs, non-whitelisted domains, or failed fetches.
+/// </para>
+/// </remarks>
 public class ProcessCrawlJobUseCase : IProcessCrawlJobUseCase
 {
 	public ICrawler Crawler { get; set; }
@@ -23,6 +37,7 @@ public class ProcessCrawlJobUseCase : IProcessCrawlJobUseCase
 		Indexer = indexer ?? throw new ArgumentNullException(nameof(indexer));
 	}
 
+	/// <inheritdoc/>
 	public async Task<CrawlResult> Execute(CrawlJob job)
 	{
 		ValidateJob(job);
