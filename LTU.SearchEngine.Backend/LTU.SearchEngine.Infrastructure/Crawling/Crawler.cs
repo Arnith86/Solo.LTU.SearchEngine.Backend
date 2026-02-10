@@ -1,4 +1,4 @@
-﻿using LTU.SearchEngine.Backend.Core.Model;
+﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using System.Diagnostics;
 
 namespace LTU.SearchEngine.Infrastructure.Crawling;
@@ -25,7 +25,7 @@ public class Crawler : ICrawler
     /// </returns>
     public async Task<CrawlResult> FetchAsync(string url)
     {
-        var stopwatch = Stopwatch.StartNew(); 
+        var stopwatch = Stopwatch.StartNew();
 
         try
         {
@@ -37,25 +37,33 @@ public class Crawler : ICrawler
             if (!response.IsSuccessStatusCode)
             {
                 return new CrawlResult(
-                    url,
-                    null,                // Title
-                    "Unknown",           // Language
-                    "",                  // Words
-                    new List<string>(),  // ExtractedLinks
-                    response.StatusCode,
-                    stopwatch.ElapsedMilliseconds
+                    url: url,
+                    title: null,
+                    language: "Unknown",
+                    indexedTerms: Enumerable.Empty<IndexedTerm>(),
+                    type: "None",
+                   content: Array.Empty<byte>(),                
+                extractedLinks: Enumerable.Empty<string>(),
+                statusCode: response.StatusCode,
+                timeTakenMs: stopwatch.ElapsedMilliseconds
                 );
             }
 
-            // Currently only fetching data; parsing for Language and Words is not yet implemented.
+            //if call successful get the data
+            byte[] content = await response.Content.ReadAsByteArrayAsync();
+            string contentType = response.Content.Headers.ContentType?.MediaType ?? "text/plain";
+
+           
             return new CrawlResult(
-                url,
-                null,                       // Title (fylls i senare av parsern)
-                "sv",                       // Language (placeholder)
-                "Content not yet parsed",    // Words (placeholder)
-                new List<string>(),         // ExtractedLinks (fylls i senare)
-                response.StatusCode,
-                stopwatch.ElapsedMilliseconds
+      url: url,
+            title: null,
+            language: "sv",
+            indexedTerms: Enumerable.Empty<IndexedTerm>(),
+            type: contentType,
+            content: content,
+            extractedLinks: Enumerable.Empty<string>(),
+            statusCode: response.StatusCode,
+            timeTakenMs: stopwatch.ElapsedMilliseconds
             );
         }
         catch (HttpRequestException)
