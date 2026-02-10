@@ -53,23 +53,52 @@ public class Crawler : ICrawler
             byte[] content = await response.Content.ReadAsByteArrayAsync();
             string contentType = response.Content.Headers.ContentType?.MediaType ?? "text/plain";
 
-           
+            var terms = Enumerable.Empty<IndexedTerm>();
+            var links = Enumerable.Empty<string>();
+            string title = null;
+
+            if (contentType.Contains("text/html"))
+            {
+                var htmlString = System.Text.Encoding.UTF8.GetString(content);
+
+                // HÄR: Använd ExtractTerms (plural) som vi definierade i Issue 1
+                terms = _htmlParser.ExtractTerms(htmlString);
+                links = _htmlParser.ExtractInternalLinks(htmlString, url);
+                title = _htmlParser.ExtractTitle(htmlString);
+            }
+
             return new CrawlResult(
-      url: url,
-            title: null,
+            url: url,
+            title: title,
             language: "sv",
-            indexedTerms: Enumerable.Empty<IndexedTerm>(),
+           indexedTerms: terms,
             type: contentType,
             content: content,
-            extractedLinks: Enumerable.Empty<string>(),
+            extractedLinks: links,
             statusCode: response.StatusCode,
             timeTakenMs: stopwatch.ElapsedMilliseconds
             );
         }
-        catch (HttpRequestException)
+        catch (HttpRequestException ex) // Fånga nätverksfel
         {
             stopwatch.Stop();
-            return null;
+            // Returnera ett "misslyckat" resultat istället för null, så pipelinen inte kraschar
+            return new CrawlResult(
+                url: url,
+                title: null,
+                language: "Unknown",
+                indexedTerms: Enumerable.Empty<IndexedTerm>(),
+                type: "Error",
+                content: Array.Empty<byte>(),
+                extractedLinks: Enumerable.Empty<string>(),
+                statusCode: System.Net.HttpStatusCode.ServiceUnavailable, // Eller liknande
+                timeTakenMs: stopwatch.ElapsedMilliseconds
+            );
+        }
+        catch (Exception) // Fånga allt annat oväntat
+        {
+            stopwatch.Stop();
+            return null; // I värsta fall, men helst returnera ett Error-resultat här med.
         }
     }
 }
