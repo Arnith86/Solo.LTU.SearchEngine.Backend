@@ -56,6 +56,7 @@ namespace LTU.SearchEngine.Infrastructure
             return internalLinks.Distinct().ToList();
         }
 
+        /// <inheritdoc/>
         public IEnumerable<IndexedTerm> ExtractTerms(string html)
         {
             var terms = new List<IndexedTerm>();
