@@ -107,7 +107,6 @@ public class ParserTests
         // Load complex HTML containing CSS, JS, and various structure tags 
         // to verify robustness and ranking logic.
         var html = await _client.GetStringAsync("./TextExtractionQuality.html");
-
         var parser = new HapHtmlParser();
 
         // ACT
@@ -134,11 +133,21 @@ public class ParserTests
         // Case A: High Priority (Terms found in <title>)
         Assert.Contains(result, t => t.Term == "Extraction" && t.Source == TermSource.Title);
 
+        Assert.Contains(result, t => t.Term == "UTF-8" && t.Source == TermSource.Header);
+
         // Case B: Medium Priority (Terms found in <h1> - <h6>)
         Assert.Contains(result, t => t.Term == "Result" && t.Source == TermSource.Header);
 
+        //test for image
+        Assert.Contains(result, t => t.Term == "LTU" && t.Source == TermSource.Body);
+        Assert.Contains(result, t => t.Term == "Logo" && t.Source == TermSource.Body);
+
+        Assert.Contains(result, t => t.Term == "information" && t.Source == TermSource.Body);
+
         // Case C: Standard Priority (Terms found in <body> paragraphs)
         Assert.Contains(result, t => t.Term == "primary" && t.Source == TermSource.Body);
+
+
 
         // --- 4. HYBRID STRATEGY VERIFICATION (Late Normalization) ---
         // Confirm that the parser preserves original casing (raw tokens).

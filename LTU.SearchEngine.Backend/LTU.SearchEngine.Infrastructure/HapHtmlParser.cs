@@ -65,14 +65,12 @@ namespace LTU.SearchEngine.Infrastructure
             // --- 1. CLEANUP
             // Remove non-content nodes (scripts, styles, metadata, navigation) 
             // to prevent indexing code or irrelevant UI elements.
-            var garbageNodes = doc.DocumentNode.SelectNodes("//script|//style|//meta|//noscript|//header|//footer|//nav");
+            var garbageNodes = doc.DocumentNode.SelectNodes("//script|//style|//noscript|//nav");
 
             if (garbageNodes != null)
             {
-                foreach (var node in garbageNodes)
-                {
-                    node.Remove();
-                }
+                foreach (var node in garbageNodes)  node.Remove();
+                
             }
 
             // --- 2. EXTRACT TITLE (High Ranking Priority) ---
@@ -94,6 +92,54 @@ namespace LTU.SearchEngine.Infrastructure
                 {
                     AddTerms(terms, node.InnerText, TermSource.Header);
 
+                    node.Remove();
+                }
+            }
+
+            // --- 3. EXTRACT META DATA (Fix för UTF-8 testet) ---
+            var metaNodes = doc.DocumentNode.SelectNodes("//meta");
+            if (metaNodes != null)
+            {
+                foreach (var node in metaNodes)
+                {
+                    // Meta-taggar har sällan InnerText. Vi kollar attribut som 'charset' eller 'content'
+                    var content = node.GetAttributeValue("content", "");
+                    var charset = node.GetAttributeValue("charset", "");
+
+                    if (!string.IsNullOrEmpty(content)) AddTerms(terms, content, TermSource.Header);
+                    if (!string.IsNullOrEmpty(charset)) AddTerms(terms, charset, TermSource.Header);
+
+                    node.Remove();
+                }
+            }
+
+            var footerNodes = doc.DocumentNode.SelectNodes("//footer");
+            if (footerNodes != null)
+            {
+                foreach (var node in footerNodes)
+                {
+                    AddTerms(terms, node.InnerText, TermSource.Body);
+
+                    node.Remove();
+                }
+            }
+
+            // --- EXTRAHERA BILD-TEXT (Alt-taggar) ---
+            // Vi letar efter alla <img> taggar som har ett alt-attribut
+            var imageNodes = doc.DocumentNode.SelectNodes("//img[@alt]");
+            if (imageNodes != null)
+            {
+                foreach (var node in imageNodes)
+                {
+                    var altText = node.GetAttributeValue("alt", "");
+                    if (!string.IsNullOrWhiteSpace(altText))
+                    {
+                        // Vi ger ofta alt-text samma vikt som Body eller Header 
+                        // beroende på hur "viktig" man anser bilden vara.
+                        AddTerms(terms, altText, TermSource.Body);
+                    }
+                    // Vi tar inte bort hela image-noden än om vi vill behålla strukturen, 
+                    // men det skadar inte att göra det om vi bara vill ha texten.
                     node.Remove();
                 }
             }
