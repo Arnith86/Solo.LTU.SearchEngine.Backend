@@ -60,7 +60,18 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 	{
 		try
 		{
-			await _processCrawlJobUseCase.Execute(job);
+			CrawlResult result = await _processCrawlJobUseCase.Execute(job);
+
+			foreach (string link in result.ExtractedLinks)
+			{
+				CrawlJob newJob = new CrawlJob
+				{
+					Url = link,
+					NextAttempt = DateTime.UtcNow 
+				};
+
+				await Enqueue(newJob);
+			}
 		}
 		catch (DomainNotWhitelistedException ex)
 		{
@@ -72,7 +83,9 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 		}
 		catch (InvalidOperationException ex)
 		{
+			//// CONTINUE HERE ADD RETRY LOGIC 
 			Debug.WriteLine($"Job {job.Id} failed: fetch error ({ex.Message})");
+
 		}
 		catch (Exception ex)
 		{
