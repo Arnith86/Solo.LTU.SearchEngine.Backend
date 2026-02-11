@@ -22,9 +22,9 @@ namespace LTU.SearchEngine.Application;
 /// </remarks>
 public class ProcessCrawlJobUseCase : IProcessCrawlJobUseCase
 {
-	public ICrawler Crawler { get; set; }
-	public IDomainValidator DomainValidator { get; set; }
-	public IIndexer Indexer { get; set; }
+	private ICrawler _crawler;
+	private IDomainValidator _domainValidator;
+	private IIndexer _indexer;
 
 	public ProcessCrawlJobUseCase(
 		ICrawler crawler, 
@@ -32,9 +32,9 @@ public class ProcessCrawlJobUseCase : IProcessCrawlJobUseCase
 		IIndexer indexer
 		)
 	{
-		Crawler = crawler ?? throw new ArgumentNullException(nameof(crawler));
-		DomainValidator = domainValidator ?? throw new ArgumentNullException(nameof(domainValidator));
-		Indexer = indexer ?? throw new ArgumentNullException(nameof(indexer));
+		_crawler = crawler ?? throw new ArgumentNullException(nameof(crawler));
+		_domainValidator = domainValidator ?? throw new ArgumentNullException(nameof(domainValidator));
+		_indexer = indexer ?? throw new ArgumentNullException(nameof(indexer));
 	}
 
 	/// <inheritdoc/>
@@ -42,12 +42,12 @@ public class ProcessCrawlJobUseCase : IProcessCrawlJobUseCase
 	{
 		ValidateJob(job);
 
-		CrawlResult result = await Crawler.FetchAsync(job.Url);
+		CrawlResult result = await _crawler.FetchAsync(job.Url);
 
 		if (result is null)
 			throw new InvalidOperationException($"Failed to fetch URL: {job.Url}");
 
-		Indexer.Index(result);
+		_indexer.Index(result);
 
 		return result;
 	}
@@ -60,7 +60,7 @@ public class ProcessCrawlJobUseCase : IProcessCrawlJobUseCase
 		if (string.IsNullOrWhiteSpace(job.Url))
 			throw new ArgumentException("URL must have a value.", nameof(job.Url));
 		
-		if (!DomainValidator.IsWhitelisted(job.Url))
+		if (!_domainValidator.IsWhitelisted(job.Url))
 			throw new DomainNotWhitelistedException(job.Url);
 	}
 }
