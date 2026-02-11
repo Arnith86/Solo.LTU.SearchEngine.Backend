@@ -14,15 +14,7 @@ public class Crawler : ICrawler
         _htmlParser = htmlParser;
     }
 
-    /// <summary>
-    /// Asynchronously fetches content from the specified URL, measures the request duration, 
-    /// and handles HTTP error codes such as 404 or 500.
-    /// </summary>
-    /// <param name="url">The web address to fetch.</param>
-    /// <returns>
-    /// A <see cref="CrawlResult"/> containing the status code, elapsed time, and raw data; 
-    /// or <c>null</c> if a critical network error occurs.
-    /// </returns>
+    /// <inheritdoc/>
     public async Task<CrawlResult> FetchAsync(string url)
     {
         var stopwatch = Stopwatch.StartNew();
@@ -61,7 +53,6 @@ public class Crawler : ICrawler
             {
                 var htmlString = System.Text.Encoding.UTF8.GetString(content);
 
-                // HÄR: Använd ExtractTerms (plural) som vi definierade i Issue 1
                 terms = _htmlParser.ExtractTerms(htmlString);
                 links = _htmlParser.ExtractInternalLinks(htmlString, url);
                 title = _htmlParser.ExtractTitle(htmlString);
@@ -79,10 +70,10 @@ public class Crawler : ICrawler
             timeTakenMs: stopwatch.ElapsedMilliseconds
             );
         }
-        catch (HttpRequestException ex) // Fånga nätverksfel
+        catch (HttpRequestException ex) 
         {
             stopwatch.Stop();
-            // Returnera ett "misslyckat" resultat istället för null, så pipelinen inte kraschar
+            
             return new CrawlResult(
                 url: url,
                 title: null,
@@ -91,14 +82,14 @@ public class Crawler : ICrawler
                 type: "Error",
                 content: Array.Empty<byte>(),
                 extractedLinks: Enumerable.Empty<string>(),
-                statusCode: System.Net.HttpStatusCode.ServiceUnavailable, // Eller liknande
+                statusCode: System.Net.HttpStatusCode.ServiceUnavailable, 
                 timeTakenMs: stopwatch.ElapsedMilliseconds
             );
         }
-        catch (Exception) // Fånga allt annat oväntat
+        catch (Exception) 
         {
             stopwatch.Stop();
-            return null; // I värsta fall, men helst returnera ett Error-resultat här med.
+            return null; 
         }
     }
 }
