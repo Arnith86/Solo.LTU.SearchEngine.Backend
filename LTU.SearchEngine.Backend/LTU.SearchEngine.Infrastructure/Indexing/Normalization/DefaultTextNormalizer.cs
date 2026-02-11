@@ -17,8 +17,7 @@ namespace LTU.SearchEngine.Infrastructure.Indexing.Normalization
     /// replaced or extended by other implementations without affecting the indexing pipeline.
     /// </para>
     /// </remarks>
-
-    internal class DefaultTextNormalizer
+    public class DefaultTextNormalizer
     {
     }
 }

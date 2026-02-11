@@ -10,15 +10,14 @@ namespace LTU.SearchEngine.Infrastructure.Indexing.Normalization
     /// <remarks>
     /// <para>
     /// Implementations of this interface are responsible for transforming a raw term
-    /// into a normalized form suitable for indexing (e.g. lowercasing, removing symbols).
+    /// into a normalized form suitable for indexing.
     /// </para>
     /// <para>
     /// This interface represents a normalization strategy and must not depend on
     /// indexing logic, document structure, or persistence concerns.
     /// </para>
     /// </remarks>
-
-    internal class ITextNormalizer
+    public class ITextNormalizer
     {
     }
 }

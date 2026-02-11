@@ -18,8 +18,7 @@ namespace LTU.SearchEngine.Infrastructure.Indexing.Repositories
     /// the indexing logic.
     /// </para>
     /// </remarks>
-
-    internal interface IIndexRepository
+    public interface IIndexRepository
     {
     }
 }

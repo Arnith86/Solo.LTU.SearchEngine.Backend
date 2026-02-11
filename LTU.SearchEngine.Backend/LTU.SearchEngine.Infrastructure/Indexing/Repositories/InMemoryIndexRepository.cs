@@ -18,8 +18,7 @@ namespace LTU.SearchEngine.Infrastructure.Indexing.Repositories
     /// is restarted.
     /// </para>
     /// </remarks>
-
-    internal class InMemoryIndexRepository
+    public class InMemoryIndexRepository
     {
     }
 }

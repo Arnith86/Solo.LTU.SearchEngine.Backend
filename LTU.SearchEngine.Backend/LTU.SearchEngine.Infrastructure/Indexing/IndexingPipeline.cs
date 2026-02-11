@@ -19,8 +19,7 @@ namespace LTU.SearchEngine.Infrastructure.Indexing
     /// fully constructed index document.
     /// </para>
     /// </remarks>
-
-    internal class IndexingPipeline
+    public class IndexingPipeline
     {
     }
 }
