@@ -45,8 +45,31 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 		return Task.CompletedTask;
 	}
 
-	public Task Start(CancellationToken ct)
+	public async Task Start(CancellationToken ct)
 	{
-		throw new NotImplementedException();
+		_buffer.LinkTo(
+			_worker, 
+			new DataflowLinkOptions { PropagateCompletion = true }
+		);
+
+		while (!ct.IsCancellationRequested)
+		{
+			DateTime now = DateTime.UtcNow;
+
+			List<CrawlJob> ready = new List<CrawlJob>();
+
+			lock (_jobPriorityQueue)
+			{
+				while (_jobPriorityQueue.Count > 0 && 
+					_jobPriorityQueue.Peek().NextAttempt <= now) 
+				{
+					ready.Add(_jobPriorityQueue.Dequeue());
+				}
+			}
+
+			foreach (CrawlJob job in ready) await _buffer.SendAsync(job);
+
+			await Task.Delay(TimeSpan.FromMilliseconds(200));
+		}
 	}
 }
