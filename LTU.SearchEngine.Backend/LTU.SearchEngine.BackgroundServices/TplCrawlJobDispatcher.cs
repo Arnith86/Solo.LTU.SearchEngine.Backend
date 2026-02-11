@@ -1,6 +1,8 @@
 ﻿using LTU.SearchEngine.Application;
+using LTU.SearchEngine.Backend.Core.Exceptions;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
 namespace LTU.SearchEngine.BackgroundServices;
@@ -43,7 +45,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 			
 			try
 			{
-				await _processCrawlJobUseCase.Execute(job);
+				await HandleUseCaseAsync(job);
 			}
 			finally 
 			{
@@ -51,6 +53,31 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 			}
 
 		});
+	}
+
+	// These catches should later be logged properly and not simply written to debug output!
+	private async Task HandleUseCaseAsync(CrawlJob job)
+	{
+		try
+		{
+			await _processCrawlJobUseCase.Execute(job);
+		}
+		catch (DomainNotWhitelistedException ex)
+		{
+			Debug.WriteLine($"Job {job.Id} skipped: domain not whitelisted ({ex.Message})");
+		}
+		catch (ArgumentException ex)
+		{
+			Debug.WriteLine($"Job {job.Id} skipped: invalid job ({ex.Message})");
+		}
+		catch (InvalidOperationException ex)
+		{
+			Debug.WriteLine($"Job {job.Id} failed: fetch error ({ex.Message})");
+		}
+		catch (Exception ex)
+		{
+			Debug.WriteLine($"Job {job.Id} failed with unexpected error: {ex.Message}");
+		}
 	}
 
 	private SemaphoreSlim GetSemaphore(string domain)
@@ -74,9 +101,11 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 		// If job is due for immediate processing, send to buffer; otherwise, enqueue with scheduled time.
 		if (job.NextAttempt is null || job.NextAttempt <= DateTime.UtcNow)
 			_buffer.SendAsync(job);
-		
-		lock (_jobPriorityQueue)
-			_jobPriorityQueue.Enqueue(job, job.NextAttempt ?? DateTime.UtcNow);
+		else
+		{
+			lock (_jobPriorityQueue)
+				_jobPriorityQueue.Enqueue(job, job.NextAttempt ?? DateTime.UtcNow);
+		}
 
 		return Task.CompletedTask;
 	}
@@ -103,7 +132,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 				}
 			}
 
-			foreach (CrawlJob job in ready) await _buffer.SendAsync(job);
+			foreach (CrawlJob job in ready) await _buffer.SendAsync(job, ct);
 
 			await Task.Delay(TimeSpan.FromMilliseconds(200));
 		}
