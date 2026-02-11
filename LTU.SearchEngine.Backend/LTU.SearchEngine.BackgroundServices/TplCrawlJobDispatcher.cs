@@ -33,7 +33,16 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 
 	public Task Enqueue(CrawlJob job)
 	{
-		throw new NotImplementedException();
+		if (job == null) throw new ArgumentNullException(nameof(job));
+
+		// If job is due for immediate processing, send to buffer; otherwise, enqueue with scheduled time.
+		if (job.NextAttempt is null || job.NextAttempt <= DateTime.UtcNow)
+			_buffer.SendAsync(job);
+		
+		lock (_jobPriorityQueue)
+			_jobPriorityQueue.Enqueue(job, job.NextAttempt ?? DateTime.UtcNow);
+
+		return Task.CompletedTask;
 	}
 
 	public Task Start(CancellationToken ct)
