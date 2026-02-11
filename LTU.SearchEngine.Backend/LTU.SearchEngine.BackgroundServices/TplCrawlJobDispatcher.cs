@@ -9,6 +9,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 {
 	private readonly IProcessCrawlJobUseCase _processCrawlJobUseCase;
 	private readonly CrawlerSettings _crawlerSettings;
+	private readonly Dictionary<string, SemaphoreSlim> _domainSemaphores;
 	private PriorityQueue<CrawlJob, DateTime> _jobPriorityQueue;
 	private BufferBlock<CrawlJob> _buffer;
 	private ActionBlock<CrawlJob> _worker;
@@ -18,17 +19,52 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 		CrawlerSettings crawlerSettings
 		)
 	{
-		_processCrawlJobUseCase = processCrawlJobUseCase 
+		_processCrawlJobUseCase = processCrawlJobUseCase
 			?? throw new ArgumentNullException(nameof(processCrawlJobUseCase));
-		_crawlerSettings = crawlerSettings 
+		_crawlerSettings = crawlerSettings
 			?? throw new ArgumentNullException(nameof(crawlerSettings));
+
+		_domainSemaphores = new Dictionary<string, SemaphoreSlim>();
 
 		_jobPriorityQueue = new PriorityQueue<CrawlJob, DateTime>();
 		_buffer = new BufferBlock<CrawlJob>();
-		_worker = new ActionBlock<CrawlJob>(async job =>
+		_worker = SetupWorker();
+	}
+
+	private ActionBlock<CrawlJob> SetupWorker()
+	{
+		return new ActionBlock<CrawlJob>(async job =>
 		{
-			await _processCrawlJobUseCase.Execute(job);
+			string domain = new Uri(job.Url).Host.ToLowerInvariant();
+			var semaphore = GetSemaphore(domain);
+
+			// This will limit concurrent processing of jobs from the same domain to the configured maximum.
+			await semaphore.WaitAsync();
+			
+			try
+			{
+				await _processCrawlJobUseCase.Execute(job);
+			}
+			finally 
+			{
+				semaphore.Release();
+			}
+
 		});
+	}
+
+	private SemaphoreSlim GetSemaphore(string domain)
+	{
+		lock (_domainSemaphores)
+		{
+			if (!_domainSemaphores.TryGetValue(domain, out var semaphore))
+			{
+				semaphore = new SemaphoreSlim(_crawlerSettings.MaxConcurrencyPerDomain);
+				_domainSemaphores[domain] = semaphore;
+			}
+
+			return semaphore;
+		}
 	}
 
 	public Task Enqueue(CrawlJob job)
