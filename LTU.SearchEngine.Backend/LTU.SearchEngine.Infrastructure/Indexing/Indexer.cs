@@ -32,7 +32,7 @@ namespace LTU.SearchEngine.Infrastructure.Indexing
             if (crawlResult is null)
                 throw new ArgumentNullException(nameof(crawlResult));
 
-            var document = _pipeline.TransForm(crawlResult);
+            var document = _pipeline.Transform(crawlResult);
             _repository.Save(document);
         }
     }

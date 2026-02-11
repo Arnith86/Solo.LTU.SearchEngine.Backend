@@ -56,14 +56,14 @@ namespace LTU.SearchEngine.Test.Indexing.IndexerTests
             var crawlResult = CreateDummyCrawlResult();
 
             _pipelineMock
-            .Setup(p => p.TransForm(crawlResult))
+            .Setup(p => p.Transform(crawlResult))
             .Returns(new IndexDocument("1", "https://test.com"));
 
             // Act
             _sut.Index(crawlResult);
 
             // Assert
-            _pipelineMock.Verify(p => p.TransForm(crawlResult), Times.Once);
+            _pipelineMock.Verify(p => p.Transform(crawlResult), Times.Once);
 
         }
         [Fact]
@@ -73,7 +73,7 @@ namespace LTU.SearchEngine.Test.Indexing.IndexerTests
             var indexDocument = new IndexDocument("1", "https://test.com");
 
             _pipelineMock
-                .Setup(p => p.TransForm(crawlResult))
+                .Setup(p => p.Transform(crawlResult))
                 .Returns(indexDocument);
 
             // Act

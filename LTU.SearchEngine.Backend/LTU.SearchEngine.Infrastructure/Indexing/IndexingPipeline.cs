@@ -22,7 +22,7 @@ namespace LTU.SearchEngine.Infrastructure.Indexing
     /// </remarks>
     public class IndexingPipeline
     {
-        public virtual IndexDocument TransForm(CrawlResult crawlResult)
+        public virtual IndexDocument Transform(CrawlResult crawlResult)
         {
             throw new NotImplementedException();
         }
