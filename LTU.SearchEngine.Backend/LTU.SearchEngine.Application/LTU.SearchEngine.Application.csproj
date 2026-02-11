@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\LTU.SearchEngine.Infrastructure\LTU.SearchEngine.Infrastructure.csproj" />
+  </ItemGroup>
+
 </Project>
