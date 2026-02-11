@@ -73,7 +73,7 @@ namespace LTU.SearchEngine.Test.Crawling.Tests
             Assert.NotNull(result);
             Assert.Equal(url, result.Url);
             Assert.Equal(HttpStatusCode.OK, result.StatusCode);
-            Assert.Equal("sv", result.Language);
+            Assert.Equal("Unknown", result.Language);
             Assert.NotEmpty(result.IndexedTerms);
             Assert.Equal(expectedContent, result.Content);
             Assert.True(result.TimeTakenMs >= 0);

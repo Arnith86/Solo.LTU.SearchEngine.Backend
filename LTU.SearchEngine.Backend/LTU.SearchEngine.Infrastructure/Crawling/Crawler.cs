@@ -1,4 +1,5 @@
 ﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using System;
 using System.Diagnostics;
 
 namespace LTU.SearchEngine.Infrastructure.Crawling;
@@ -28,17 +29,7 @@ public class Crawler : ICrawler
             // Return status code without body content.
             if (!response.IsSuccessStatusCode)
             {
-                return new CrawlResult(
-                    url: url,
-                    title: null,
-                    language: "Unknown",
-                    indexedTerms: Enumerable.Empty<IndexedTerm>(),
-                    type: "None",
-                   content: Array.Empty<byte>(),                
-                extractedLinks: Enumerable.Empty<string>(),
-                statusCode: response.StatusCode,
-                timeTakenMs: stopwatch.ElapsedMilliseconds
-                );
+                return CreateErrorResult(url, response.StatusCode, stopwatch.ElapsedMilliseconds, "None");
             }
 
             //if call successful get the data
@@ -61,7 +52,7 @@ public class Crawler : ICrawler
             return new CrawlResult(
             url: url,
             title: title,
-            language: "sv",
+            language: "Unknown",
            indexedTerms: terms,
             type: contentType,
             content: content,
@@ -73,23 +64,28 @@ public class Crawler : ICrawler
         catch (HttpRequestException ex) 
         {
             stopwatch.Stop();
-            
-            return new CrawlResult(
-                url: url,
-                title: null,
-                language: "Unknown",
-                indexedTerms: Enumerable.Empty<IndexedTerm>(),
-                type: "Error",
-                content: Array.Empty<byte>(),
-                extractedLinks: Enumerable.Empty<string>(),
-                statusCode: System.Net.HttpStatusCode.ServiceUnavailable, 
-                timeTakenMs: stopwatch.ElapsedMilliseconds
-            );
+            return CreateErrorResult(url, System.Net.HttpStatusCode.ServiceUnavailable, stopwatch.ElapsedMilliseconds, "Error");
         }
         catch (Exception) 
         {
             stopwatch.Stop();
             return null; 
         }
+    }
+
+    // Helpmethod for creating a "failed" result
+    private CrawlResult CreateErrorResult(string url, System.Net.HttpStatusCode statusCode, long timeTaken, string type)
+    {
+        return new CrawlResult(
+            url: url,
+            title: null,
+            language: "Unknown",
+            indexedTerms: Enumerable.Empty<IndexedTerm>(),
+            type: type,
+            content: Array.Empty<byte>(),
+            extractedLinks: Enumerable.Empty<string>(),
+            statusCode: statusCode,
+            timeTakenMs: timeTaken
+        );
     }
 }
