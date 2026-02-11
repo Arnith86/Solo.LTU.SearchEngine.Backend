@@ -20,5 +20,6 @@ namespace LTU.SearchEngine.Infrastructure.Indexing.Repositories
     /// </remarks>
     public interface IIndexRepository
     {
+        void Save(IndexDocument document);
     }
 }

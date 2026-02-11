@@ -1,6 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using LTU.SearchEngine.Infrastructure.Indexing.Repositories;
 
 namespace LTU.SearchEngine.Infrastructure.Indexing
 {
@@ -18,7 +17,23 @@ namespace LTU.SearchEngine.Infrastructure.Indexing
     /// term frequency calculation, or direct storage operations.
     /// </para>
     /// </remarks>
-    public class Indexer
+    public class Indexer : IIndexer
     {
+        private readonly IIndexRepository _repository;
+        private readonly IndexingPipeline _pipeline;
+        public Indexer(IIndexRepository repository, IndexingPipeline pipeline) 
+        {
+            _repository = repository;
+            _pipeline = pipeline;
+        }
+
+        public void Index(CrawlResult crawlResult)
+        {
+            if (crawlResult is null)
+                throw new ArgumentNullException(nameof(crawlResult));
+
+            var document = _pipeline.TransForm(crawlResult);
+            _repository.Save(document);
+        }
     }
 }
