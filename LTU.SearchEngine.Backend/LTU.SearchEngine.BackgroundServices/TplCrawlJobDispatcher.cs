@@ -96,9 +96,13 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 			return;
 		}
 
+		int index = (job.RetryCount - 1) >= 0 ? job.RetryCount - 1 : 0;
+
 		job.NextAttempt = 
-			DateTime.UtcNow + _crawlerSettings.RetryIntervals[job.RetryCount++ - 1];
-			
+			DateTime.UtcNow + _crawlerSettings.RetryIntervals[index];
+
+		job.RetryCount++;
+		
 		await Enqueue(job);
 	}
 
@@ -122,7 +126,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 
 		// If job is due for immediate processing, send to buffer; otherwise, enqueue with scheduled time.
 		if (job.NextAttempt is null || job.NextAttempt <= DateTime.UtcNow)
-			_buffer.SendAsync(job);
+			return _buffer.SendAsync(job);
 		else
 		{
 			lock (_jobPriorityQueue)

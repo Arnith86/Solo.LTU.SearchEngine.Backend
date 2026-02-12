@@ -240,4 +240,33 @@ public class TplCrawlJobDispatcherTests
 		cts.Cancel();
 		await startTask;
 	}
+
+	[Fact]
+	public async Task DomainNotWhitelisted_DoesNotRetry()
+	{
+		var job = new CrawlJob
+		{
+			Id = 4,
+			Url = "https://blocked.com",
+			NextAttempt = DateTime.UtcNow
+		};
+
+		_mockUseCase.Setup(u => u.Execute(It.IsAny<CrawlJob>()))
+			.ThrowsAsync(new DomainNotWhitelistedException(job.Url));
+
+		using var cts = new CancellationTokenSource();
+		var startTask = _sut.Start(cts.Token);
+
+		// Act
+		await _sut.Enqueue(job);
+
+		await Task.Delay(300);
+
+		// Assert
+		_mockUseCase.Verify(u => u.Execute(It.IsAny<CrawlJob>()), Times.Once);
+
+		cts.Cancel();
+		await startTask;
+	}
+
 }
