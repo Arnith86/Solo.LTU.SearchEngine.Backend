@@ -1,4 +1,5 @@
-﻿using System;
+﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -21,5 +22,9 @@ namespace LTU.SearchEngine.Infrastructure.Indexing
     /// </remarks>
     public class IndexingPipeline
     {
+        public virtual IndexDocument Transform(CrawlResult crawlResult)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
