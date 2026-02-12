@@ -90,14 +90,15 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 
 	private async Task HandleFailedJob(CrawlJob job)
 	{
-		job.RetryCount++;
 		if (job.RetryCount >= _crawlerSettings.RetryIntervals.Count)
 		{
 			Debug.WriteLine($"Job {job.Id} reached max retry count. Discarding job.");
 			return;
 		}
 
-		job.NextAttempt = DateTime.UtcNow + _crawlerSettings.RetryIntervals[job.RetryCount];
+		job.NextAttempt = 
+			DateTime.UtcNow + _crawlerSettings.RetryIntervals[job.RetryCount++ - 1];
+			
 		await Enqueue(job);
 	}
 
@@ -155,7 +156,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 
 			foreach (CrawlJob job in ready) await _buffer.SendAsync(job, ct);
 
-			await Task.Delay(TimeSpan.FromMilliseconds(200));
+			await Task.Delay(_crawlerSettings.MinDelayMs);
 		}
 	}
 }

@@ -1,5 +1,6 @@
 ﻿using LTU.SearchEngine.Application;
 using LTU.SearchEngine.Backend.Core;
+using LTU.SearchEngine.Backend.Core.Exceptions;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.BackgroundServices;
@@ -36,11 +37,11 @@ public class TplCrawlJobDispatcherTests
 		return new CrawlerSettings(
 			userAgent: "test-agent",
 			maxConcurrencyPerDomain: 2,
-			minDelayMs: 0,
+			minDelayMs: 100,
 			retryIntervals: new List<TimeSpan>
 			{
 			TimeSpan.FromMilliseconds(50),
-			TimeSpan.FromMilliseconds(100),
+			TimeSpan.FromMilliseconds(150),
 			TimeSpan.FromMilliseconds(200)
 			}
 		);
@@ -89,6 +90,77 @@ public class TplCrawlJobDispatcherTests
 			crawlerSettings: _crawlerSettings,
 			semaphoreProvider: null!)
 		);
+	}
+
+	[Fact]
+	public async Task Enqueue_ImmediateJob_IsProcessed()
+	{
+		// Arrange
+		var job = new CrawlJob
+		{
+			Id = 1,
+			Url = "https://example.com",
+			NextAttempt = DateTime.UtcNow
+		};
+
+		_mockUseCase.Setup(u => u.Execute(It.IsAny<CrawlJob>()))
+			.ReturnsAsync(CreateResult());
+
+		using var cts = new CancellationTokenSource();
+
+		// Act
+		var startTask = _sut.Start(cts.Token);
+		await _sut.Enqueue(job);
+
+		await Task.Delay(300);
+		cts.Cancel();
+		await startTask;
+
+		// Assert
+		// Verify that the use case was called with the right job.
+		_mockUseCase.Verify(u => u.Execute(
+			It.Is<CrawlJob>(j => j.Id == 1)), 
+			Times.Once
+		);
+	}
+
+	[Fact]
+	public async Task Enqueue_ScheduledJob_IsNotProcessedBeforeNextAttempt()
+	{
+		var job = new CrawlJob
+		{
+			Id = 2,
+			Url = "https://example.com",
+			NextAttempt = DateTime.UtcNow.AddMilliseconds(300)
+		};
+
+		_mockUseCase.Setup(u => u.Execute(It.IsAny<CrawlJob>()))
+			.ReturnsAsync(CreateResult());
+
+		using var cts = new CancellationTokenSource();
+		var startTask = _sut.Start(cts.Token);
+
+		// Act
+		await _sut.Enqueue(job);
+
+		await Task.Delay(100);
+
+		// Assert (not yet executed, NextAttempt time not yet reached.)
+		_mockUseCase.Verify(u => u.Execute(
+			It.IsAny<CrawlJob>()), 
+			Times.Never
+		);
+
+		await Task.Delay(250);
+
+		// Assert (now executed)
+		_mockUseCase.Verify(u => u.Execute(
+			It.IsAny<CrawlJob>()), 
+			Times.Once
+		);
+
+		cts.Cancel();
+		await startTask;
 	}
 
 }
