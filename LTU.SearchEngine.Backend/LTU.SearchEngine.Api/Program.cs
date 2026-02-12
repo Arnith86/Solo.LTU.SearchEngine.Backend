@@ -1,5 +1,4 @@
 using LTU.SearchEngine.Backend.Core;
-using LTU.SearchEngine.BackgroundServices;
 using LTU.SearchEngine.Infrastructure.Configuration;
 
 namespace LTU.SearchEngine.Backend.Api;

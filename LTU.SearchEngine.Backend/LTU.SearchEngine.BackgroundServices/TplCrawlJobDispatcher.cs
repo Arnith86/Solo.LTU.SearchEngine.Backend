@@ -8,6 +8,23 @@ using System.Threading.Tasks.Dataflow;
 
 namespace LTU.SearchEngine.BackgroundServices;
 
+/// <summary>
+/// TPL Dataflow-based implementation of <see cref="ICrawlJobDispatcher"/> responsible for <br />
+/// scheduling, prioritizing, retrying, and executing crawl jobs asynchronously.
+/// </summary>
+/// <remarks>
+/// This dispatcher provides:
+/// <list type="bullet">
+///   <item><description>Priority-based scheduling using <see cref="PriorityQueue{TElement,TPriority}"/></description></item>
+///   <item><description>Asynchronous execution using TPL Dataflow pipelines</description></item>
+///   <item><description>Retry handling with configurable retry intervals</description></item>
+///   <item><description>Per-domain concurrency throttling using semaphores</description></item>
+///   <item><description>Failure handling and rescheduling logic</description></item>
+/// </list>
+/// 
+/// The class acts as the orchestration layer between crawl job scheduling and
+/// the processing use-case, providing a scalable and testable execution model.
+/// </remarks>
 public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 {
 	private readonly IProcessCrawlJobUseCase _processCrawlJobUseCase;
@@ -17,6 +34,21 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 	private BufferBlock<CrawlJob> _buffer;
 	private ActionBlock<CrawlJob> _worker;
 
+	/// <summary>
+	/// Initializes a new instance of the <see cref="TplCrawlJobDispatcher"/> class.
+	/// </summary>
+	/// <param name="processCrawlJobUseCase">
+	/// Use case responsible for executing individual crawl jobs.
+	/// </param>
+	/// <param name="crawlerSettings">
+	/// Configuration settings controlling retry behavior, concurrency, and scheduling delays.
+	/// </param>
+	/// <param name="semaphoreProvider">
+	/// Provider responsible for managing per-domain concurrency semaphores.
+	/// </param>
+	/// <exception cref="ArgumentNullException">
+	/// Thrown when any dependency is <c>null</c>.
+	/// </exception>
 	public TplCrawlJobDispatcher(
 		IProcessCrawlJobUseCase processCrawlJobUseCase,
 		CrawlerSettings crawlerSettings,
@@ -124,6 +156,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 		}
 	}
 
+	/// <inheritdoc />
 	public Task Enqueue(CrawlJob job)
 	{
 		if (job == null) throw new ArgumentNullException(nameof(job));
@@ -140,6 +173,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 		return Task.CompletedTask;
 	}
 
+	/// <inheritdoc />
 	public async Task Start(CancellationToken ct)
 	{
 		_buffer.LinkTo(
