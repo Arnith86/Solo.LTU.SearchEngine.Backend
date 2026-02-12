@@ -1,4 +1,5 @@
 ﻿using LTU.SearchEngine.Application;
+using LTU.SearchEngine.Backend.Core;
 using LTU.SearchEngine.Backend.Core.Exceptions;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
@@ -11,14 +12,15 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 {
 	private readonly IProcessCrawlJobUseCase _processCrawlJobUseCase;
 	private readonly CrawlerSettings _crawlerSettings;
-	private readonly Dictionary<string, SemaphoreSlim> _domainSemaphores;
+	private readonly SemaphoreProvider _semaphoreProvider;
 	private PriorityQueue<CrawlJob, DateTime> _jobPriorityQueue;
 	private BufferBlock<CrawlJob> _buffer;
 	private ActionBlock<CrawlJob> _worker;
 
 	public TplCrawlJobDispatcher(
 		IProcessCrawlJobUseCase processCrawlJobUseCase,
-		CrawlerSettings crawlerSettings
+		CrawlerSettings crawlerSettings,
+		SemaphoreProvider semaphoreProvider
 		)
 	{
 		_processCrawlJobUseCase = processCrawlJobUseCase
@@ -26,7 +28,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 		_crawlerSettings = crawlerSettings
 			?? throw new ArgumentNullException(nameof(crawlerSettings));
 
-		_domainSemaphores = new Dictionary<string, SemaphoreSlim>();
+		_semaphoreProvider = semaphoreProvider;
 
 		_jobPriorityQueue = new PriorityQueue<CrawlJob, DateTime>();
 		_buffer = new BufferBlock<CrawlJob>();
@@ -38,7 +40,10 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 		return new ActionBlock<CrawlJob>(async job =>
 		{
 			string domain = new Uri(job.Url).Host.ToLowerInvariant();
-			var semaphore = GetSemaphore(domain);
+			var semaphore = _semaphoreProvider.GetOrAddSemaphore(
+				domain, 
+				_crawlerSettings.MaxConcurrencyPerDomain
+			);
 
 			// This will limit concurrent processing of jobs from the same domain to the configured maximum.
 			await semaphore.WaitAsync();
@@ -107,20 +112,6 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 			};
 
 			await Enqueue(newJob);
-		}
-	}
-
-	private SemaphoreSlim GetSemaphore(string domain)
-	{
-		lock (_domainSemaphores)
-		{
-			if (!_domainSemaphores.TryGetValue(domain, out var semaphore))
-			{
-				semaphore = new SemaphoreSlim(_crawlerSettings.MaxConcurrencyPerDomain);
-				_domainSemaphores[domain] = semaphore;
-			}
-
-			return semaphore;
 		}
 	}
 
