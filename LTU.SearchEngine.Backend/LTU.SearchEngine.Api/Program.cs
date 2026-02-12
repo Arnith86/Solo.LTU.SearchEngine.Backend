@@ -1,6 +1,8 @@
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure.Configuration;
 using System.Diagnostics;
+using LTU.SearchEngine.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 
 namespace LTU.SearchEngine.Backend.Api;
 
@@ -24,6 +26,11 @@ public class Program
         });
         
         builder.Services.AddOpenApi();
+
+        // Registrera DbContextFactory (för trådsäkerhet med TPL Crawler)
+        builder.Services.AddDbContextFactory<SearchDbContext>(options =>
+            options.UseSqlite("Data Source=search_engine.db"));
+
 
         var app = builder.Build();
 
