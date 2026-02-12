@@ -27,8 +27,8 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 			?? throw new ArgumentNullException(nameof(processCrawlJobUseCase));
 		_crawlerSettings = crawlerSettings
 			?? throw new ArgumentNullException(nameof(crawlerSettings));
-
-		_semaphoreProvider = semaphoreProvider;
+		_semaphoreProvider = semaphoreProvider 
+			?? throw new ArgumentNullException(nameof(semaphoreProvider)); 
 
 		_jobPriorityQueue = new PriorityQueue<CrawlJob, DateTime>();
 		_buffer = new BufferBlock<CrawlJob>();
