@@ -61,17 +61,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 		try
 		{
 			CrawlResult result = await _processCrawlJobUseCase.Execute(job);
-
-			foreach (string link in result.ExtractedLinks)
-			{
-				CrawlJob newJob = new CrawlJob
-				{
-					Url = link,
-					NextAttempt = DateTime.UtcNow 
-				};
-
-				await Enqueue(newJob);
-			}
+			await EnqueueNewJobs(result);
 		}
 		catch (DomainNotWhitelistedException ex)
 		{
@@ -83,13 +73,40 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 		}
 		catch (InvalidOperationException ex)
 		{
-			//// CONTINUE HERE ADD RETRY LOGIC 
 			Debug.WriteLine($"Job {job.Id} failed: fetch error ({ex.Message})");
-
+			await HandleFailedJob(job);
 		}
 		catch (Exception ex)
 		{
 			Debug.WriteLine($"Job {job.Id} failed with unexpected error: {ex.Message}");
+			await HandleFailedJob(job);
+		}
+	}
+
+	private async Task HandleFailedJob(CrawlJob job)
+	{
+		job.RetryCount++;
+		if (job.RetryCount >= _crawlerSettings.RetryIntervals.Count)
+		{
+			Debug.WriteLine($"Job {job.Id} reached max retry count. Discarding job.");
+			return;
+		}
+
+		job.NextAttempt = DateTime.UtcNow + _crawlerSettings.RetryIntervals[job.RetryCount];
+		await Enqueue(job);
+	}
+
+	private async Task EnqueueNewJobs(CrawlResult result)
+	{
+		foreach (string link in result.ExtractedLinks)
+		{
+			CrawlJob newJob = new CrawlJob
+			{
+				Url = link,
+				NextAttempt = DateTime.UtcNow
+			};
+
+			await Enqueue(newJob);
 		}
 	}
 
