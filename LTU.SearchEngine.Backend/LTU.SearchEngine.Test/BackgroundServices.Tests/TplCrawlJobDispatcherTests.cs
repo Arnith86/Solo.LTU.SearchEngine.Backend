@@ -170,4 +170,43 @@ public class TplCrawlJobDispatcherTests
 		// Act + Assert
 		await Assert.ThrowsAsync<ArgumentNullException>(async () => await _sut.Enqueue(job));
 	}
+
+	[Fact]
+	public async Task HandleFailedJob_MaxRetryNotReached_IsRetriedWithCorrectTimeDelayAdded()
+	{
+		DateTime nextAttemptExpected = DateTime.UtcNow + _crawlerSettings.RetryIntervals[0];
+		DateTime nextAttemptToLong = DateTime.UtcNow + _crawlerSettings.RetryIntervals[1];
+
+		var job = new CrawlJob
+		{
+			Id = 3,
+			Url = "https://fail.com",
+			RetryCount = 0,
+			NextAttempt = DateTime.UtcNow
+		};
+
+		_mockUseCase.SetupSequence(u => u.Execute(It.IsAny<CrawlJob>()))
+			.ThrowsAsync(new InvalidOperationException("fetch failed"))
+			.ReturnsAsync(CreateResult()
+		);
+
+		using var cts = new CancellationTokenSource();
+		var startTask = _sut.Start(cts.Token);
+
+		// Act
+		await _sut.Enqueue(job);
+
+		await Task.Delay(500);
+
+		// Assert
+		_mockUseCase.Verify(u => u.Execute(It.IsAny<CrawlJob>()), Times.AtLeast(2));
+		Assert.Equal(1, job.RetryCount);
+		Assert.True(
+			job.NextAttempt >= nextAttemptExpected && 
+			job.NextAttempt <= nextAttemptToLong
+		);
+
+		cts.Cancel();
+		await startTask;
+	}
 }
