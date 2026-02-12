@@ -57,6 +57,10 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 				semaphore.Release();
 			}
 
+		}, 
+		new ExecutionDataflowBlockOptions
+		{
+			MaxDegreeOfParallelism = 100 // ToDo: this should be configurable through app settings and not hard coded.
 		});
 	}
 

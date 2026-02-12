@@ -306,4 +306,44 @@ public class TplCrawlJobDispatcherTests
 		await taskStart;
 	}
 
+	[Fact]
+	public async Task MaxConcurrencyPerDomain_IsRespected()
+	{
+		int active = 0;
+		int maxObserved = 0;
+
+		_mockUseCase.Setup(u => u.Execute(It.IsAny<CrawlJob>()))
+			.Returns(async () =>
+			{
+				var current = Interlocked.Increment(ref active);
+				maxObserved = Math.Max(maxObserved, current);
+				
+				await Task.Delay(100);
+				Interlocked.Decrement(ref active);
+
+				return CreateResult();
+			});
+
+		
+		using var cts = new CancellationTokenSource();
+		var taskStart = _sut.Start(cts.Token);
+
+		for (int i = 0; i < 10; i++)
+		{
+			await _sut.Enqueue(new CrawlJob
+			{
+				Id = i,
+				Url = "https://same-domain.com",
+				NextAttempt = DateTime.UtcNow
+			});
+		}
+
+		await Task.Delay(2000);
+
+		Assert.Equal(_crawlerSettings.MaxConcurrencyPerDomain, maxObserved);
+
+		cts.Cancel();
+		await taskStart;
+	}
+
 }
