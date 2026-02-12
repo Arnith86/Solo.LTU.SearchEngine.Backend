@@ -209,4 +209,35 @@ public class TplCrawlJobDispatcherTests
 		cts.Cancel();
 		await startTask;
 	}
+
+	[Fact]
+	public async Task HandleFailedJob_MaxRetryReached_JobIsDropped()
+	{
+		var job = new CrawlJob
+		{
+			Id = 2,
+			Url = "https://fail.com",
+			RetryCount = 3,
+			NextAttempt = DateTime.UtcNow
+		};
+
+		_mockUseCase.SetupSequence(u => u.Execute(It.IsAny<CrawlJob>()))
+			.ThrowsAsync(new InvalidOperationException("fetch failed"))
+			.ReturnsAsync(CreateResult()
+		);
+
+		using var cts = new CancellationTokenSource();
+		var startTask = _sut.Start(cts.Token);
+
+		// Act
+		await _sut.Enqueue(job);
+
+		await Task.Delay(500);
+
+		// Assert - Retry counter is only incremented before enqueue.
+		Assert.Equal(3, job.RetryCount);
+
+		cts.Cancel();
+		await startTask;
+	}
 }
