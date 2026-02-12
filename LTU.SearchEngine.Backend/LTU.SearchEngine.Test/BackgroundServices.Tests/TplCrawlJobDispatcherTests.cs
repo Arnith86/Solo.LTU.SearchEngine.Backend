@@ -163,4 +163,11 @@ public class TplCrawlJobDispatcherTests
 		await startTask;
 	}
 
+	[Fact]
+	public async Task Enqueue_Job_Null_ShouldThrow_ArgumentNullException()
+	{
+		CrawlJob job = null!;
+		// Act + Assert
+		await Assert.ThrowsAsync<ArgumentNullException>(async () => await _sut.Enqueue(job));
+	}
 }
