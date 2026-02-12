@@ -269,4 +269,41 @@ public class TplCrawlJobDispatcherTests
 		await startTask;
 	}
 
+	[Fact]
+	public async Task ExtractedLinks_CreateNewJobs()
+	{
+		var result = new CrawlResult(
+			url: "https://root.com",
+			title: "root",
+			language: "en",
+			indexedTerms: new List<IndexedTerm>(),
+			type: "text/html",
+			content: Encoding.UTF8.GetBytes("x"),
+			extractedLinks: new[] { "https://a.com", "https://b.com" },
+			statusCode: HttpStatusCode.OK,
+			timeTakenMs: 10
+		);
+
+		_mockUseCase.Setup(u => u.Execute(It.IsAny<CrawlJob>()))
+			.ReturnsAsync(result);
+
+		using var cts = new CancellationTokenSource();
+		var taskStart = _sut.Start(cts.Token);
+
+		await _sut.Enqueue(new CrawlJob
+		{
+			Id = 10,
+			Url = "https://root.com",
+			NextAttempt = DateTime.UtcNow
+		});
+
+		await Task.Delay(500);
+
+		// root + 2 extracted links
+		_mockUseCase.Verify(u => u.Execute(It.IsAny<CrawlJob>()), Times.AtLeast(3));
+
+		cts.Cancel();
+		await taskStart;
+	}
+
 }
