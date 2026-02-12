@@ -164,6 +164,58 @@ public class TplCrawlJobDispatcherTests
 	}
 
 	[Fact]
+	public async Task Enqueue_ScheduledJob_JobWithNearestNextAttempt_ExecuteFirst()
+	{
+		List<int> executionOrder = new List<int>();
+		var gate = new SemaphoreSlim(0, 10);
+		var now = DateTime.UtcNow;
+
+		var job1 = new CrawlJob
+		{
+			Id = 1,
+			Url = "https://example.com",
+			NextAttempt = DateTime.UtcNow.AddMilliseconds(400)
+		};
+
+		var job2 = new CrawlJob
+		{
+			Id = 2,
+			Url = "https://example.com",
+			NextAttempt = DateTime.UtcNow.AddMilliseconds(100)
+		};
+
+		// Each time the method Execute is called, we add the job id to the
+		// executionOrder list to be able to assert the order of execution. 
+		_mockUseCase.Setup(u => u.Execute(It.IsAny<CrawlJob>()))
+			.Returns( async (CrawlJob j) => 
+			{
+				lock (executionOrder) executionOrder.Add(j.Id);
+				gate.Release();
+				
+				return CreateResult();
+			});
+
+		using var cts = new CancellationTokenSource();
+		var startTask = _sut.Start(cts.Token);
+
+		// Act
+		await _sut.Enqueue(job1);
+		await _sut.Enqueue(job2);
+
+		// Wait for both job to be executed.
+		await gate.WaitAsync(TimeSpan.FromSeconds(2));
+		await gate.WaitAsync(TimeSpan.FromSeconds(2));
+
+		// Assert - job2 should execute before job1 because of earlier NextAttempt.
+		Assert.Equal(2, executionOrder.Count);
+		Assert.Equal(2, executionOrder[0]);
+		Assert.Equal(1, executionOrder[1]);
+
+		cts.Cancel();
+		await startTask;
+	}
+
+	[Fact]
 	public async Task Enqueue_Job_Null_ShouldThrow_ArgumentNullException()
 	{
 		CrawlJob job = null!;
@@ -318,7 +370,7 @@ public class TplCrawlJobDispatcherTests
 				var current = Interlocked.Increment(ref active);
 				maxObserved = Math.Max(maxObserved, current);
 				
-				await Task.Delay(100);
+				await Task.Delay(100); // simulate work
 				Interlocked.Decrement(ref active);
 
 				return CreateResult();
