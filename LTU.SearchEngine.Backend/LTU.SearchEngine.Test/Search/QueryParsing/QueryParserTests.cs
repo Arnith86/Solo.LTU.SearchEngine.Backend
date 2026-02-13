@@ -1,5 +1,3 @@
-using Xunit;
-using LTU.SearchEngine.Application.Search.QueryParsing;
 using LTU.SearchEngine.Application.QueryParsing;
 using LTU.SearchEngine.Backend.Core.Model;
 
