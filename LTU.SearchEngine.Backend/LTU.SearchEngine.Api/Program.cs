@@ -1,8 +1,8 @@
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure.Configuration;
 using System.Diagnostics;
-using LTU.SearchEngine.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using LTU.SearchEngine.Infrastructure.Data;
 
 namespace LTU.SearchEngine.Backend.Api;
 
