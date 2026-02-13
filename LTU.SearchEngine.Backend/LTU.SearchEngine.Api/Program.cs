@@ -29,7 +29,7 @@ public class Program
 
         // Registrera DbContextFactory (för trådsäkerhet med TPL Crawler)
         builder.Services.AddDbContextFactory<SearchDbContext>(options =>
-            options.UseSqlite("Data Source=search_engine.db"));
+            options.UseSqlServer("Server=(localdb)\\mssqllocaldb;Database=SearchEngineDb;Trusted_Connection=True;MultipleActiveResultSets=true"));
 
 
         var app = builder.Build();

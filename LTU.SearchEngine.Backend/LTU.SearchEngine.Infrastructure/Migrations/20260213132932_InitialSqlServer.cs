@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace LTU.SearchEngine.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialSqlServer : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -15,16 +15,16 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                 name: "Pages",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Url = table.Column<string>(type: "TEXT", nullable: false),
-                    Title = table.Column<string>(type: "TEXT", nullable: false),
-                    LastCrawled = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    PageRankScore = table.Column<double>(type: "REAL", nullable: false),
-                    ContentHash = table.Column<string>(type: "TEXT", nullable: false),
-                    WordCount = table.Column<int>(type: "INTEGER", nullable: false),
-                    HttpStatus = table.Column<int>(type: "INTEGER", nullable: false),
-                    Language = table.Column<string>(type: "TEXT", nullable: false)
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Url = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Title = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    LastCrawled = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    PageRankScore = table.Column<double>(type: "float", nullable: false),
+                    ContentHash = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    WordCount = table.Column<int>(type: "int", nullable: false),
+                    HttpStatus = table.Column<int>(type: "int", nullable: false),
+                    Language = table.Column<string>(type: "nvarchar(max)", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -35,10 +35,10 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                 name: "Terms",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Word = table.Column<string>(type: "TEXT", nullable: false),
-                    IdfScore = table.Column<double>(type: "REAL", nullable: false)
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Word = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    IdfScore = table.Column<double>(type: "float", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -49,9 +49,9 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                 name: "PageLinks",
                 columns: table => new
                 {
-                    FromPageId = table.Column<int>(type: "INTEGER", nullable: false),
-                    ToPageId = table.Column<int>(type: "INTEGER", nullable: false),
-                    PageId = table.Column<int>(type: "INTEGER", nullable: true)
+                    FromPageId = table.Column<int>(type: "int", nullable: false),
+                    ToPageId = table.Column<int>(type: "int", nullable: false),
+                    PageId = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -79,12 +79,12 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                 name: "PageWordFrequencies",
                 columns: table => new
                 {
-                    PageId = table.Column<int>(type: "INTEGER", nullable: false),
-                    TermId = table.Column<int>(type: "INTEGER", nullable: false),
-                    Frequency = table.Column<int>(type: "INTEGER", nullable: false),
-                    TfWeight = table.Column<double>(type: "REAL", nullable: false),
-                    PageId1 = table.Column<int>(type: "INTEGER", nullable: true),
-                    TermId1 = table.Column<int>(type: "INTEGER", nullable: true)
+                    PageId = table.Column<int>(type: "int", nullable: false),
+                    TermId = table.Column<int>(type: "int", nullable: false),
+                    Frequency = table.Column<int>(type: "int", nullable: false),
+                    TfWeight = table.Column<double>(type: "float", nullable: false),
+                    PageId1 = table.Column<int>(type: "int", nullable: true),
+                    TermId1 = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
