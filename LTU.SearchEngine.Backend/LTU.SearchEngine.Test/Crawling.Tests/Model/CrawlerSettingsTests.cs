@@ -1,6 +1,6 @@
 ﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 
-namespace LTU.SearchEngine.Test.Crawler.Tests.Model;
+namespace LTU.SearchEngine.Test.Crawling.Tests.Model;
 
 public class CrawlerSettingsTests
 {

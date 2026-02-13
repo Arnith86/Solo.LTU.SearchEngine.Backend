@@ -1,0 +1,91 @@
+﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using System;
+using System.Diagnostics;
+
+namespace LTU.SearchEngine.Infrastructure.Crawling;
+
+public class Crawler : ICrawler
+{
+    private readonly HttpClient _httpClient;
+    private readonly IHtmlParser _htmlParser;
+
+    public Crawler(HttpClient httpClient, IHtmlParser htmlParser)
+    {
+        _httpClient = httpClient;
+        _htmlParser = htmlParser;
+    }
+
+    /// <inheritdoc/>
+    public async Task<CrawlResult> FetchAsync(string url)
+    {
+        var stopwatch = Stopwatch.StartNew();
+
+        try
+        {
+            var response = await _httpClient.GetAsync(url);
+            stopwatch.Stop();
+
+            // Handle 404/500 errors per Acceptance Criteria: 
+            // Return status code without body content.
+            if (!response.IsSuccessStatusCode)
+            {
+                return CreateErrorResult(url, response.StatusCode, stopwatch.ElapsedMilliseconds, "None");
+            }
+
+            //if call successful get the data
+            byte[] content = await response.Content.ReadAsByteArrayAsync();
+            string contentType = response.Content.Headers.ContentType?.MediaType ?? "text/plain";
+
+            var terms = Enumerable.Empty<IndexedTerm>();
+            var links = Enumerable.Empty<string>();
+            string title = null;
+
+            if (contentType.Contains("text/html"))
+            {
+                var htmlString = System.Text.Encoding.UTF8.GetString(content);
+
+                terms = _htmlParser.ExtractTerms(htmlString);
+                links = _htmlParser.ExtractInternalLinks(htmlString, url);
+                title = _htmlParser.ExtractTitle(htmlString);
+            }
+
+            return new CrawlResult(
+            url: url,
+            title: title,
+            language: "Unknown",
+           indexedTerms: terms,
+            type: contentType,
+            content: content,
+            extractedLinks: links,
+            statusCode: response.StatusCode,
+            timeTakenMs: stopwatch.ElapsedMilliseconds
+            );
+        }
+        catch (HttpRequestException ex) 
+        {
+            stopwatch.Stop();
+            return CreateErrorResult(url, System.Net.HttpStatusCode.ServiceUnavailable, stopwatch.ElapsedMilliseconds, "Error");
+        }
+        catch (Exception) 
+        {
+            stopwatch.Stop();
+            return null; 
+        }
+    }
+
+    // Helpmethod for creating a "failed" result
+    private CrawlResult CreateErrorResult(string url, System.Net.HttpStatusCode statusCode, long timeTaken, string type)
+    {
+        return new CrawlResult(
+            url: url,
+            title: null,
+            language: "Unknown",
+            indexedTerms: Enumerable.Empty<IndexedTerm>(),
+            type: type,
+            content: Array.Empty<byte>(),
+            extractedLinks: Enumerable.Empty<string>(),
+            statusCode: statusCode,
+            timeTakenMs: timeTaken
+        );
+    }
+}
