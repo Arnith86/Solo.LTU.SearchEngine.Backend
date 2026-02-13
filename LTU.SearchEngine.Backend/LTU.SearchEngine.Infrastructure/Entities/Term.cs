@@ -18,9 +18,9 @@ namespace LTU.SearchEngine.Infrastructure.Entities
         // Vi använder double för matematikens skull i C#.
         public double IdfScore { get; set; }
 
-        // --- RELATIONER (Dessa aktiverar vi i Subtask 3) ---
+
         // ER: Koppling till page_word_frequency
-        // public ICollection<PageWordFrequency> PageFrequencies { get; set; }
+        public ICollection<PageWordFrequency> PageFrequencies { get; set; }
 
     }
 }

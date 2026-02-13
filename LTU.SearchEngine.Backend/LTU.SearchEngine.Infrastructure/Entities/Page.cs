@@ -1,4 +1,5 @@
-﻿using System;
+﻿using LTU.SearchEngine.Infrastructure.Entities;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -42,8 +43,7 @@ namespace LTU.SearchEngine.Backend.Core.Entities
         // T.ex. "en", "sv".
         public string Language { get; set; } = string.Empty;
 
-        // --- RELATIONER (Dessa lägger vi till i nästa steg/Subtask 3) ---
-        // public ICollection<PageWordFrequency> WordFrequencies { get; set; }
-        // public ICollection<PageLink> OutgoingLinks { get; set; }
+        public ICollection<PageWordFrequency> WordFrequencies { get; set; }
+        public ICollection<PageLink> OutgoingLinks { get; set; }
     }
 }
