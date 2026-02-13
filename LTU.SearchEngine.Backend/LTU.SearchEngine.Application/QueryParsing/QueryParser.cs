@@ -17,16 +17,20 @@ public sealed class QueryParser : IQueryParser
 	private enum LoopAction { Continue, Break, Next, None } // ToDo: extract to own enum class 
 	private readonly IQueryNormalizer _queryNormalizer;
     private readonly ITokenizer _queryTokenizer;
+    private readonly IQueryTokenProcessor _queryTokenProcessor;
 
     public QueryParser(
         IQueryNormalizer queryNormalizer,
-        ITokenizer queryTokenizer
+        ITokenizer queryTokenizer,
+		IQueryTokenProcessor queryTokenProcessor
         )
     {
         _queryNormalizer = queryNormalizer ?? 
             throw new ArgumentNullException(nameof(queryNormalizer));
         _queryTokenizer = queryTokenizer ??
 			throw new ArgumentNullException(nameof(queryTokenizer));
+		_queryTokenProcessor = queryTokenProcessor ??
+			throw new ArgumentNullException(nameof(queryTokenProcessor));
 	}
 
 	public ParsedQuery Parse(string rawQuery)
@@ -64,18 +68,18 @@ public sealed class QueryParser : IQueryParser
 				break;
 
             loopAction = 
-				HandleRequiredToken(parsedQuery, tokens, token, sawPositive, index: i);
+				HandleRequiredToken(parsedQuery, token, sawPositive);
 
 			if (loopAction.Equals(LoopAction.Continue)) 
 				continue;
 
 			loopAction = 
-				HandlePhraseToken(parsedQuery, tokens, token, sawPositive, index: i);
+				HandlePhraseToken(parsedQuery, token, sawPositive);
 
 			if (loopAction.Equals(LoopAction.Continue)) 
 				continue;
 
-			HandleTermToken(parsedQuery, tokens, token, sawPositive, index: i);
+			HandleTermToken(parsedQuery, token, sawPositive);
         }
 
         // FRQ-3008 constraint: standalone exclusion queries should return error or zero results
@@ -104,7 +108,8 @@ public sealed class QueryParser : IQueryParser
 			}
 
 			var next = tokens[++index];
-			AddExcluded(parsedQuery, next, ref sawPositive);
+			_queryTokenProcessor.ProcessNegativeToken(parsedQuery, next, ref sawPositive);
+			
 			return LoopAction.Continue;
 		}
 
@@ -113,7 +118,7 @@ public sealed class QueryParser : IQueryParser
 			token.StartsWith("!", StringComparison.Ordinal) &&
 			token.Length > 1)
 		{
-			AddExcluded(parsedQuery, token[1..], ref sawPositive);
+			_queryTokenProcessor.ProcessNegativeToken(parsedQuery, token[1..], ref sawPositive);
 			return LoopAction.Continue;
 		}
 
@@ -122,21 +127,15 @@ public sealed class QueryParser : IQueryParser
 
 	private LoopAction HandleRequiredToken(
 		ParsedQuery parsedQuery,
-		List<string> tokens,
 		string token,
-		bool sawPositive,
-		int index
+		bool sawPositive
 		)
 	{
 		// Required term (+) (FRQ-3007)
 		if (token.StartsWith("+", StringComparison.Ordinal) && token.Length > 1)
 		{
-			var value = _queryNormalizer.NormalizeTerm(token[1..]);
-			if (!string.IsNullOrWhiteSpace(value))
-			{
-				parsedQuery.RequiredTerms.Add(value);
-				sawPositive = true;
-			}
+			_queryTokenProcessor.ProcessRequiredToken(parsedQuery, token, ref sawPositive);
+			
 			return LoopAction.Continue;
 		}
 
@@ -145,21 +144,15 @@ public sealed class QueryParser : IQueryParser
 
 	private LoopAction HandlePhraseToken(
 		ParsedQuery parsedQuery,
-		List<string> tokens,
 		string token,
-		bool sawPositive,
-		int index
+		bool sawPositive
 		)
 	{
 		// Phrase (FRQ-3003)
-		if (IsPhraseToken(token))
+		if (_queryTokenProcessor.IsPhraseToken(token))
 		{
-			var phrase = _queryNormalizer.NormalizePhrase(token);
-			if (!string.IsNullOrWhiteSpace(phrase))
-			{
-				parsedQuery.Phrases.Add(phrase);
-				sawPositive = true;
-			}
+			_queryTokenProcessor.ProcessPhraseToken(parsedQuery, token, ref sawPositive);
+			
 			return LoopAction.Continue;
 		}
 
@@ -168,44 +161,14 @@ public sealed class QueryParser : IQueryParser
 
 	private void HandleTermToken(
 		ParsedQuery parsedQuery,
-		List<string> tokens,
 		string token,
-		bool sawPositive,
-		int index
+		bool sawPositive
 		)
 	{
 		// Normal term (FRQ-3001/3002)
-		var term = _queryNormalizer.NormalizeTerm(token);
-		if (!string.IsNullOrWhiteSpace(term))
-		{
-			parsedQuery.Terms.Add(term);
-			sawPositive = true;
-		}
+		_queryTokenProcessor.ProcessTermToken(parsedQuery, token, sawPositive);
 	}
 
-
-	private void AddExcluded(ParsedQuery parsedQuery, string rawToken, ref bool sawPositive)
-    {
-        // FRQ-3008: Exclusion operator must be preceded by a positive term
-        if (!sawPositive)
-        {
-            parsedQuery.Errors.Add("Exclusion operator must be preceded by a positive term.");
-            return;
-        }
-
-        // rawToken can be a phrase token ("...") or a term
-        if (IsPhraseToken(rawToken))
-        {
-            var phrase = _queryNormalizer.NormalizePhrase(rawToken);
-            if (!string.IsNullOrWhiteSpace(phrase))
-                parsedQuery.ExcludedTerms.Add(phrase);
-            return;
-        }
-
-        var value = _queryNormalizer.NormalizeTerm(rawToken);
-        if (!string.IsNullOrWhiteSpace(value))
-            parsedQuery.ExcludedTerms.Add(value);
-    }
 
     private static QueryMode DetectMode(List<string> tokens)
     {
@@ -219,9 +182,4 @@ public sealed class QueryParser : IQueryParser
     private static bool IsOperatorToken(string t) => 
         t is "AND" or "&&" or "OR" or "||";
 
-    private static bool IsPhraseToken(string t) =>
-        t.Length >= 2 && 
-        t.StartsWith("\"", StringComparison.Ordinal) && 
-        t.EndsWith("\"", StringComparison.Ordinal
-    );
 }
