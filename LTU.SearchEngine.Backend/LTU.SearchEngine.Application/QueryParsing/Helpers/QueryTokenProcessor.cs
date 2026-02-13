@@ -5,17 +5,17 @@ namespace LTU.SearchEngine.Application.QueryParsing.Helpers;
 public class QueryTokenProcessor : IQueryTokenProcessor
 {
 	private readonly IQueryNormalizer _queryNormalizer;
-	private readonly ITokenizer _queryTokenizer;
+	private readonly IQuerySyntaxHelper _querySyntaxHelper;
 
 	public QueryTokenProcessor(
 		IQueryNormalizer queryNormalizer,
-		ITokenizer queryTokenizer
+		IQuerySyntaxHelper querySyntaxHelper
 		)
 	{
 		_queryNormalizer = queryNormalizer ??
 			throw new ArgumentNullException(nameof(queryNormalizer));
-		_queryTokenizer = queryTokenizer ??
-			throw new ArgumentNullException(nameof(queryTokenizer));
+		_querySyntaxHelper = querySyntaxHelper ??
+			throw new ArgumentNullException(nameof(querySyntaxHelper));
 	}
 	
 	public void ProcessNegativeToken(
@@ -83,7 +83,7 @@ public class QueryTokenProcessor : IQueryTokenProcessor
 		}
 
 		// rawToken can be a phrase token ("...") or a term
-		if (IsPhraseToken(rawToken))
+		if (_querySyntaxHelper.IsPhraseToken(rawToken))
 		{
 			var phrase = _queryNormalizer.NormalizePhrase(rawToken);
 			if (!string.IsNullOrWhiteSpace(phrase))
@@ -95,11 +95,4 @@ public class QueryTokenProcessor : IQueryTokenProcessor
 		if (!string.IsNullOrWhiteSpace(value))
 			parsedQuery.ExcludedTerms.Add(value);
 	}
-	
-	public bool IsPhraseToken(string token) =>
-		token.Length >= 2 &&
-		token.StartsWith("\"", StringComparison.Ordinal) &&
-		token.EndsWith("\"", StringComparison.Ordinal
-	);
-
 }

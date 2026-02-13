@@ -8,6 +8,5 @@ namespace LTU.SearchEngine.Application.QueryParsing.Helpers
 		void ProcessPhraseToken(ParsedQuery parsedQuery, string token, ref bool sawPositive);
 		void ProcessRequiredToken(ParsedQuery parsedQuery, string token, ref bool sawPositive);
 		void ProcessTermToken(ParsedQuery parsedQuery, string token, ref bool sawPositive);
-		bool IsPhraseToken(string token); 
 	}
 }

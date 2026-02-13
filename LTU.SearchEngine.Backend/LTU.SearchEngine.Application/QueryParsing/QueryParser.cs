@@ -1,6 +1,5 @@
 using LTU.SearchEngine.Application.QueryParsing.Helpers;
 using LTU.SearchEngine.Backend.Core;
-using LTU.SearchEngine.Backend.Core.Model;
 
 namespace LTU.SearchEngine.Application.QueryParsing;
 
@@ -15,22 +14,18 @@ namespace LTU.SearchEngine.Application.QueryParsing;
 public sealed class QueryParser : IQueryParser
 {
 	private enum LoopAction { Continue, Break, Next, None } // ToDo: extract to own enum class 
-	private readonly IQueryNormalizer _queryNormalizer;
-    private readonly ITokenizer _queryTokenizer;
     private readonly IQueryTokenProcessor _queryTokenProcessor;
+	private readonly IQuerySyntaxHelper _querySyntaxHelper;
 
-    public QueryParser(
-        IQueryNormalizer queryNormalizer,
-        ITokenizer queryTokenizer,
-		IQueryTokenProcessor queryTokenProcessor
-        )
+	public QueryParser(
+  		IQueryTokenProcessor queryTokenProcessor,
+		IQuerySyntaxHelper querySyntaxHelper
+		)
     {
-        _queryNormalizer = queryNormalizer ?? 
-            throw new ArgumentNullException(nameof(queryNormalizer));
-        _queryTokenizer = queryTokenizer ??
-			throw new ArgumentNullException(nameof(queryTokenizer));
 		_queryTokenProcessor = queryTokenProcessor ??
 			throw new ArgumentNullException(nameof(queryTokenProcessor));
+		_querySyntaxHelper = querySyntaxHelper ??
+			throw new ArgumentNullException(nameof(querySyntaxHelper));
 	}
 
 	public ParsedQuery Parse(string rawQuery)
@@ -38,13 +33,13 @@ public sealed class QueryParser : IQueryParser
         if (string.IsNullOrWhiteSpace(rawQuery))
         {
             var empty = new ParsedQuery();
-            empty.Errors.Add("Query is empty.");  // ToDo: Ask why this step is necessary. 
+            empty.Errors.Add("Query is empty.");   
             return empty;
         }
 
-        var tokens = _queryTokenizer.Tokenize(rawQuery);
+        var tokens = _querySyntaxHelper.Tokenize(rawQuery);
 		// ToDo: Mode detection does not take into consideration that there can be concatenated logical expressions (example: "term1 && term2 || term3 )
-		var mode = DetectMode(tokens);  
+		var mode = _querySyntaxHelper.DetectMode(tokens);  
 
         var parsedQuery = new ParsedQuery { Mode = mode };
 
@@ -57,7 +52,7 @@ public sealed class QueryParser : IQueryParser
 			var token = tokens[i];
 
             // Skip explicit AND/OR tokens
-            if (IsOperatorToken(token)) continue;
+            if (_querySyntaxHelper.IsOperatorToken(token)) continue;
 
             loopAction = 
 				HandleNegativeToken(parsedQuery, tokens, token, sawPositive, index: i);
@@ -89,7 +84,7 @@ public sealed class QueryParser : IQueryParser
         return parsedQuery;
     }
 
-	// --- Helpers ---
+
 	private LoopAction HandleNegativeToken(
 	    ParsedQuery parsedQuery,
 	    List<string> tokens,
@@ -135,7 +130,6 @@ public sealed class QueryParser : IQueryParser
 		if (token.StartsWith("+", StringComparison.Ordinal) && token.Length > 1)
 		{
 			_queryTokenProcessor.ProcessRequiredToken(parsedQuery, token, ref sawPositive);
-			
 			return LoopAction.Continue;
 		}
 
@@ -149,37 +143,19 @@ public sealed class QueryParser : IQueryParser
 		)
 	{
 		// Phrase (FRQ-3003)
-		if (_queryTokenProcessor.IsPhraseToken(token))
+		if (_querySyntaxHelper.IsPhraseToken(token))
 		{
 			_queryTokenProcessor.ProcessPhraseToken(parsedQuery, token, ref sawPositive);
-			
 			return LoopAction.Continue;
 		}
 
 		return LoopAction.None;
 	}
 
+	// Normal term (FRQ-3001/3002)
 	private void HandleTermToken(
 		ParsedQuery parsedQuery,
 		string token,
 		bool sawPositive
-		)
-	{
-		// Normal term (FRQ-3001/3002)
-		_queryTokenProcessor.ProcessTermToken(parsedQuery, token, sawPositive);
-	}
-
-
-    private static QueryMode DetectMode(List<string> tokens)
-    {
-        // FRQ-3004: only uppercase operators count as operators
-        // FRQ-3005: whitespace implies OR by default
-        if (tokens.Any(t => t is "AND" or "&&")) return QueryMode.AND;
-        if (tokens.Any(t => t is "OR" or "||")) return QueryMode.OR;
-        return QueryMode.OR;
-    }
-
-    private static bool IsOperatorToken(string t) => 
-        t is "AND" or "&&" or "OR" or "||";
-
+		) => _queryTokenProcessor.ProcessTermToken(parsedQuery, token, ref sawPositive);
 }
