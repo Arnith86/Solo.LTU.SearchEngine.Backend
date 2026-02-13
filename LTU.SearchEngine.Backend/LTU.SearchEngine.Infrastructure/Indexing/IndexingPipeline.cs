@@ -1,4 +1,5 @@
 ﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using LTU.SearchEngine.Infrastructure.Indexing.Normalization;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -22,9 +23,52 @@ namespace LTU.SearchEngine.Infrastructure.Indexing
     /// </remarks>
     public class IndexingPipeline
     {
+
+        /*
+         Transform:
+
+        Validate input
+        Normalize terms
+        Build IndexDocument
+        Return result
+         */
+
+        private readonly ITextNormalizer _textNormalizer;
+
+        public IndexingPipeline(ITextNormalizer normalizer)
+        {
+            _textNormalizer = normalizer;
+        }
         public virtual IndexDocument Transform(CrawlResult crawlResult)
         {
-            throw new NotImplementedException();
+            if (crawlResult == null) throw new ArgumentNullException(nameof(crawlResult));
+
+            var normalizedTerms = _textNormalizer.Normalize(crawlResult.IndexedTerms);
+
+            return BuildIndexDocument(crawlResult, normalizedTerms);
+        }
+
+        private IndexDocument BuildIndexDocument(CrawlResult crawlResult, IEnumerable<IndexedTerm> normalizedTerms)
+        {
+            var document = new IndexDocument(crawlResult.Url, crawlResult.Url);
+            foreach (var term in normalizedTerms)
+    {
+        switch (term.Source)
+        {
+            case TermSource.Title:
+                AddTerm(document.TitleTerms, term.Term);
+                break;
+
+            case TermSource.Header:
+                AddTerm(document.HeaderTerms, term.Term);
+                break;
+
+            case TermSource.Body:
+                AddTerm(document.ContentTerms, term.Term);
+                break;
+        }
+    }
+            return document;
         }
     }
 }
