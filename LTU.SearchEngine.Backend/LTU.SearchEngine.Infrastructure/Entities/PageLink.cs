@@ -7,14 +7,10 @@ namespace LTU.SearchEngine.Infrastructure.Entities
 {
     public class PageLink
     {
-        // ER: from_page_id integer
-        // Sidan som länken finns PÅ
         public int FromPageId { get; set; }
-        public Page FromPage { get; set; } // Navigering (EF Core)
+        public Page FromPage { get; set; } 
 
-        // ER: to_page_id integer
-        // Sidan som länken pekar TILL
         public int ToPageId { get; set; }
-        public Page ToPage { get; set; } // Navigering (EF Core)
+        public Page ToPage { get; set; } 
     }
 }

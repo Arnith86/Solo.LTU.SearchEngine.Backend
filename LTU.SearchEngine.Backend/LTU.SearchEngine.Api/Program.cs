@@ -27,7 +27,6 @@ public class Program
         
         builder.Services.AddOpenApi();
 
-        // Registrera DbContextFactory (för trådsäkerhet med TPL Crawler)
         builder.Services.AddDbContextFactory<SearchDbContext>(options =>
             options.UseSqlServer("Server=(localdb)\\mssqllocaldb;Database=SearchEngineDb;Trusted_Connection=True;MultipleActiveResultSets=true"));
 
