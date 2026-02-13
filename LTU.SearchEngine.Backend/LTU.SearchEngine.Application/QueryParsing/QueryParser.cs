@@ -1,7 +1,6 @@
 using LTU.SearchEngine.Application.QueryParsing.Helpers;
 using LTU.SearchEngine.Backend.Core;
 using LTU.SearchEngine.Backend.Core.Model;
-using System.Text;
 
 namespace LTU.SearchEngine.Application.QueryParsing;
 
@@ -39,7 +38,8 @@ public sealed class QueryParser : IQueryParser
         }
 
         var tokens = _queryTokenizer.Tokenize(rawQuery);
-        var mode = DetectMode(tokens);
+		// ToDo: Mode detection does not take into consideration that there can be concatenated logical expressions (example: "term1 && term2 || term3 )
+		var mode = DetectMode(tokens);  
 
         var parsedQuery = new ParsedQuery { Mode = mode };
 
@@ -67,6 +67,15 @@ public sealed class QueryParser : IQueryParser
                 continue;
             }
 
+            // Excluded term (-) || (!) (FRQ-3008)
+            if (token.StartsWith("-", StringComparison.Ordinal) ||
+				token.StartsWith("!", StringComparison.Ordinal) && 
+                token.Length > 1)
+            {
+                AddExcluded(parsedQuery, token[1..], ref sawPositive);
+                continue;
+            }
+            
             // Required term (+) (FRQ-3007)
             if (token.StartsWith("+", StringComparison.Ordinal) && token.Length > 1)
             {
@@ -79,12 +88,6 @@ public sealed class QueryParser : IQueryParser
                 continue;
             }
 
-            // Excluded term (-) (FRQ-3008)
-            if (token.StartsWith("-", StringComparison.Ordinal) && token.Length > 1)
-            {
-                AddExcluded(parsedQuery, token[1..], ref sawPositive);
-                continue;
-            }
 
             // Phrase (FRQ-3003)
             if (IsPhraseToken(token))
@@ -156,8 +159,4 @@ public sealed class QueryParser : IQueryParser
         t.StartsWith("\"", StringComparison.Ordinal) && 
         t.EndsWith("\"", StringComparison.Ordinal
     );
-
- 
-
-   
 }
