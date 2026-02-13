@@ -14,7 +14,8 @@ namespace LTU.SearchEngine.Application.QueryParsing;
 /// </summary>
 public sealed class QueryParser : IQueryParser
 {
-    private readonly IQueryNormalizer _queryNormalizer;
+	private enum LoopAction { Continue, Break, Next, None } // ToDo: extract to own enum class 
+	private readonly IQueryNormalizer _queryNormalizer;
     private readonly ITokenizer _queryTokenizer;
 
     public QueryParser(
@@ -28,7 +29,7 @@ public sealed class QueryParser : IQueryParser
 			throw new ArgumentNullException(nameof(queryTokenizer));
 	}
 
-    public ParsedQuery Parse(string rawQuery)
+	public ParsedQuery Parse(string rawQuery)
     {
         if (string.IsNullOrWhiteSpace(rawQuery))
         {
@@ -47,67 +48,34 @@ public sealed class QueryParser : IQueryParser
 
         for (int i = 0; i < tokens.Count; i++)
         {
-            var token = tokens[i];
+			LoopAction loopAction = LoopAction.None;
+
+			var token = tokens[i];
 
             // Skip explicit AND/OR tokens
-            if (IsOperatorToken(token))
-                continue;
+            if (IsOperatorToken(token)) continue;
 
-            // NOT operator excludes the next term/phrase (FRQ-3008)
-            if (token == "NOT")
-            {
-                if (i + 1 >= tokens.Count)
-                {
-                    parsedQuery.Errors.Add("NOT must be followed by a term or phrase.");
-                    break;
-                }
+            loopAction = 
+				HandleNegativeToken(parsedQuery, tokens, token, sawPositive, index: i);
 
-                var next = tokens[++i];
-                AddExcluded(parsedQuery, next, ref sawPositive);
-                continue;
-            }
+            if (loopAction.Equals(LoopAction.Continue)) 
+				continue;
+            if (loopAction.Equals(LoopAction.Break)) 
+				break;
 
-            // Excluded term (-) || (!) (FRQ-3008)
-            if (token.StartsWith("-", StringComparison.Ordinal) ||
-				token.StartsWith("!", StringComparison.Ordinal) && 
-                token.Length > 1)
-            {
-                AddExcluded(parsedQuery, token[1..], ref sawPositive);
-                continue;
-            }
-            
-            // Required term (+) (FRQ-3007)
-            if (token.StartsWith("+", StringComparison.Ordinal) && token.Length > 1)
-            {
-                var value = _queryNormalizer.NormalizeTerm(token[1..]);
-                if (!string.IsNullOrWhiteSpace(value))
-                {
-                    parsedQuery.RequiredTerms.Add(value);
-                    sawPositive = true;
-                }
-                continue;
-            }
+            loopAction = 
+				HandleRequiredToken(parsedQuery, tokens, token, sawPositive, index: i);
 
+			if (loopAction.Equals(LoopAction.Continue)) 
+				continue;
 
-            // Phrase (FRQ-3003)
-            if (IsPhraseToken(token))
-            {
-                var phrase = _queryNormalizer.NormalizePhrase(token);
-                if (!string.IsNullOrWhiteSpace(phrase))
-                {
-                    parsedQuery.Phrases.Add(phrase);
-                    sawPositive = true;
-                }
-                continue;
-            }
+			loopAction = 
+				HandlePhraseToken(parsedQuery, tokens, token, sawPositive, index: i);
 
-            // Normal term (FRQ-3001/3002)
-            var term = _queryNormalizer.NormalizeTerm(token);
-            if (!string.IsNullOrWhiteSpace(term))
-            {
-                parsedQuery.Terms.Add(term);
-                sawPositive = true;
-            }
+			if (loopAction.Equals(LoopAction.Continue)) 
+				continue;
+
+			HandleTermToken(parsedQuery, tokens, token, sawPositive, index: i);
         }
 
         // FRQ-3008 constraint: standalone exclusion queries should return error or zero results
@@ -117,9 +85,106 @@ public sealed class QueryParser : IQueryParser
         return parsedQuery;
     }
 
-    // --- Helpers ---
+	// --- Helpers ---
+	private LoopAction HandleNegativeToken(
+	    ParsedQuery parsedQuery,
+	    List<string> tokens,
+	    string token,
+	    bool sawPositive,
+	    int index
+	    )
+	{
+		// NOT operator excludes the next term/phrase (FRQ-3008)
+		if (token == "NOT")
+		{
+			if (index + 1 >= tokens.Count)
+			{
+				parsedQuery.Errors.Add("NOT must be followed by a term or phrase.");
+				return LoopAction.Break;
+			}
 
-    private void AddExcluded(ParsedQuery parsedQuery, string rawToken, ref bool sawPositive)
+			var next = tokens[++index];
+			AddExcluded(parsedQuery, next, ref sawPositive);
+			return LoopAction.Continue;
+		}
+
+		// Excluded term (-) || (!) (FRQ-3008)
+		if (token.StartsWith("-", StringComparison.Ordinal) ||
+			token.StartsWith("!", StringComparison.Ordinal) &&
+			token.Length > 1)
+		{
+			AddExcluded(parsedQuery, token[1..], ref sawPositive);
+			return LoopAction.Continue;
+		}
+
+		return LoopAction.None;
+	}
+
+	private LoopAction HandleRequiredToken(
+		ParsedQuery parsedQuery,
+		List<string> tokens,
+		string token,
+		bool sawPositive,
+		int index
+		)
+	{
+		// Required term (+) (FRQ-3007)
+		if (token.StartsWith("+", StringComparison.Ordinal) && token.Length > 1)
+		{
+			var value = _queryNormalizer.NormalizeTerm(token[1..]);
+			if (!string.IsNullOrWhiteSpace(value))
+			{
+				parsedQuery.RequiredTerms.Add(value);
+				sawPositive = true;
+			}
+			return LoopAction.Continue;
+		}
+
+		return LoopAction.None;
+	}
+
+	private LoopAction HandlePhraseToken(
+		ParsedQuery parsedQuery,
+		List<string> tokens,
+		string token,
+		bool sawPositive,
+		int index
+		)
+	{
+		// Phrase (FRQ-3003)
+		if (IsPhraseToken(token))
+		{
+			var phrase = _queryNormalizer.NormalizePhrase(token);
+			if (!string.IsNullOrWhiteSpace(phrase))
+			{
+				parsedQuery.Phrases.Add(phrase);
+				sawPositive = true;
+			}
+			return LoopAction.Continue;
+		}
+
+		return LoopAction.None;
+	}
+
+	private void HandleTermToken(
+		ParsedQuery parsedQuery,
+		List<string> tokens,
+		string token,
+		bool sawPositive,
+		int index
+		)
+	{
+		// Normal term (FRQ-3001/3002)
+		var term = _queryNormalizer.NormalizeTerm(token);
+		if (!string.IsNullOrWhiteSpace(term))
+		{
+			parsedQuery.Terms.Add(term);
+			sawPositive = true;
+		}
+	}
+
+
+	private void AddExcluded(ParsedQuery parsedQuery, string rawToken, ref bool sawPositive)
     {
         // FRQ-3008: Exclusion operator must be preceded by a positive term
         if (!sawPositive)
