@@ -1,4 +1,6 @@
-namespace LTU.SearchEngine.Application.Search.QueryParsing;
+using LTU.SearchEngine.Backend.Core.Model;
+
+namespace LTU.SearchEngine.Backend.Core;
 
 /// <summary>
 /// Structured representation of a parsed search query.

@@ -1,4 +1,4 @@
-namespace LTU.SearchEngine.Application.Search.QueryParsing;
+namespace LTU.SearchEngine.Backend.Core.Model;
 
 /// <summary>
 /// Defines how query terms should be combined.

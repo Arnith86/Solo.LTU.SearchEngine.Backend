@@ -1,6 +1,8 @@
+using LTU.SearchEngine.Backend.Core;
+using LTU.SearchEngine.Backend.Core.Model;
 using System.Text;
 
-namespace LTU.SearchEngine.Application.Search.QueryParsing;
+namespace LTU.SearchEngine.Application.QueryParsing;
 
 /// <summary>
 /// Parses raw user search query strings into a structured <see cref="ParsedQuery"/>.
