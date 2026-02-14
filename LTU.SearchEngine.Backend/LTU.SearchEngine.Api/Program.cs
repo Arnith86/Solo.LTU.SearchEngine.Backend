@@ -1,8 +1,9 @@
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure.Configuration;
-using System.Diagnostics;
-using Microsoft.EntityFrameworkCore;
 using LTU.SearchEngine.Infrastructure.Data;
+using LTU.SearchEngine.Infrastructure.Indexing.Repositories;
+using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
 
 namespace LTU.SearchEngine.Backend.Api;
 
@@ -15,8 +16,7 @@ public class Program
         // Add services to the container.
 
         builder.Services.AddControllers();
-        // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-
+      
         builder.Services.AddSingleton<ICrawlerSettingsLoader, JsonCrawlerSettingsLoader>();
 
         builder.Services.AddSingleton(serviceProvider =>
@@ -30,6 +30,7 @@ public class Program
         builder.Services.AddDbContextFactory<SearchDbContext>(options =>
             options.UseSqlServer("Server=(localdb)\\mssqllocaldb;Database=SearchEngineDb;Trusted_Connection=True;MultipleActiveResultSets=true"));
 
+        builder.Services.AddTransient<IIndexRepository, SqlIndexRepository>();
 
         var app = builder.Build();
 
