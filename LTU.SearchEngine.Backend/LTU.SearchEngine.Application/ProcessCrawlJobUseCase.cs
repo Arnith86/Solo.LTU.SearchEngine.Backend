@@ -47,7 +47,7 @@ public class ProcessCrawlJobUseCase : IProcessCrawlJobUseCase
 		if (result is null)
 			throw new InvalidOperationException($"Failed to fetch URL: {job.Url}");
 
-		_indexer.Index(result);
+		await _indexer.IndexAsync(result);
 
 		return result;
 	}
