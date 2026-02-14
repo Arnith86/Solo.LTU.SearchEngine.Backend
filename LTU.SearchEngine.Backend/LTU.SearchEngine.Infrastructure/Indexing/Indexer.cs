@@ -27,13 +27,16 @@ namespace LTU.SearchEngine.Infrastructure.Indexing
             _pipeline = pipeline;
         }
 
-        public void Index(CrawlResult crawlResult)
+        public async Task IndexAsync(CrawlResult crawlResult)
         {
             if (crawlResult is null)
                 throw new ArgumentNullException(nameof(crawlResult));
 
+            // Transform är förmodligen CPU-bunden och går snabbt, så den kan ofta vara synkron
             var document = _pipeline.Transform(crawlResult);
-            _repository.Save(document);
+
+            // Nu väntar vi snällt på att databasen ska spara klart, utan att låsa tråden!
+            await _repository.SaveAsync(document);
         }
     }
 }
