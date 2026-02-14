@@ -2,13 +2,13 @@
 using LTU.SearchEngine.Infrastructure.Data;
 using LTU.SearchEngine.Infrastructure.Entities;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Internal;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace LTU.SearchEngine.Infrastructure.Indexing.Repositories
 {
+    /// <summary>
+    /// Handles database operations for the search engine´s indexing against a SQL database.
+    /// Uses IDbContextFactory to ensure thread safety during parallel web crawling.
+    /// </summary>
     public class SqlIndexRepository : IIndexRepository
     {
         private readonly IDbContextFactory<SearchDbContext> _factory;
@@ -18,8 +18,10 @@ namespace LTU.SearchEngine.Infrastructure.Indexing.Repositories
             _factory = factory;
         }
 
+        //Retrives a list of pages based on their unique IDs
         public async Task<List<Page>> GetPagesByIdsAsync(List<int> pageIds)
         {
+            //Creates a new database context based on their unique IDs
             await using var context = await _factory.CreateDbContextAsync();
 
             return await context.Pages
@@ -27,12 +29,14 @@ namespace LTU.SearchEngine.Infrastructure.Indexing.Repositories
                 .ToListAsync();
         }
 
+        // Saves a fully processed document from the pipeline to the database.
+        // Merge words from the title, headers and body content.
         public async Task SaveAsync(IndexDocument document)
         {
-            // 1. Skapa en fräsch koppling för denna tråd
+            // 1. Creates a fresh context for this thread
             await using var context = await _factory.CreateDbContextAsync();
 
-            // 2. Slå ihop Title, Header och Content till en enda stor Dictionary
+            // 2. Merge Title, Header and Content into a single large Dictionary
             var totalWordFrequencies = new Dictionary<string, int>();
 
             void MergeTerms(Dictionary<string, int> source)
