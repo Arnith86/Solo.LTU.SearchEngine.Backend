@@ -54,42 +54,38 @@ namespace LTU.SearchEngine.Infrastructure.Indexing.Repositories
             MergeTerms(document.HeaderTerms);
             MergeTerms(document.ContentTerms);
 
-            // 3. Skapa och spara Sidan
+            // 3. Create the database entity for the Page
             var page = new Page
             {
                 Url = document.Url,
-
-                // OBS: Eftersom IndexDocument saknar originaltiteln som sträng,
-                // får vi lämna den tom så länge. (Se tips nedan!)
-                Title = string.Empty,
-
+                Title = document.Title,
                 LastCrawled = DateTime.UtcNow,
-
-                // Räkna ut totala antalet ord genom att plussa ihop alla frekvenser
                 WordCount = totalWordFrequencies.Values.Sum()
             };
 
             context.Pages.Add(page);
-            await context.SaveChangesAsync(); // Spara för att få ett Page.Id
+            //Save imediatly to generate a ID
+            await context.SaveChangesAsync(); 
 
-            // 4. Loopa igenom den sammanslagna listan av ord
+            // 4. Iterate through all unique words and link them to the page
             foreach (var kvp in totalWordFrequencies)
             {
                 string wordText = kvp.Key;
                 int frequency = kvp.Value;
 
-                // Kolla om ordet redan finns i databasen
+                // Check if the word already exists globally in the database
                 var term = await context.Terms.FirstOrDefaultAsync(t => t.Word == wordText);
 
                 if (term == null)
                 {
-                    // Om ordet är helt nytt, spara in det i Term-tabellen
+                    // If the word is new, add it to the Term table
                     term = new Term { Word = wordText };
                     context.Terms.Add(term);
-                    await context.SaveChangesAsync(); // Spara för att få ett Term.Id
+                    // Save immediately to generate a TermId
+                    await context.SaveChangesAsync();
                 }
 
-                // 5. Koppla Sidan till Ordet med rätt frekvens
+                // 5. Create the relationship between the Page and the Word (including frequency)
                 var pageWordFrequency = new PageWordFrequency
                 {
                     PageId = page.Id,
@@ -100,15 +96,18 @@ namespace LTU.SearchEngine.Infrastructure.Indexing.Repositories
                 context.PageWordFrequencies.Add(pageWordFrequency);
             }
 
-            // 6. Spara alla kopplingar i ett svep!
+            // 6. Save all relationships to the database
             await context.SaveChangesAsync();
         }
 
+        /// <summary>
+        /// Alternative method to save a page and its words directly via parameters.
+        /// </summary>
         public async Task AddDocumentAsync(string url, string title, List<string> words)
         {
             await using var context = await _factory.CreateDbContextAsync();
 
-            // 1. Skapa och spara Sidan först
+            // 1. Create and save the Page first
             var page = new Page
             {
                 Url = url,
@@ -118,33 +117,33 @@ namespace LTU.SearchEngine.Infrastructure.Indexing.Repositories
             };
 
             context.Pages.Add(page);
-            // Vi sparar här för att få ut ett Page.Id som vi behöver till orden
+            // Save here to get a Page.Id which we need for the words
             await context.SaveChangesAsync();
 
-            // 2. Räkna ut frekvensen av varje ord (hur många gånger "hej" förekommer på sidan)
+            // 2. Calculate the frequency of each word (how many times a word appears on the page)
             var wordFrequencies = words
                 .GroupBy(w => w)
                 .ToDictionary(g => g.Key, g => g.Count());
 
-            // 3. Loopa igenom varje unikt ord
+            // 3. Loop through each unique word
             foreach (var item in wordFrequencies)
             {
                 string wordText = item.Key;
                 int frequency = item.Value;
 
-                // Kolla om ordet redan finns i databasen (så vi inte skapar dubbletter)
+                // Check if the word already exists in the database (to avoid duplicates)
                 var term = await context.Terms.FirstOrDefaultAsync(t => t.Word == wordText);
 
                 if (term == null)
                 {
-                    // Om ordet inte finns, skapa det
+                    // If the word does not exist, create it
                     term = new Term { Word = wordText };
                     context.Terms.Add(term);
-                    // Spara direkt för att få ett Term.Id
+                    // Save immediately to get a Term.Id
                     await context.SaveChangesAsync();
                 }
 
-                // 4. Koppla ihop Sidan och Ordet i kopplingstabellen
+                // 4. Link the Page and the Word in the junction table
                 var pageWordFrequency = new PageWordFrequency
                 {
                     PageId = page.Id,
@@ -155,26 +154,21 @@ namespace LTU.SearchEngine.Infrastructure.Indexing.Repositories
                 context.PageWordFrequencies.Add(pageWordFrequency);
             }
 
-            // Spara alla kopplingar
+            // Save all connections
             await context.SaveChangesAsync();
         }
-
+        /// <summary>
+        /// Finds the IDs of all pages containing a specific word.
+        /// </summary>
         public async Task<List<int>> GetPageIdsContainingTermAsync(string term)
         {
             await using var context = await _factory.CreateDbContextAsync();
 
-            // Vi går via kopplingstabellen PageWordFrequency
+            // Go through the junction table PageWordFrequency to find matching pages
             return await context.PageWordFrequencies
                 .Where(pwf => pwf.Term.Word == term)
                 .Select(pwf => pwf.PageId)
                 .ToListAsync();
         }
-
-
-        public void Save(IndexDocument document)
-        {
-            throw new NotImplementedException();
-        }
-
     }
 }
