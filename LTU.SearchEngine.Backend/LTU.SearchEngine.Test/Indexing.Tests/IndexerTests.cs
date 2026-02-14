@@ -81,7 +81,15 @@ namespace LTU.SearchEngine.Test.Indexing.IndexerTests
             var indexDocument = new IndexDocument("1", "https://test.com", "Test");
 
             _pipelineMock
-                .Setup(p => p.Transform(crawlResult));
+                .Setup(p => p.Transform(crawlResult))
+            .Returns(indexDocument); 
+
+            // Act
+            await _sut.IndexAsync(crawlResult); 
+
+            // Assert
+            _repositoryMock.Verify(r => r.SaveAsync(indexDocument), Times.Once);
         }
     }
+    
 }
