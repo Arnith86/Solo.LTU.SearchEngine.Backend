@@ -1,11 +1,16 @@
 ﻿namespace LTU.SearchEngine.Application.QueryParsing.Helpers;
 
+/// <summary>
+/// Implementation of <see cref="IQueryNormalizer"/> that provides basic string cleaning <br />
+/// using invariant culture settings.
+/// </summary>
 public class QueryNormalizer : IQueryNormalizer
 {
-	// For UC-3001 we normalize to lowercase to match common indexing/search behavior.
+	/// <inheritdoc/>
 	public string NormalizeTerm(string s) =>
 		s.Trim().ToLowerInvariant();
 
+	/// <inheritdoc/>
 	public string NormalizePhrase(string quoted)
 	{
 		var inner = quoted.Trim();
