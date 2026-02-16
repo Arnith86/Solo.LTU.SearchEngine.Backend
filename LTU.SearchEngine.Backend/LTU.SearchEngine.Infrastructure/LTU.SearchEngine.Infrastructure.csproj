@@ -12,6 +12,12 @@
 
   <ItemGroup>
     <PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
+    <PackageReference Include="Lucene.Net" Version="4.8.0-beta00017" />
+    <PackageReference Include="Lucene.Net.Analysis.Common" Version="4.8.0-beta00017" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Indexing\Normalization\Stopwords\" />
   </ItemGroup>
 
 </Project>

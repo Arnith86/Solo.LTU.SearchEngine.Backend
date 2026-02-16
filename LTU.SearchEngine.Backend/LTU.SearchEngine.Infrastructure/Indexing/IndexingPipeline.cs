@@ -1,4 +1,5 @@
-﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+﻿using LTU.SearchEngine.Backend.Core.Model;
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure.Indexing.Normalization;
 using System;
 using System.Collections.Generic;
@@ -23,16 +24,17 @@ namespace LTU.SearchEngine.Infrastructure.Indexing
     /// </remarks>
     public class IndexingPipeline
     {
-
-        /*
-         Transform:
-
-        Validate input
-        Normalize terms
-        Build IndexDocument
-        Return result
-         */
-
+        /// <summary>
+        /// Transforms a CrawlResult into an IndexDocument.
+        /// 
+        /// Steps:
+        /// 1. Validate input.
+        /// 2. Loop through each IndexedTerm.
+        /// 3. Normalize each raw term using ITextNormalizer.
+        /// 4. Skip terms that normalize to null.
+        /// 5. Aggregate term frequency per TermSource.
+        /// 6. Build and return IndexDocument.
+        /// </summary>
         private readonly ITextNormalizer _textNormalizer;
 
         public IndexingPipeline(ITextNormalizer normalizer)
@@ -43,32 +45,72 @@ namespace LTU.SearchEngine.Infrastructure.Indexing
         {
             if (crawlResult == null) throw new ArgumentNullException(nameof(crawlResult));
 
-            var normalizedTerms = _textNormalizer.Normalize(crawlResult.IndexedTerms);
+            var titleTerms = new Dictionary<string, int>();
+            var headerTerms = new Dictionary<string, int>();
+            var contentTerms = new Dictionary<string, int>();
 
-            return BuildIndexDocument(crawlResult, normalizedTerms);
+
+            foreach (var indexedTerm in crawlResult.IndexedTerms)
+            {
+                var normalized = _textNormalizer.Normalize(indexedTerm.Term);
+
+                if (normalized == null)
+                    continue;
+
+                Dictionary<string, int> targetDictionary;
+
+                switch (indexedTerm.Source)
+                {
+                    case TermSource.Title:
+                        targetDictionary = titleTerms;
+                        break;
+
+                    case TermSource.Header:
+                        targetDictionary = headerTerms;
+                        break;
+
+                    case TermSource.Body:
+                        targetDictionary = contentTerms;
+                        break;
+
+                    default:
+                        continue;
+                }
+
+                if (targetDictionary.ContainsKey(normalized))
+                {
+                    targetDictionary[normalized]++;
+                }
+                else
+                {
+                    targetDictionary[normalized] = 1;
+                }
+            }
+
+
+            return BuildIndexDocument(
+                crawlResult,
+                titleTerms,
+                headerTerms,
+                contentTerms
+                );
+
         }
 
-        private IndexDocument BuildIndexDocument(CrawlResult crawlResult, IEnumerable<IndexedTerm> normalizedTerms)
+        private IndexDocument BuildIndexDocument(
+            CrawlResult crawlResult, 
+            Dictionary<string, int> titleTerms,
+            Dictionary<string, int> headerTerms,
+            Dictionary<string, int> contentTerms
+            )
         {
-            var document = new IndexDocument(crawlResult.Url, crawlResult.Url);
-            foreach (var term in normalizedTerms)
-    {
-        switch (term.Source)
-        {
-            case TermSource.Title:
-                AddTerm(document.TitleTerms, term.Term);
-                break;
-
-            case TermSource.Header:
-                AddTerm(document.HeaderTerms, term.Term);
-                break;
-
-            case TermSource.Body:
-                AddTerm(document.ContentTerms, term.Term);
-                break;
-        }
-    }
-            return document;
+            return BuildIndexDocument(
+                crawlResult,
+                titleTerms,
+                headerTerms,
+                contentTerms
+                );
+            
         }
     }
 }

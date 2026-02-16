@@ -4,7 +4,11 @@ using System.Text;
 
 namespace LTU.SearchEngine.Infrastructure.Indexing.Normalization.Filters
 {
-    internal class LowerCaseFilter
+    public class LowerCaseFilter : ITextFilter
     {
+        public string? Apply(string input)
+        {
+            return input.ToLowerInvariant();
+        }
     }
 }
