@@ -1,6 +1,5 @@
-using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using LTU.SearchEngine.Backend.Core;
 using LTU.SearchEngine.Infrastructure.Configuration;
-using System.Diagnostics;
 
 namespace LTU.SearchEngine.Backend.Api;
 
@@ -22,7 +21,10 @@ public class Program
             var crawlerSettingsLoader = serviceProvider.GetRequiredService<ICrawlerSettingsLoader>();
             return crawlerSettingsLoader.Load();
         });
+
         
+        builder.Services.AddSingleton<SemaphoreProvider>();
+     
         builder.Services.AddOpenApi();
 
         var app = builder.Build();
