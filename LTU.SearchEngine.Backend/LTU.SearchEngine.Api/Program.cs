@@ -26,9 +26,9 @@ public class Program
         });
         
         builder.Services.AddOpenApi();
-
+       
         builder.Services.AddDbContextFactory<SearchDbContext>(options =>
-            options.UseSqlServer("Server=(localdb)\\mssqllocaldb;Database=SearchEngineDb;Trusted_Connection=True;MultipleActiveResultSets=true"));
+            options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
         builder.Services.AddTransient<IIndexRepository, SqlIndexRepository>();
 
