@@ -6,4 +6,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\LTU.SearchEngine.Application\LTU.SearchEngine.Application.csproj" />
+    <ProjectReference Include="..\LTU.SearchEngine.Backend.Core\LTU.SearchEngine.Backend.Core.csproj" />
+  </ItemGroup>
+
 </Project>
