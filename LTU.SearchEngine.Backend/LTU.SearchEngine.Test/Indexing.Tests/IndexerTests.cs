@@ -5,6 +5,8 @@ using LTU.SearchEngine.Infrastructure.Indexing;
 using LTU.SearchEngine.Infrastructure.Indexing.Repositories;
 using Moq;
 using System.Net;
+using System.Threading.Tasks; // Behövs för Task
+using Xunit; // Antar att du använder Xunit baserat på [Fact]
 
 namespace LTU.SearchEngine.Test.Indexing.IndexerTests
 {
@@ -34,7 +36,7 @@ namespace LTU.SearchEngine.Test.Indexing.IndexerTests
                 language: "en",
                 indexedTerms: new List<IndexedTerm>
                 {
-                new IndexedTerm("engine", TermSource.Title)
+                    new IndexedTerm("engine", TermSource.Title)
                 },
                 type: "text/html",
                 content: new byte[0],
@@ -45,44 +47,49 @@ namespace LTU.SearchEngine.Test.Indexing.IndexerTests
         }
 
         [Fact]
-        public void Index_ShouldThrow_WhenCrawlResultIsNull()
+        public async Task IndexAsync_ShouldThrow_WhenCrawlResultIsNull()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => _sut.Index(null!));
+            // Vi måste använda ThrowsAsync när metoden returnerar en Task
+            await Assert.ThrowsAsync<ArgumentNullException>(() => _sut.IndexAsync(null!));
         }
+
         [Fact]
-        public void Index_ShouldCallPipeline_WhenValidInput()
+        public async Task IndexAsync_ShouldCallPipeline_WhenValidInput()
         {
             var crawlResult = CreateDummyCrawlResult();
 
+            // Lade till "Test" som titel i IndexDocument-konstruktorn
             _pipelineMock
-            .Setup(p => p.Transform(crawlResult))
-            .Returns(new IndexDocument("1", "https://test.com"));
+                .Setup(p => p.Transform(crawlResult))
+                .Returns(new IndexDocument("1", "https://test.com", "Test"));
 
             // Act
-            _sut.Index(crawlResult);
+            // Vi måste ha await framför asynkrona metodanrop i tester
+            await _sut.IndexAsync(crawlResult);
 
             // Assert
             _pipelineMock.Verify(p => p.Transform(crawlResult), Times.Once);
-
         }
+
         [Fact]
-        public void Index_ShouldSaveTransformedDocument()
+        public async Task IndexAsync_ShouldSaveTransformedDocument()
         {
             var crawlResult = CreateDummyCrawlResult();
-            var indexDocument = new IndexDocument("1", "https://test.com");
+
+            // Lade till "Test" som titel i IndexDocument-konstruktorn
+            var indexDocument = new IndexDocument("1", "https://test.com", "Test");
 
             _pipelineMock
                 .Setup(p => p.Transform(crawlResult))
-                .Returns(indexDocument);
+            .Returns(indexDocument); 
 
             // Act
-            _sut.Index(crawlResult);
+            await _sut.IndexAsync(crawlResult); 
 
             // Assert
-            _repositoryMock.Verify(r => r.Save(indexDocument), Times.Once);
-
+            _repositoryMock.Verify(r => r.SaveAsync(indexDocument), Times.Once);
         }
     }
+    
 }
-

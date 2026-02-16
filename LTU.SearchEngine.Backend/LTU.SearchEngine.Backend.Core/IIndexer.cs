@@ -2,5 +2,5 @@
 
 public interface IIndexer
 {
-	public void Index(CrawlResult result);
+    Task IndexAsync(CrawlResult crawlResult);
 }
