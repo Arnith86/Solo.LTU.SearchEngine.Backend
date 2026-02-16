@@ -8,7 +8,6 @@ public class QueryNormalizerTests
 
 	public QueryNormalizerTests()
 	{
-		// SUT = System Under Test
 		_sut = new QueryNormalizer();
 	}
 
