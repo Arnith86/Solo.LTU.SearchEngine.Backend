@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace LTU.SearchEngine.Infrastructure.Entities
+namespace LTU.SearchEngine.Backend.Core.Model.Entities
 {
     public class Term
     {

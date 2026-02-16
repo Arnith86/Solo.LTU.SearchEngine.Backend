@@ -1,4 +1,5 @@
 ﻿using LTU.SearchEngine.Backend.Core.Entities;
+using LTU.SearchEngine.Backend.Core.Model.Entities;
 using System;
 using System.Collections.Generic;
 using System.Text;

@@ -1,6 +1,6 @@
 ﻿using LTU.SearchEngine.Backend.Core.Entities;
+using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Infrastructure.Data;
-using LTU.SearchEngine.Infrastructure.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace LTU.SearchEngine.Infrastructure.Indexing.Repositories

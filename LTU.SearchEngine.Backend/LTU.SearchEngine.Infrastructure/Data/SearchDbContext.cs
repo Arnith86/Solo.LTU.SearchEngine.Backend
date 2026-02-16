@@ -1,5 +1,5 @@
 ﻿using LTU.SearchEngine.Backend.Core.Entities;
-using LTU.SearchEngine.Infrastructure.Entities;
+using LTU.SearchEngine.Backend.Core.Model.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace LTU.SearchEngine.Infrastructure.Data
