@@ -99,7 +99,7 @@ public class ProcessCrawlJobUseCaseTests
 		// Assert
 		// Also checks to make sure that the `Indexer`method `index`, was executed. 
 		Assert.Equal(expectedResult, result);
-		_indexerMock.Verify(im => im.Index(expectedResult), Times.Once);
+		_indexerMock.Verify(im => im.IndexAsync(expectedResult), Times.Once);
 	}
 
 	[Fact]
