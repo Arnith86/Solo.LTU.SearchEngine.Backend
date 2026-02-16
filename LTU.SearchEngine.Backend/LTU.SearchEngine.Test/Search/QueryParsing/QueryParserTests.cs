@@ -1,4 +1,5 @@
 using LTU.SearchEngine.Application.QueryParsing;
+using LTU.SearchEngine.Application.QueryParsing.Helpers;
 using LTU.SearchEngine.Backend.Core.Model;
 
 namespace LTU.SearchEngine.Test.Search.QueryParsing;
@@ -9,11 +10,15 @@ namespace LTU.SearchEngine.Test.Search.QueryParsing;
 /// </summary>
 public class QueryParserTests
 {
-    private readonly IQueryParser _parser;
+    private readonly IQueryParser _sut;
+    private readonly IQueryNormalizer _queryNormalizer;
+    private readonly ITokenizer _tokenizer;
 
     public QueryParserTests()
     {
-        _parser = new QueryParser();
+        _queryNormalizer = new QueryNormalizer();
+        _tokenizer = new QueryTokenizer();
+        _sut = new QueryParser(_queryNormalizer, _tokenizer);
     }
 
     #region TC-FRQ-3001: Query Terms and Operators
@@ -25,7 +30,7 @@ public class QueryParserTests
         var query = "cats AND dogs";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.False(result.HasErrors);
@@ -42,7 +47,7 @@ public class QueryParserTests
         var query = "cats dogs";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.False(result.HasErrors);
@@ -62,7 +67,7 @@ public class QueryParserTests
         var query = "hello";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.False(result.HasErrors);
@@ -78,7 +83,7 @@ public class QueryParserTests
         var query = "test";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.False(result.HasErrors);
@@ -94,7 +99,7 @@ public class QueryParserTests
         var query = "test";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.Contains("test", result.Terms);
@@ -112,7 +117,7 @@ public class QueryParserTests
         var query = "\"hello dolly\"";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.False(result.HasErrors);
@@ -128,7 +133,7 @@ public class QueryParserTests
         var query = "cat \"hello dolly\" dog";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.False(result.HasErrors);
@@ -145,7 +150,7 @@ public class QueryParserTests
         var query = "hello dolly";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.Empty(result.Phrases);
@@ -165,7 +170,7 @@ public class QueryParserTests
         var query = "cat AND dog";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.Equal(QueryMode.AND, result.Mode);
@@ -180,7 +185,7 @@ public class QueryParserTests
         var query = "cat and dog";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         // "and" ska behandlas som vanligt term, inte operator
@@ -198,7 +203,7 @@ public class QueryParserTests
         var query = "cat OR dog";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.Equal(QueryMode.OR, result.Mode);
@@ -213,7 +218,7 @@ public class QueryParserTests
         var query = "cat or dog";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.Equal(QueryMode.OR, result.Mode); // Default
@@ -230,7 +235,7 @@ public class QueryParserTests
         var query = "cat NOT dog";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.False(result.HasErrors);
@@ -245,7 +250,7 @@ public class QueryParserTests
         var query = "cat not dog";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         // "not" ska vara vanligt term
@@ -266,7 +271,7 @@ public class QueryParserTests
         var query = "cat OR dog";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.Equal(QueryMode.OR, result.Mode);
@@ -281,7 +286,7 @@ public class QueryParserTests
         var query = "cat || dog";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.Equal(QueryMode.OR, result.Mode);
@@ -296,7 +301,7 @@ public class QueryParserTests
         var query = "cat dog fish";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.Equal(QueryMode.OR, result.Mode);
@@ -314,9 +319,9 @@ public class QueryParserTests
         var queryWhitespace = "cat dog";
 
         // Act
-        var resultKeyword = _parser.Parse(queryKeyword);
-        var resultSymbol = _parser.Parse(querySymbol);
-        var resultWhitespace = _parser.Parse(queryWhitespace);
+        var resultKeyword = _sut.Parse(queryKeyword);
+        var resultSymbol = _sut.Parse(querySymbol);
+        var resultWhitespace = _sut.Parse(queryWhitespace);
 
         // Assert
         Assert.Equal(QueryMode.OR, resultKeyword.Mode);
@@ -340,7 +345,7 @@ public class QueryParserTests
         var query = "cat AND dog";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.Equal(QueryMode.AND, result.Mode);
@@ -355,7 +360,7 @@ public class QueryParserTests
         var query = "cat && dog";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.Equal(QueryMode.AND, result.Mode);
@@ -371,8 +376,8 @@ public class QueryParserTests
         var querySymbol = "cat && dog";
 
         // Act
-        var resultKeyword = _parser.Parse(queryKeyword);
-        var resultSymbol = _parser.Parse(querySymbol);
+        var resultKeyword = _sut.Parse(queryKeyword);
+        var resultSymbol = _sut.Parse(querySymbol);
 
         // Assert
         Assert.Equal(QueryMode.AND, resultKeyword.Mode);
@@ -388,7 +393,7 @@ public class QueryParserTests
         var query = "cat AND dog AND fish";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.Equal(QueryMode.AND, result.Mode);
@@ -409,7 +414,7 @@ public class QueryParserTests
         var query = "+\"are cats\" dog";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.False(result.HasErrors);
@@ -430,7 +435,7 @@ public class QueryParserTests
         var query = "+important optional";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.False(result.HasErrors);
@@ -445,7 +450,7 @@ public class QueryParserTests
         var query = "+term1 +term2 optional";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.Contains("term1", result.RequiredTerms);
@@ -461,7 +466,7 @@ public class QueryParserTests
         var query = "+ cat";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         // Ensam '+' ska ignoreras, "cat" ska vara vanligt term
@@ -479,7 +484,7 @@ public class QueryParserTests
         var query = "";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.True(result.HasErrors);
@@ -493,7 +498,7 @@ public class QueryParserTests
         var query = "   ";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.True(result.HasErrors);
@@ -507,7 +512,7 @@ public class QueryParserTests
         var query = "-excluded";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.True(result.HasErrors);
@@ -521,7 +526,7 @@ public class QueryParserTests
         var query = "cat NOT";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.True(result.HasErrors);
@@ -535,7 +540,7 @@ public class QueryParserTests
         var query = "cat -dog";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.False(result.HasErrors);
@@ -550,7 +555,7 @@ public class QueryParserTests
         var query = "cat NOT dog";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.False(result.HasErrors);
@@ -565,7 +570,7 @@ public class QueryParserTests
         var query = "cat -dog";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.False(result.HasErrors);
@@ -580,7 +585,7 @@ public class QueryParserTests
         var query = "cat NOT \"hello dolly\"";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.False(result.HasErrors);
@@ -595,7 +600,7 @@ public class QueryParserTests
         var query = "+required \"exact phrase\" normal AND another -excluded";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.False(result.HasErrors);
@@ -614,7 +619,7 @@ public class QueryParserTests
         var query = "Cat DOG FiSh";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.Contains("cat", result.Terms);
@@ -629,7 +634,7 @@ public class QueryParserTests
         var query = "\"Hello Dolly\"";
 
         // Act
-        var result = _parser.Parse(query);
+        var result = _sut.Parse(query);
 
         // Assert
         Assert.Contains("hello dolly", result.Phrases);
