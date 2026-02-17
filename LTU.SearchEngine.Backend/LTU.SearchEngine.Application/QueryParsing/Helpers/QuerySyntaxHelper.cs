@@ -24,6 +24,8 @@ public class QuerySyntaxHelper : IQuerySyntaxHelper
 		token.EndsWith("\"", StringComparison.Ordinal
 	);
 
+
+	// ToDo: When we expand to support more complex queries, this method will be updated or removed.
 	/// <inheritdoc />
 	public QueryMode DetectMode(List<string> tokens)
 	{

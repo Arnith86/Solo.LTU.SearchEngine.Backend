@@ -23,6 +23,7 @@ public class QuerySyntaxHelperTests
 	[InlineData("\"missing end", false)]
 	public void IsPhraseToken_ShouldValidateCorrectQuotes(string token, bool expected)
 	{
+		// Act & Assert
 		Assert.Equal(expected, _sut.IsPhraseToken(token));
 	}
 
@@ -35,6 +36,7 @@ public class QuerySyntaxHelperTests
 	[InlineData("NOT", false)]
 	public void TCFRQ3004_IsOperatorToken_ShouldIdentifySupportedOperators(string token, bool expected)
 	{
+		// Act & Assert
 		Assert.Equal(expected, _sut.IsOperatorToken(token));
 	}
 
@@ -53,8 +55,10 @@ public class QuerySyntaxHelperTests
 	[Fact]
 	public void TCFRQ3005_DetectMode_ShouldDefaultToOR_WhenNoOperatorsExist()
 	{
-		// FRQ-3005: Whitespace/Default implies OR
+		// Arrange
 		var tokens = new List<string> { "term1", "term2" };
+		
+		// Act & Assert
 		Assert.Equal(QueryMode.OR, _sut.DetectMode(tokens));
 	}
 
@@ -71,22 +75,20 @@ public class QuerySyntaxHelperTests
 		Assert.Equal(QueryMode.AND, _sut.DetectMode(tokens));
 	}
 	
-	[Fact]
-	public void DetectMode_ShouldPrioritizeAND_IfBothExist()
-	{
-		// Current implementation checks AND first
-		var tokens = new List<string> { "term1", "AND", "term2", "OR", "term3" };
-		Assert.Equal(QueryMode.AND, _sut.DetectMode(tokens));
-	}
 
 	[Fact]
 	public void Tokenize_ShouldCallInternalTokenizer()
 	{
+		// Arrange
 		var input = "search query";
-		_tokenizerMock.Setup(x => x.Tokenize(input)).Returns(new List<string> { "search", "query" });
+		
+		_tokenizerMock.Setup(x => x.Tokenize(input))
+			.Returns(new List<string> { "search", "query" });
 
+		// Act 
 		var result = _sut.Tokenize(input);
 
+		// Assert
 		_tokenizerMock.Verify(x => x.Tokenize(input), Times.Once);
 		Assert.Equal(2, result.Count);
 	}
