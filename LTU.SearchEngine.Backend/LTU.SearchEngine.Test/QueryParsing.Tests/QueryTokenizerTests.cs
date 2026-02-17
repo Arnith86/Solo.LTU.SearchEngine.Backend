@@ -78,22 +78,28 @@ public class QueryTokenizerTests
 	[Fact]
 	public void Flush_EmptyBuilder_DoesNotAddToken()
 	{
+		// Arrange
 		var tokens = new List<string>();
 		var sb = new StringBuilder();
 
+		// Act
 		_sut.Flush(sb, tokens);
 
+		// Assert
 		Assert.Empty(tokens);
 	}
  
 	[Fact]
 	public void Flush_WithContent_AddsTrimmedTokenAndClearsBuilder()
 	{
+		// Assert
 		var tokens = new List<string>();
 		var sb = new StringBuilder("  test  ");
 
+		// Act
 		_sut.Flush(sb, tokens);
 
+		// Assert
 		Assert.Single(tokens);
 		Assert.Equal("test", tokens[0]);
 		Assert.Equal(0, sb.Length);
