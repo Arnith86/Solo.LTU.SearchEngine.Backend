@@ -1,4 +1,6 @@
-﻿using System;
+﻿using LTU.SearchEngine.Backend.Core.Entities;
+using LTU.SearchEngine.Backend.Core.Model.Entities;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -20,6 +22,9 @@ namespace LTU.SearchEngine.Infrastructure.Indexing.Repositories
     /// </remarks>
     public interface IIndexRepository
     {
-        void Save(IndexDocument document);
+        Task SaveAsync(IndexDocument document);
+        Task AddDocumentAsync(string url, string title, List<string> words);
+        Task<List<int>> GetPageIdsContainingTermAsync(string term);
+        Task<List<Page>> GetPagesByIdsAsync(List<int> pageIds);
     }
 }
