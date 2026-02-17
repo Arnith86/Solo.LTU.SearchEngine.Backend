@@ -1,4 +1,4 @@
-using LTU.SearchEngine.Backend.Core.Model;
+using LTU.SearchEngine.Backend.Core.Enums;
 
 namespace LTU.SearchEngine.Backend.Core;
 

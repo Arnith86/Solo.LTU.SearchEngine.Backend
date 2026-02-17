@@ -1,4 +1,4 @@
-namespace LTU.SearchEngine.Backend.Core.Model;
+namespace LTU.SearchEngine.Backend.Core.Enums;
 
 /// <summary>
 /// Defines how query terms should be combined.

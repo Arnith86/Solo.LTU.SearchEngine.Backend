@@ -1,5 +1,5 @@
 ﻿using LTU.SearchEngine.Application.QueryParsing.Helpers;
-using LTU.SearchEngine.Backend.Core.Model;
+using LTU.SearchEngine.Backend.Core.Enums;
 using Moq;
 
 namespace LTU.SearchEngine.Test.QueryParsing.Tests;

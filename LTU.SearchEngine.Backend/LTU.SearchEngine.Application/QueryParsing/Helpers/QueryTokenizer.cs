@@ -10,7 +10,7 @@ public class QueryTokenizer : ITokenizer
 {
 	/// <summary>
 	/// Tokenizes input by whitespace while keeping quoted phrases together (including quotes).
-	/// Example: cat "hello dolly" dog -> [cat, "hello dolly", dog]
+	/// Example: cat "hello dolly" dog -> [cat, hello dolly, dog]
 	/// </summary>
 	public List<string> Tokenize(string input)
 	{
