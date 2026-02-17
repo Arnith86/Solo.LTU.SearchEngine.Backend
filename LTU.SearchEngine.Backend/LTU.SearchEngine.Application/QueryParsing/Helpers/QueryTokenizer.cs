@@ -54,6 +54,20 @@ public class QueryTokenizer : ITokenizer
 		return tokens;
 	}
 
+
+	// Finalizes a token build
+	/// <inheritdoc/>
+	public void Flush(StringBuilder stringBuilder, List<string> tokens)
+	{
+		if (stringBuilder.Length == 0) return;
+
+		var t = stringBuilder.ToString().Trim();
+		if (t.Length > 0)
+			tokens.Add(t);
+
+		stringBuilder.Clear();
+	}
+	
 	private bool IsEdgeOfPhrase(
 		string input, 
 		int index, 
@@ -68,10 +82,6 @@ public class QueryTokenizer : ITokenizer
 				input[index].Equals('"') &&
 				ContainsEndQuote(input, index + 1);
 	}
-
-	// ToDo: extract to own static helper class
-	private bool IsNotNullIndex(int index, int length) 
-		=> index >= 0 && index < length;
 	
 
 	private bool ContainsEndQuote(string input, int index)
@@ -84,17 +94,8 @@ public class QueryTokenizer : ITokenizer
 
 		return false;
 	}
-
-	// Finalizes a token build
-	/// <inheritdoc/>
-	public void Flush(StringBuilder stringBuilder, List<string> tokens)
-	{
-		if (stringBuilder.Length == 0) return;
-
-		var t = stringBuilder.ToString().Trim();
-		if (t.Length > 0)
-			tokens.Add(t);
-
-		stringBuilder.Clear();
-	}
+	
+	// ToDo: extract to own static helper class
+	private bool IsNotNullIndex(int index, int length) 
+		=> index >= 0 && index < length;
 }
