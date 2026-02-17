@@ -75,11 +75,10 @@ public class QueryTokenizer : ITokenizer
 		bool checkEndPhrase = false
 		)
 	{
-		if (checkEndPhrase) 
-			return input[index].Equals('"');
+		if (checkEndPhrase) return input[index].Equals('"');
 				
-		return  IsNotNullIndex(index + 1, input.Length) &&
-				input[index].Equals('"') &&
+		return	input[index].Equals('"') && 
+				IsNotNullIndex(index + 1, input.Length) &&
 				ContainsEndQuote(input, index + 1);
 	}
 	
@@ -87,11 +86,8 @@ public class QueryTokenizer : ITokenizer
 	private bool ContainsEndQuote(string input, int index)
 	{
 		for (int i = index; i < input.Length - 1; i++)
-		{
-			var character = input[i];
 			if (input[i].Equals('"')) return true;
-		}
-
+		
 		return false;
 	}
 	
