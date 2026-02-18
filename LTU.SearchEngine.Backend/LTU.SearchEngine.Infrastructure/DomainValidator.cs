@@ -10,8 +10,6 @@ namespace LTU.SearchEngine.Infrastructure
     {
         private readonly CrawlerSettings _settings;
 
-        // Nu lägger vi till konstruktorn som tar 1 argument (Settings)
-        // Detta matchar anropet i ditt test: new DomainValidator(settings)
         public DomainValidator(CrawlerSettings settings)
         {
             _settings = settings;

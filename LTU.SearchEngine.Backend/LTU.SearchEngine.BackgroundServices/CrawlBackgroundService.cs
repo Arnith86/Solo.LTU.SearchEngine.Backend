@@ -2,9 +2,6 @@
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace LTU.SearchEngine.BackgroundServices
 {
@@ -13,7 +10,7 @@ namespace LTU.SearchEngine.BackgroundServices
         private readonly ICrawlJobDispatcher _dispatcher;
         private readonly ILogger<CrawlBackgroundService> _logger;
 
-        // Här kan du senare injicera IOptions<CrawlerSettings> för att hämta seed-URL från config
+        // Future improvement: Inject IOptions<CrawlerSettings> to fetch the Seed URL from config instead of a constant
         private const string SeedUrl = "https://www.ltu.se";
 
         public CrawlBackgroundService(ICrawlJobDispatcher dispatcher, ILogger<CrawlBackgroundService> logger)
@@ -26,23 +23,23 @@ namespace LTU.SearchEngine.BackgroundServices
         {
             _logger.LogInformation("CrawlBackgroundService is starting.");
 
-            // Vänta lite så att applikationen hinner starta upp helt (valfritt men rekommenderat)
+            // Brief delay to ensure the application host has fully started (optional but recommended)
             await Task.Delay(1000, stoppingToken);
 
             try
             {
-                // Skapa Seed Jobbet (FRQ-1001)
+                // Create the initial Seed Job (Requirement FRQ-1001)
                 var seedJob = new CrawlJob
                 {
                     Url = SeedUrl,
-                    // Sätt defaultvärden om din CrawlJob-modell kräver det
+                    // Set default values as required by the CrawlJob model
                     Status = CrawlJobStatus.Pending,
                     RetryCount = 0
                 };
 
                 _logger.LogInformation($"Enqueuing Seed Job: {SeedUrl}");
 
-                // Skicka jobbet till vår TPL Dispatcher
+                // Hand over the job to our TPL-based Dispatcher for processing
                 await _dispatcher.Enqueue(seedJob);
 
                 _logger.LogInformation("Seed Job enqueued successfully.");
@@ -52,9 +49,9 @@ namespace LTU.SearchEngine.BackgroundServices
                 _logger.LogError(ex, "Failed to enqueue seed job.");
             }
 
-            // BackgroundService fortsätter leva, men ExecuteAsync är klar med sin initiering.
-            // Om du vill att den ska göra återkommande saker (t.ex. schemalagd om-crawling)
-            // kan du lägga en `while (!stoppingToken.IsCancellationRequested)` loop här.
+            // The BackgroundService stays alive, even though ExecuteAsync has finished its initialization.
+            // To implement recurring tasks (e.g., scheduled re-crawling), a 
+            // `while (!stoppingToken.IsCancellationRequested)` loop could be added here.
         }
     }
 }
