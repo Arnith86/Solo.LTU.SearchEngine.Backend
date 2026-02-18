@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using System.Text;
 
 namespace LTU.SearchEngine.Application.QueryParsing.Helpers;
 
@@ -13,12 +14,18 @@ public interface ITokenizer
 	/// </summary>
 	/// <param name="stringBuilder">The buffer holding characters for the current token being built.</param>
 	/// <param name="tokens">The collection where the finalized token will be added.</param>
-	void Flush(StringBuilder stringBuilder, List<string> tokens);
+	void Flush(
+		StringBuilder stringBuilder,
+		bool isPhrase,
+		List<ExtractedQueryToken> tokens
+	);
 
 	/// <summary>
 	/// Splits input into tokens, preserving quoted substrings as single units.
 	/// </summary>
 	/// <param name="input">The raw search string provided by the user.</param>
-	/// <returns>A list of strings representing individual terms and quoted phrases.</returns>
-	List<string> Tokenize(string input);
+	/// <returns>
+	/// A list of <see cref="ExtractedQueryToken"/> representing individual terms and quoted phrases.
+	/// </returns>
+	List<ExtractedQueryToken> Tokenize(string input);
 }

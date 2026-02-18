@@ -1,4 +1,5 @@
 ﻿using LTU.SearchEngine.Backend.Core.Enums;
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 
 namespace LTU.SearchEngine.Application.QueryParsing.Helpers;
 
@@ -14,8 +15,10 @@ public class QuerySyntaxHelper : IQuerySyntaxHelper
 	}
 
 	/// <inheritdoc />
-	public List<string> Tokenize(string input) => 
+	public List<ExtractedQueryToken> Tokenize(string input) => 
 		_queryTokenizer.Tokenize(input);
+
+
 
 	/// <inheritdoc />
 	public bool IsPhraseToken(string token) =>

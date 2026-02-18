@@ -1,5 +1,6 @@
 ﻿using LTU.SearchEngine.Application.QueryParsing.Helpers;
 using LTU.SearchEngine.Backend.Core.Enums;
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using Moq;
 
 namespace LTU.SearchEngine.Test.QueryParsing.Tests;
@@ -83,7 +84,11 @@ public class QuerySyntaxHelperTests
 		var input = "search query";
 		
 		_tokenizerMock.Setup(x => x.Tokenize(input))
-			.Returns(new List<string> { "search", "query" });
+			.Returns(new List<ExtractedQueryToken> 
+			{
+				new ExtractedQueryToken(QueryTokenType.Term, "search"),
+				new ExtractedQueryToken(QueryTokenType.Term, "query") 
+			});
 
 		// Act 
 		var result = _sut.Tokenize(input);
