@@ -1,4 +1,6 @@
-﻿public class IndexDocument
+﻿using LTU.SearchEngine.Backend.Core.Model;
+
+public class IndexDocument
 {
     public string DocId { get; }
     public string Url { get; }
@@ -18,5 +20,21 @@
         HeaderTerms = new Dictionary<string, int>();
         ContentTerms = new Dictionary<string, int>();
     }
+    public void AddTerm(string term, TermSource source)
+    {
+        var targetDictionary = source switch
+        {
+            TermSource.Title => TitleTerms,
+            TermSource.Header => HeaderTerms,
+            TermSource.Body => ContentTerms,
+            _ => null
+        };
+
+        if (targetDictionary == null) return;
+        targetDictionary.TryGetValue(term, out var count);
+        targetDictionary[term] = count + 1;
+        
+    }
+
 }
 

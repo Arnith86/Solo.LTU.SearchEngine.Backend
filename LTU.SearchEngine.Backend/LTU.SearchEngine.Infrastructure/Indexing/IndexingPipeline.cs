@@ -25,15 +25,14 @@ namespace LTU.SearchEngine.Infrastructure.Indexing
     public class IndexingPipeline
     {
         /// <summary>
-        /// Transforms a CrawlResult into an IndexDocument.
-        /// 
+        /// Transforms a CrawlResult into an IndexDocument. 
         /// Steps:
         /// 1. Validate input.
         /// 2. Loop through each IndexedTerm.
         /// 3. Normalize each raw term using ITextNormalizer.
         /// 4. Skip terms that normalize to null.
-        /// 5. Aggregate term frequency per TermSource.
-        /// 6. Build and return IndexDocument.
+        /// 5. Add normalized term to IndexDocument.
+        /// 6. Return completed IndexDocument.
         /// </summary>
         private readonly ITextNormalizer _textNormalizer;
 
@@ -45,9 +44,7 @@ namespace LTU.SearchEngine.Infrastructure.Indexing
         {
             if (crawlResult == null) throw new ArgumentNullException(nameof(crawlResult));
 
-            var titleTerms = new Dictionary<string, int>();
-            var headerTerms = new Dictionary<string, int>();
-            var contentTerms = new Dictionary<string, int>();
+            var document = new IndexDocument(crawlResult.Url,crawlResult.Url, crawlResult.Title);
 
 
             foreach (var indexedTerm in crawlResult.IndexedTerms)
@@ -57,60 +54,11 @@ namespace LTU.SearchEngine.Infrastructure.Indexing
                 if (normalized == null)
                     continue;
 
-                Dictionary<string, int> targetDictionary;
-
-                switch (indexedTerm.Source)
-                {
-                    case TermSource.Title:
-                        targetDictionary = titleTerms;
-                        break;
-
-                    case TermSource.Header:
-                        targetDictionary = headerTerms;
-                        break;
-
-                    case TermSource.Body:
-                        targetDictionary = contentTerms;
-                        break;
-
-                    default:
-                        continue;
-                }
-
-                if (targetDictionary.ContainsKey(normalized))
-                {
-                    targetDictionary[normalized]++;
-                }
-                else
-                {
-                    targetDictionary[normalized] = 1;
-                }
+                document.AddTerm(normalized, indexedTerm.Source);
             }
 
+            return document; 
 
-            return BuildIndexDocument(
-                crawlResult,
-                titleTerms,
-                headerTerms,
-                contentTerms
-                );
-
-        }
-
-        private IndexDocument BuildIndexDocument(
-            CrawlResult crawlResult, 
-            Dictionary<string, int> titleTerms,
-            Dictionary<string, int> headerTerms,
-            Dictionary<string, int> contentTerms
-            )
-        {
-            return BuildIndexDocument(
-                crawlResult,
-                titleTerms,
-                headerTerms,
-                contentTerms
-                );
-            
         }
     }
 }
