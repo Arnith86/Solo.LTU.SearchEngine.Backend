@@ -44,7 +44,7 @@ public class QueryStringTokenizer : IStringTokenizer
 			LoopAction action = LoopAction.None;
 			var character = input[index];
 
-			// AND, OR, are exceptions and are handled in the next method.
+			// AND, OR, NOT, are exceptions and are handled in the next method.
 			(action, indexOut) = 
 				TryHandleLogicalOperator(input, tokens, stringBuilder, index, character);
 			
@@ -133,7 +133,8 @@ public class QueryStringTokenizer : IStringTokenizer
 	{
 		if (IsCapitalLetterOperator(input, index))
 		{
-			int length = input.AsSpan(index).StartsWith("AND") ? 3 : 2;
+			var span = input.AsSpan(index);
+			int length = (span.StartsWith("AND") || span.StartsWith("NOT")) ? 3 : 2;
 
 			stringBuilder.Append(input, index, length);
 			Flush(stringBuilder, tokens, QueryTokenType.LogicalOperator);
@@ -196,29 +197,31 @@ public class QueryStringTokenizer : IStringTokenizer
 
 	private bool IsCapitalLetterOperator(string input, int index)
 	{
-		if (IsNotNullIndex(index - 1, input.Length) && 
-			char.IsWhiteSpace(input[index - 1]))
-		{
-			if (DoesWordMatch(input, index, "AND")) return true;
-			if (DoesWordMatch(input, index, "OR")) return true;
-		}
+		bool isAtStartOrAfterSpace = FirstIndexOrAfterSpace(input, index);
+
+		if (!isAtStartOrAfterSpace) return false;
+
+		var remaining = input.AsSpan(index);
+
+		
+		if (remaining.StartsWith("NOT") && IsFullWord(remaining, 3)) return true;
+		if (remaining.StartsWith("AND") && IsFullWord(remaining, 3)) return true;
+		if (remaining.StartsWith("OR") && IsFullWord(remaining, 2)) return true;
 
 		return false;
 	}
 
-
-	private bool DoesWordMatch(string input, int index, string word)
+	private bool FirstIndexOrAfterSpace(string input, int index)
 	{
-		// Enough indexes left?
-		if (index + word.Length > input.Length) return false;
-
-		for (int i = 0; i < word.Length; i++)
-			if (input[index + i] != word[i]) return false;
-
-		int nextCharIndex = index + word.Length;
-		
-		return true;
+		// Start of string or directly after a space
+		return index == 0 ||
+			(IsNotNullIndex(index - 1, input.Length) && char.IsWhiteSpace(input[index - 1])
+		);
 	}
+
+	// Makes sure that the while word is as only as long as the operator
+	private bool IsFullWord(ReadOnlySpan<char> span, int length) =>	
+		span.Length == length || char.IsWhiteSpace(span[length]);
 
 
 	private bool IsEdgeOfPhrase(

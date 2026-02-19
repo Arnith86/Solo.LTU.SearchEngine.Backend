@@ -105,6 +105,7 @@ public class QueryTokenizerTests
 	[InlineData("||")]
 	[InlineData("AND")]
 	[InlineData("OR")]
+	[InlineData("NOT")]
 	public void Tokenize_Operators_HandledAsLogicalOperators(string operatorInput)
 	{
 		// Arrange
