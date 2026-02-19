@@ -5,12 +5,20 @@ namespace LTU.SearchEngine.Test.QueryParsing.Tests;
 
 public class ExtractedQueryTokenTests
 {
-	[Fact]
-	public void Constructor_ValidArguments_SetsPropertiesCorrectly()
+	[Theory]
+	[InlineData(QueryTokenType.Term, "term")]
+	[InlineData(QueryTokenType.Phrase, "this term")]
+	[InlineData(QueryTokenType.LogicalOperator, "AND")]
+	[InlineData(QueryTokenType.LogicalOperator, "&&")]
+	[InlineData(QueryTokenType.LogicalOperator, "-")]
+	[InlineData(QueryTokenType.GroupingOperator, "(")]
+	public void Constructor_ValidArguments_SetsPropertiesCorrectly(
+		QueryTokenType type, string tokenIn
+		)
 	{
 		// Arrange
-		var tokenType = QueryTokenType.Term;
-		var token = "cat";
+		var tokenType = type;
+		var token = tokenIn;
 
 		// Act
 		var result = new ExtractedQueryToken(tokenType, token);
@@ -35,15 +43,33 @@ public class ExtractedQueryTokenTests
 	}
 
 	[Theory]
-	[InlineData("")]
-	[InlineData(" ")]
-	[InlineData("   ")]
-	public void Constructor_EmptyOrWhitespaceToken_ThrowsArgumentException(string token)
+	[InlineData(QueryTokenType.GroupingOperator, "((")]
+	[InlineData(QueryTokenType.GroupingOperator, "{{")]
+	[InlineData(QueryTokenType.GroupingOperator, "[[")]
+	[InlineData(QueryTokenType.GroupingOperator, "AA")]
+	[InlineData(QueryTokenType.LogicalOperator, "&&&&")]
+	[InlineData(QueryTokenType.LogicalOperator, "||||")]
+	[InlineData(QueryTokenType.LogicalOperator, "AAAA")]
+	public void Constructor_WrongLengthInput_ThrowsArgumentOutOfRangeException(
+		QueryTokenType type ,string token
+		)
 	{
-		Assert.Throws<ArgumentException>(
-			() => new ExtractedQueryToken(QueryTokenType.Term, token)
+		Assert.Throws<ArgumentOutOfRangeException>(
+			() => new ExtractedQueryToken(type, token)
 		);
 	}
+
+	//[Theory]
+	//[InlineData("")]
+	//[InlineData(" ")]
+	//[InlineData("   ")]
+	//public void Constructor_EmptyOrWhitespaceToken_ThrowsArgumentException(string token)
+	//{
+	//	Assert.Throws<ArgumentException>(
+	//		() => new ArgumentOutOfRangeException(QueryTokenType.Term, token)
+	//	);
+	//}
+
 
 
 	[Theory]
