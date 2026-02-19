@@ -9,7 +9,7 @@ namespace LTU.SearchEngine.Application.QueryParsing.Helpers;
 /// Handles the decomposition of raw search strings into categorized tokens <br/>
 /// such as terms, quoted phrases, and logical operators.
 /// </summary>
-public interface ITokenizer
+public interface IStringTokenizer
 {
 	/// <summary>
 	/// Processes the current character buffer, creates an <see cref="ExtractedQueryToken"/>, <br/>

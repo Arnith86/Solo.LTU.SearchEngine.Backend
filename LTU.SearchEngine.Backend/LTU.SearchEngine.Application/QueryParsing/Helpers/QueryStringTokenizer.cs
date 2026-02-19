@@ -6,10 +6,10 @@ using System.Text.RegularExpressions;
 namespace LTU.SearchEngine.Application.QueryParsing.Helpers;
 
 /// <summary>
-/// Implementation of <see cref="ITokenizer"/> that handles operator recognition, whitespace <br/>
+/// Implementation of <see cref="IStringTokenizer"/> that handles operator recognition, whitespace <br/>
 /// separation of terms and quote-aware grouping.
 /// </summary>
-public class QueryTokenizer : ITokenizer
+public class QueryStringTokenizer : IStringTokenizer
 {
 	// Finalizes a token build
 	/// <inheritdoc/>

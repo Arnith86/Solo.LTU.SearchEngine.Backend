@@ -7,11 +7,11 @@ namespace LTU.SearchEngine.Test.QueryParsing.Tests;
 
 public class QueryTokenizerTests
 {
-	private readonly QueryTokenizer _sut;
+	private readonly QueryStringTokenizer _sut;
 
 	public QueryTokenizerTests()
 	{
-		_sut = new QueryTokenizer();
+		_sut = new QueryStringTokenizer();
 	}
 
 	[Fact]
