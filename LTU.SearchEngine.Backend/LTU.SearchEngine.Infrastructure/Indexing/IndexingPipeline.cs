@@ -24,7 +24,16 @@ namespace LTU.SearchEngine.Infrastructure.Indexing
     {
         public virtual IndexDocument Transform(CrawlResult crawlResult)
         {
-            throw new NotImplementedException();
+            // Skapa ett unikt ID för dokumentet
+            var id = Guid.NewGuid().ToString();
+
+            // Skapa dokumentet med URL och titel från crawlResult
+            var document = new IndexDocument(id, crawlResult.Url, crawlResult.Title);
+
+            // Här kan du senare lägga till logik för att bearbeta crawlResult.Text 
+            // till de faktiska termerna i dokumentet.
+
+            return document;
         }
     }
 }

@@ -22,7 +22,11 @@ public class JsonCrawlerSettingsLoaderTests
 				"UserAgent": "{{_c_userAgent}}",
 				"MaxConcurrencyPerDomain": {{_c_maxConcurrencyPerDomain}},
 				"MinDelayMs": {{_c_minDelayMs}},
-				"RetryIntervals":  {{_c_retryIntervals}}
+				"RetryIntervals":  {{_c_retryIntervals}},
+				"seedUrls": [
+			    "ltu.se",
+		        "www.ltu.se"
+		    ]
 			}
 		}
 		""";
@@ -45,12 +49,15 @@ public class JsonCrawlerSettingsLoaderTests
 			TimeSpan.FromSeconds(604800)   // 7.00:00:00	// 1 week
 		};
 
-		// Assert
-		Assert.Equal(_c_userAgent, crawlerSettings.UserAgent);
+        var expectedSeedUrls = new List<string> { "ltu.se", "www.ltu.se" };
+
+        // Assert
+        Assert.Equal(_c_userAgent, crawlerSettings.UserAgent);
 		Assert.Equal(_c_maxConcurrencyPerDomain, crawlerSettings.MaxConcurrencyPerDomain);
 		Assert.Equal(_c_minDelayMs, crawlerSettings.MinDelayMs);
 		Assert.Equal(retryIntervalsList, crawlerSettings.RetryIntervals);
-	}
+        Assert.Equal(expectedSeedUrls, crawlerSettings.SeedUrls);
+    }
 	
 	[Fact]
 	public void Load_InValidConfiguration_ShouldThrow_InvalidOperationException()
