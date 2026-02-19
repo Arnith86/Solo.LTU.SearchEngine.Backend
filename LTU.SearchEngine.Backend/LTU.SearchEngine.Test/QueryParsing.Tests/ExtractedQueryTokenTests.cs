@@ -49,7 +49,7 @@ public class ExtractedQueryTokenTests
 	[Theory]
 	[InlineData(QueryTokenType.Term, "term")]
 	[InlineData(QueryTokenType.Phrase, "this term")]
-	[InlineData(QueryTokenType.Operator, "AND")]
+	[InlineData(QueryTokenType.LogicalOperator, "AND")]
 	public void Constructor_AllTokenTypes_AreStoredCorrectly(
 		QueryTokenType tokenType, string inToken
 		)

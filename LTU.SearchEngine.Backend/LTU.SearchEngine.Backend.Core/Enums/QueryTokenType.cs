@@ -4,5 +4,5 @@ public enum QueryTokenType
 {
 	Term,
 	Phrase,
-	Operator
+	LogicalOperator
 }

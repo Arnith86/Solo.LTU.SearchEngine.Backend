@@ -1,4 +1,5 @@
-﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+﻿using LTU.SearchEngine.Backend.Core.Enums;
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using System.Text;
 
 namespace LTU.SearchEngine.Application.QueryParsing.Helpers;
@@ -14,10 +15,10 @@ public interface ITokenizer
 	/// </summary>
 	/// <param name="stringBuilder">The buffer holding characters for the current token being built.</param>
 	/// <param name="tokens">The collection where the finalized token will be added.</param>
-	void Flush(
+	public void Flush(
 		StringBuilder stringBuilder,
-		bool isPhrase,
-		List<ExtractedQueryToken> tokens
+		List<ExtractedQueryToken> tokens,
+		QueryTokenType queryTokenType
 	);
 
 	/// <summary>

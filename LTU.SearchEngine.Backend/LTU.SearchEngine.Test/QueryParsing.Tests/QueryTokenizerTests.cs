@@ -96,28 +96,62 @@ public class QueryTokenizerTests
 		Assert.Equivalent(phrase, result[2]);
 	}
 
+
 	[Theory]
-	[InlineData(true)]
-	[InlineData(false)]
-	public void Flush_EmptyBuilder_DoesNotAddToken(bool boolean)
+	[InlineData("!")]
+	[InlineData("-")]
+	[InlineData("+")]
+	[InlineData("&&")]
+	[InlineData("||")]
+	[InlineData("AND")]
+	[InlineData("OR")]
+	public void Tokenize_Operators_HandledAsLogicalOperators(string operatorInput)
+	{
+		// Arrange
+		var input = $"start {operatorInput} phrase";
+
+		var start = new ExtractedQueryToken(QueryTokenType.Term, "start");
+		var expectedOperator = new ExtractedQueryToken(QueryTokenType.LogicalOperator, operatorInput);
+		var phrase = new ExtractedQueryToken(QueryTokenType.Term, "phrase");
+
+		// Act
+		var result = _sut.Tokenize(input);
+
+		// Assert
+		Assert.Equal(3, result.Count);
+		Assert.Equivalent(start, result[0]);
+		Assert.Equivalent(expectedOperator, result[1]);
+		Assert.Equivalent(phrase, result[2]);
+		Assert.Equal(expectedOperator.TokenType, result[1].TokenType);
+	}
+
+	[Theory]
+	[InlineData(QueryTokenType.Term)]
+	[InlineData(QueryTokenType.Phrase)]
+	[InlineData(QueryTokenType.LogicalOperator)]
+	public void Flush_EmptyBuilder_DoesNotAddToken(QueryTokenType type)
 	{
 		// Arrange
 		var tokens = new List<ExtractedQueryToken>();
 		var sb = new StringBuilder();
 
 		// Act
-		_sut.Flush(sb, isPhrase: boolean, tokens);
+		_sut.Flush(sb, tokens, queryTokenType: type);
 
 		// Assert
 		Assert.Empty(tokens);
 	}
 
 	[Theory]
-	[InlineData("   term   ", false, QueryTokenType.Term)]
-	[InlineData("  \" phrase \"  ", true, QueryTokenType.Phrase)]
+	[InlineData("   term   ",  QueryTokenType.Term)]
+	[InlineData("  \" phrase \"  ", QueryTokenType.Phrase)]
+	[InlineData("  !  ", QueryTokenType.LogicalOperator)]
+	[InlineData("  -  ", QueryTokenType.LogicalOperator)]
+	[InlineData("  +  ", QueryTokenType.LogicalOperator)]
+	[InlineData("  &&  ", QueryTokenType.LogicalOperator)]
+	[InlineData("  ||  ", QueryTokenType.LogicalOperator)]
 	public void Flush_WithContent_AddsTrimmedTokenAndClearsBuilder(
-		string termOrPhrase, 
-		bool isPhrase, 
+		string termOrPhrase,
 		QueryTokenType type
 		)
 	{
@@ -126,9 +160,9 @@ public class QueryTokenizerTests
 		var sb = new StringBuilder(termOrPhrase);
 
 		var token = new ExtractedQueryToken(type, termOrPhrase.Trim());
-		
+
 		// Act
-		_sut.Flush(sb, isPhrase, tokens);
+		_sut.Flush(sb, tokens, queryTokenType: type);
 
 		// Assert
 		Assert.Single(tokens);
