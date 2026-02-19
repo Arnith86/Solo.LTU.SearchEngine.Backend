@@ -9,7 +9,7 @@ namespace LTU.SearchEngine.Application.QueryParsing.Helpers;
 /// Implementation of <see cref="IStringTokenizer"/> that handles operator recognition, whitespace <br/>
 /// separation of terms and quote-aware grouping.
 /// </summary>
-public class QueryStringTokenizer : IStringTokenizer
+public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryTokenType>
 {
 	// Finalizes a token build
 	/// <inheritdoc/>
