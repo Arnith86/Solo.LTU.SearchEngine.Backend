@@ -6,15 +6,31 @@ using System.Text.RegularExpressions;
 namespace LTU.SearchEngine.Application.QueryParsing.Helpers;
 
 /// <summary>
-/// Implementation of <see cref="ITokenizer"/> that handles whitespace separation 
-/// and quote-aware grouping.
+/// Implementation of <see cref="ITokenizer"/> that handles operator recognition, whitespace <br/>
+/// separation of terms and quote-aware grouping.
 /// </summary>
 public class QueryTokenizer : ITokenizer
 {
-	/// <summary>
-	/// Tokenizes input by whitespace while keeping quoted phrases together (including quotes).
-	/// Example: cat "hello dolly" dog -> [cat, hello dolly, dog]
-	/// </summary>
+	// Finalizes a token build
+	/// <inheritdoc/>
+	public void Flush(
+		StringBuilder stringBuilder,
+		List<ExtractedQueryToken> tokens,
+		QueryTokenType queryTokenType)
+	{
+		if (stringBuilder.Length == 0) return;
+
+		var token = stringBuilder.ToString().Trim();
+		var extractedToken = new ExtractedQueryToken(queryTokenType, token);
+
+		if (token.Length > 0)
+			tokens.Add(extractedToken);
+
+		stringBuilder.Clear();
+	}
+
+
+	/// <inheritdoc/>
 	public List<ExtractedQueryToken> Tokenize(string input)
 	{
 		var tokens = new List<ExtractedQueryToken>();
@@ -107,6 +123,7 @@ public class QueryTokenizer : ITokenizer
 		return (LoopAction.None, 0);
 	}
 
+
 	private (LoopAction loopAction, int indexOut ) TryHandleIsCapitalLetterOperator(
 		string input,
 		List<ExtractedQueryToken> tokens,
@@ -168,12 +185,14 @@ public class QueryTokenizer : ITokenizer
 		return false;
 	}
 
+
 	private bool IsDoubleLogicalOperator(string input, int index, char character)
 	{
 		return 
 			IsNotNullIndex(index + 1, input.Length) && 
 			input[index + 1].Equals(character);
 	}
+
 
 	private bool IsCapitalLetterOperator(string input, int index)
 	{
@@ -187,6 +206,7 @@ public class QueryTokenizer : ITokenizer
 		return false;
 	}
 
+
 	private bool DoesWordMatch(string input, int index, string word)
 	{
 		// Enough indexes left?
@@ -198,24 +218,6 @@ public class QueryTokenizer : ITokenizer
 		int nextCharIndex = index + word.Length;
 		
 		return true;
-	}
-
-	// Finalizes a token build
-	/// <inheritdoc/>
-	public void Flush(
-		StringBuilder stringBuilder, 
-		List<ExtractedQueryToken> tokens,
-		QueryTokenType queryTokenType)
-	{
-		if (stringBuilder.Length == 0) return;
-
-		var token = stringBuilder.ToString().Trim();
-		var extractedToken = new ExtractedQueryToken(queryTokenType, token);
-		
-		if (token.Length > 0) 
-			tokens.Add(extractedToken);
-		
-		stringBuilder.Clear();
 	}
 
 
