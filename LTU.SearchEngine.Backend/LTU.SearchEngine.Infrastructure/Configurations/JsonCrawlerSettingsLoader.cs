@@ -34,7 +34,9 @@ public class JsonCrawlerSettingsLoader : ICrawlerSettingsLoader
 			userAgent: dto.UserAgent!,
 			maxConcurrencyPerDomain: dto.MaxConcurrencyPerDomain,
 			minDelayMs: dto.MinDelayMs,
-			retryIntervals: dto.RetryIntervals!
-		);
+			retryIntervals: dto.RetryIntervals!,
+            seedUrls: dto.SeedUrls ?? new List<string>()
+
+        );
 	}
 }
