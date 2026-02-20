@@ -11,28 +11,31 @@ public class CrawlerSettings
 	public int MaxConcurrencyPerDomain { get; } 
 	public int MinDelayMs { get; }
 	public IReadOnlyList<TimeSpan> RetryIntervals { get; }
+    public IReadOnlyList<string> SeedUrls { get; }
 
 
-	/// <summary>Initializes a new instance of the <see cref="CrawlerSettings"/> class.</summary>
-	/// <param name="userAgent">The User-Agent string used for outgoing HTTP requests.</param>
-	/// <param name="maxConcurrencyPerDomain">Maximum number of concurrent crawl requests allowed per domain. Must be greater than 0.</param>
-	/// <param name="minDelayMs">Minimum delay (in milliseconds) between requests to the same domain. Must be 0 or greater.</param>
-	/// <param name="retryIntervals">Retry delays used for transient failures. Must contain at least one positive <see cref="TimeSpan"/>.</param>
-	/// <exception cref="ArgumentException">
-	/// Thrown when <paramref name="userAgent"/> is null/empty/whitespace, <br />
-	/// or when <paramref name="retryIntervals"/> is null/empty,<br />
-	/// or when <paramref name="retryIntervals"/> contains non-positive values.
-	/// </exception>
-	/// <exception cref="ArgumentOutOfRangeException">
-	/// Thrown when <paramref name="maxConcurrencyPerDomain"/> is less than or equal to 0, <br />
-	/// or when <paramref name="minDelayMs"/> is negative.
-	/// </exception>
-	public CrawlerSettings(
+    /// <summary>Initializes a new instance of the <see cref="CrawlerSettings"/> class.</summary>
+    /// <param name="userAgent">The User-Agent string used for outgoing HTTP requests.</param>
+    /// <param name="maxConcurrencyPerDomain">Maximum number of concurrent crawl requests allowed per domain. Must be greater than 0.</param>
+    /// <param name="minDelayMs">Minimum delay (in milliseconds) between requests to the same domain. Must be 0 or greater.</param>
+    /// <param name="retryIntervals">Retry delays used for transient failures. Must contain at least one positive <see cref="TimeSpan"/>.</param>
+    /// <exception cref="ArgumentException">
+    /// Thrown when <paramref name="userAgent"/> is null/empty/whitespace, <br />
+    /// or when <paramref name="retryIntervals"/> is null/empty,<br />
+    /// or when <paramref name="retryIntervals"/> contains non-positive values.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="maxConcurrencyPerDomain"/> is less than or equal to 0, <br />
+    /// or when <paramref name="minDelayMs"/> is negative.
+    /// </exception>
+    public CrawlerSettings(
 		string userAgent, 
 		int maxConcurrencyPerDomain, 
 		int minDelayMs,
-		IReadOnlyList<TimeSpan> retryIntervals 
-		)
+		IReadOnlyList<TimeSpan> retryIntervals,
+
+        IReadOnlyList<string> seedUrls
+        )
 	{
 		if (string.IsNullOrWhiteSpace(userAgent))
 			throw new ArgumentException("UserAgent must be provided.", nameof(userAgent));
@@ -51,11 +54,17 @@ public class CrawlerSettings
 		if (retryIntervals.Any(x => x <= TimeSpan.Zero))
 			throw new ArgumentOutOfRangeException(nameof(retryIntervals), " cannot not contain negative values!");
 
-		UserAgent = userAgent; 
+        // Validera att listan finns (FRQ-1003 kräver whitelist)
+        if (seedUrls is null || seedUrls.Count == 0)
+            throw new ArgumentException("Must provide at least one seed URL/Domain.", nameof(seedUrls));
+
+
+        UserAgent = userAgent; 
 		MaxConcurrencyPerDomain = maxConcurrencyPerDomain;
 		MinDelayMs = minDelayMs;
 		RetryIntervals = retryIntervals;
-	}
+        SeedUrls = seedUrls;
+    }
 
 	/// <summary>Returns the retry delay to use for a given attempt number.</summary>
 	/// <param name="attemptNumber">The retry attempt number. Must be greater than 0.</param>
