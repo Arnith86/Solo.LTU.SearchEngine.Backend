@@ -1,6 +1,9 @@
 ﻿using LTU.SearchEngine.Application.QueryParsing.Helpers;
 using LTU.SearchEngine.Backend.Core.Enums;
+using LTU.SearchEngine.Backend.Core.Exceptions;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using Moq;
+using System;
 using System.Text;
 
 namespace LTU.SearchEngine.Test.QueryParsing.Tests;
@@ -8,10 +11,39 @@ namespace LTU.SearchEngine.Test.QueryParsing.Tests;
 public class QueryTokenizerTests
 {
 	private readonly QueryStringTokenizer _sut;
+	private readonly Mock<IQuerySyntaxHelper> _mockSyntaxHelper;
 
 	public QueryTokenizerTests()
 	{
-		_sut = new QueryStringTokenizer();
+		_mockSyntaxHelper = new Mock<IQuerySyntaxHelper>();
+		_sut = new QueryStringTokenizer(_mockSyntaxHelper.Object);
+	}
+
+	[Fact]
+	public void Constructor_NullIQuerySyntaxHelper_ShouldThrowArgumentNullException()
+	{
+		// Act & Assert 
+		Assert.Throws<ArgumentNullException>(() => new QueryStringTokenizer(null!));
+	}
+
+	[Fact]
+	public void Tokenize_ValidateGroupThrowsInvalidQueryStringException_ShouldPropagate()
+	{
+		// Arrange
+		var input = "(()";
+
+		var first = new ExtractedQueryToken(QueryTokenType.Term, "(");
+		var second = new ExtractedQueryToken(QueryTokenType.Term, "(");
+		var third = new ExtractedQueryToken(QueryTokenType.Term, ")");
+
+		var expected = new List<ExtractedQueryToken> { first, second, third };
+
+		_mockSyntaxHelper
+			.Setup(sh => sh.ValidateGrouping(It.IsAny<List<ExtractedQueryToken>>()))
+			.Throws(new InvalidQueryStringException("Mismatched parentheses", input));
+
+		// Act & Assert 
+		Assert.Throws<InvalidQueryStringException>(() => _sut.Tokenize(input));
 	}
 
 	[Fact]
@@ -125,6 +157,32 @@ public class QueryTokenizerTests
 		Assert.Equivalent(phrase, result[2]);
 		Assert.Equal(expectedOperator.TokenType, result[1].TokenType);
 	}
+
+	[Theory]
+	[InlineData("(", ")")]
+	[InlineData("{", "}")]
+	[InlineData("[", "]")]
+	public void Tokenize_Operators_HandledAsGroupingOperators(string operator1, string operator2)
+	{
+		// Arrange
+		var input = $"{operator1}\"start phrase\"{operator2}";
+
+		var expectedOperator1 = new ExtractedQueryToken(QueryTokenType.GroupingOperator, operator1);
+		var expectedPhrase = new ExtractedQueryToken(QueryTokenType.Phrase, "start phrase");
+		var expectedOperator2 = new ExtractedQueryToken(QueryTokenType.GroupingOperator, operator2);
+
+		// Act
+		var result = _sut.Tokenize(input);
+
+		// Assert
+		Assert.Equal(3, result.Count);
+		Assert.Equivalent(expectedOperator1, result[0]);
+		Assert.Equivalent(expectedPhrase, result[1]);
+		Assert.Equivalent(expectedOperator2, result[2]);
+		Assert.Equal(expectedOperator1.TokenType, result[0].TokenType);
+		Assert.Equal(expectedOperator2.TokenType, result[2].TokenType);
+	}
+
 
 	[Theory]
 	[InlineData(QueryTokenType.Term)]

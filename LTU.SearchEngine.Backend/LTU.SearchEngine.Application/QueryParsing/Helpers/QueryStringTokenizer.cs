@@ -11,6 +11,14 @@ namespace LTU.SearchEngine.Application.QueryParsing.Helpers;
 /// </summary>
 public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryTokenType>
 {
+	private readonly IQuerySyntaxHelper _syntaxHelper;
+
+	public QueryStringTokenizer(IQuerySyntaxHelper syntaxHelper)
+	{
+		_syntaxHelper = syntaxHelper ?? 
+			throw new ArgumentNullException(nameof(syntaxHelper));
+	}
+
 	// Finalizes a token build
 	/// <inheritdoc/>
 	public void Flush(
@@ -44,21 +52,26 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 			LoopAction action = LoopAction.None;
 			var character = input[index];
 
+			// Checks for grouping operators. ( ) [ ] { } 
+			action = TryHandleIsGroupingOperator(tokens, stringBuilder, character);
+
+			if (action.Equals(LoopAction.Continue))	continue;
+
 			// AND, OR, NOT, are exceptions and are handled in the next method.
-			(action, indexOut) = 
+			(action, indexOut) =
 				TryHandleLogicalOperator(input, tokens, stringBuilder, index, character);
-			
+
 			if (action.Equals(LoopAction.Continue))
 			{
 				index += indexOut;
 				continue;
 			}
 
-			(action, indexOut) = 
+			(action, indexOut) =
 				TryHandleIsCapitalLetterOperator(input, tokens, stringBuilder, index);
-			
+
 			if (action.Equals(LoopAction.Continue))
-			{ 
+			{
 				index += indexOut;
 				continue;
 			}
@@ -74,9 +87,9 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 			action = TryHandleIsEdgeOfPhrase(
 				input, tokens, stringBuilder, ref isBuildingAPhrase, index, character
 			);
-			
-			if (action.Equals(LoopAction.Continue))	continue;
-			
+
+			if (action.Equals(LoopAction.Continue)) continue;
+
 			// If this is reached must be term
 			if (IsTokenTerm(character))
 			{
@@ -92,10 +105,27 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 		// Handles the last term if there is one
 		Flush(stringBuilder, tokens, QueryTokenType.Term);
 
+		_syntaxHelper.ValidateGrouping(tokens);
+
 		return tokens;
 	}
 
 
+	private LoopAction TryHandleIsGroupingOperator(
+		List<ExtractedQueryToken> tokens, StringBuilder stringBuilder, char character)
+	{
+		if (IsGroupingOperator(character))
+		{
+			stringBuilder.Append(character);
+			Flush(stringBuilder, tokens, QueryTokenType.GroupingOperator);
+			return LoopAction.Continue;
+		}
+
+		return LoopAction.None;
+	}
+
+
+	private bool IsGroupingOperator(char character) => "(){}[]".Contains(character);
 
 
 	private (LoopAction loopAction, int indexJump) TryHandleLogicalOperator(
