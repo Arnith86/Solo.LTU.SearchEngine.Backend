@@ -1,8 +1,5 @@
 ﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace LTU.SearchEngine.Infrastructure.Configurations
@@ -11,7 +8,6 @@ namespace LTU.SearchEngine.Infrastructure.Configurations
     {
         private readonly HttpClient _httpClient;
         private readonly CrawlerSettings _settings;
-
         private readonly ConcurrentDictionary<string, List<Regex>> _disallowedRulesCache = new();
 
         public RobotsHandler(HttpClient httpClient, CrawlerSettings settings)
@@ -24,7 +20,7 @@ namespace LTU.SearchEngine.Infrastructure.Configurations
         {
             if (string.IsNullOrWhiteSpace(url)) return false;
 
-            if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
                 return false;
 
             //Get rules for the domain
@@ -32,9 +28,9 @@ namespace LTU.SearchEngine.Infrastructure.Configurations
             var pathAndQuery = uri.PathAndQuery;
 
             //controls if our URL is matching any of the Regex rules from robots.txt
-            foreach(var rule in disallowedRules)
+            foreach (var rule in disallowedRules)
             {
-                if(rule.IsMatch(pathAndQuery))
+                if (rule.IsMatch(pathAndQuery))
                 {
                     return false; //blocked! LTU robots.txt say no!
                 }
@@ -46,8 +42,8 @@ namespace LTU.SearchEngine.Infrastructure.Configurations
         {
             var domain = uri.Host;
 
-            if(_disallowedRulesCache.TryGetValue(domain, out var cachedRules))
-                {
+            if (_disallowedRulesCache.TryGetValue(domain, out var cachedRules))
+            {
                 return cachedRules;
             }
 
@@ -83,10 +79,10 @@ namespace LTU.SearchEngine.Infrastructure.Configurations
                         var path = cleanLine.Substring(9).Trim();
                         if (!string.IsNullOrEmpty(path))
                         {
-                            // Handles LTU:s wildcards 
-                            // 1. Escape vanliga tecken (så att "." blir "\." etc.)
-                            // 2. Ersätt escapad "\*" med regex-motsvarigheten ".*" (som betyder 'noll eller flera av vilket tecken som helst')
-                            // 3. Lägg till "^" i början så den matchar från början av sökvägen
+                            // Converts the robots.txt path into a valid regex pattern:
+                            // 1. "^" ensures the match starts exactly at the beginning of the URL path.
+                            // 2. Regex.Escape() treats special characters (like '.') as literal text.
+                            // 3. Replace() changes robots.txt wildcards ("*") into regex wildcards (".*").
                             string regexPattern = "^" + Regex.Escape(path).Replace("\\*", ".*");
 
                             disallowedRules.Add(new Regex(regexPattern, RegexOptions.IgnoreCase));
@@ -96,7 +92,7 @@ namespace LTU.SearchEngine.Infrastructure.Configurations
             }
             catch
             {
-                // Om filen inte finns, returnera tom lista (tillåt allt)
+                // If file not exist, return empty list (allow all)
             }
 
             return disallowedRules;
