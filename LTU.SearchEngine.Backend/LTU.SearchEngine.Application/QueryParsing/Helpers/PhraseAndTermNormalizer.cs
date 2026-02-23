@@ -1,9 +1,5 @@
 ﻿using LTU.SearchEngine.Backend.Core.Enums;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
-using LTU.SearchEngine.Infrastructure.Indexing.Normalization;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace LTU.SearchEngine.Application.QueryParsing.Helpers
 {
@@ -21,7 +17,7 @@ namespace LTU.SearchEngine.Application.QueryParsing.Helpers
             {
                 return token.Token;
             }
-                return token.Token.ToLower();
+            return token.Token.ToLower();
         }
     }
 }
