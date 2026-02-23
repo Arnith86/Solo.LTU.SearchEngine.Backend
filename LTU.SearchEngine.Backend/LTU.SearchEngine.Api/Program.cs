@@ -6,6 +6,7 @@ using LTU.SearchEngine.Infrastructure.Configuration;
 using LTU.SearchEngine.Infrastructure.Crawling;
 using LTU.SearchEngine.Infrastructure.Data;
 using LTU.SearchEngine.Infrastructure.Indexing;
+using LTU.SearchEngine.Infrastructure.Indexing.Normalization;
 using LTU.SearchEngine.Infrastructure.Indexing.Repositories;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
@@ -53,6 +54,8 @@ public class Program
 
         // Domain Validator (White-listing logic) and Indexing Pipeline (Text Normalization).
         builder.Services.AddTransient<IDomainValidator, DomainValidator>();
+        builder.Services.AddTransient<ITextFilter, LuceneAnalyzerFilter>();
+        builder.Services.AddTransient<ITextNormalizer, TextNormalizer>();
         builder.Services.AddTransient<IndexingPipeline>();
 
         // Services that orchestrate the actual work (Fetching and Indexing).

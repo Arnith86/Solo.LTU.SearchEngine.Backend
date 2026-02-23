@@ -8,6 +8,7 @@ using LTU.SearchEngine.BackgroundServices;
 using LTU.SearchEngine.Infrastructure;
 using LTU.SearchEngine.Infrastructure.Crawling;
 using LTU.SearchEngine.Infrastructure.Indexing;
+using LTU.SearchEngine.Infrastructure.Indexing.Normalization;
 using LTU.SearchEngine.Infrastructure.Indexing.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -68,10 +69,14 @@ namespace LTU.SearchEngine.Test.Crawling.Tests
             services.AddTransient<IProcessCrawlJobUseCase, ProcessCrawlJobUseCase>();
             services.AddTransient<IIndexer, Indexer>();
 
-            // FIX: Vi mockar Pipelinen så vi slipper NotImplementedException i testet
-            var mockPipeline = new Mock<IndexingPipeline>();
+            
+            var mockNormalizer = new Mock<ITextNormalizer>();
+
+            var mockPipeline = new Mock<IndexingPipeline>(mockNormalizer.Object);
+
             mockPipeline.Setup(p => p.Transform(It.IsAny<CrawlResult>()))
                 .Returns((CrawlResult r) => new IndexDocument(Guid.NewGuid().ToString(), r.Url, r.Title));
+
             services.AddSingleton(mockPipeline.Object);
 
             services.AddTransient<IDomainValidator>(sp => new DomainValidator(settings));
