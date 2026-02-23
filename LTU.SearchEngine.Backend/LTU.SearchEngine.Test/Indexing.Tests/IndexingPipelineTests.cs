@@ -117,7 +117,11 @@ namespace LTU.SearchEngine.Test.Indexing.Tests
             var document = _pipeline.Transform(crawlResult);
 
             Assert.Equal("https://example.com", document.Url);
-            Assert.Equal("https://example.com", document.DocId);
+
+            // DocId is generated Guid
+            Assert.NotNull(document.DocId);
+            Assert.True(Guid.TryParse(document.DocId, out _));
+
             Assert.Equal("Example Title", document.Title);
 
             Assert.Empty(document.TitleTerms);
