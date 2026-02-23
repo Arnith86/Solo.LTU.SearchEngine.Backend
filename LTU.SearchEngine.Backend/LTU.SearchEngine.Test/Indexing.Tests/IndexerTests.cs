@@ -6,21 +6,23 @@ using LTU.SearchEngine.Infrastructure.Indexing.Repositories;
 using Moq;
 using System.Net;
 using System.Threading.Tasks; // Behövs för Task
-using Xunit; // Antar att du använder Xunit baserat på [Fact]
+using Xunit;
+using IIndexingPipeline = LTU.SearchEngine.Backend.Core.Model.IIndexingPipeline; // Antar att du använder Xunit baserat på [Fact]
 
 namespace LTU.SearchEngine.Test.Indexing.IndexerTests
 {
     public class IndexerTests
     {
         private readonly Mock<IIndexRepository> _repositoryMock;
-        private readonly Mock<IndexingPipeline> _pipelineMock;
+        private readonly Mock<IIndexingPipeline> _pipelineMock;
+
 
         private readonly Indexer _sut;
 
         public IndexerTests()
         {
             _repositoryMock = new Mock<IIndexRepository>();
-            _pipelineMock = new Mock<IndexingPipeline>();
+            _pipelineMock = new Mock<IIndexingPipeline>();
 
             _sut = new Indexer(
                 repository: _repositoryMock.Object,

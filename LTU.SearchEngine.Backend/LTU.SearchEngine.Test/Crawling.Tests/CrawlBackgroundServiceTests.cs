@@ -72,7 +72,8 @@ namespace LTU.SearchEngine.Test.Crawling.Tests
             
             var mockNormalizer = new Mock<ITextNormalizer>();
 
-            var mockPipeline = new Mock<IndexingPipeline>(mockNormalizer.Object);
+            var mockPipeline = new Mock<IIndexingPipeline>();
+
 
             mockPipeline.Setup(p => p.Transform(It.IsAny<CrawlResult>()))
                 .Returns((CrawlResult r) => new IndexDocument(Guid.NewGuid().ToString(), r.Url, r.Title));

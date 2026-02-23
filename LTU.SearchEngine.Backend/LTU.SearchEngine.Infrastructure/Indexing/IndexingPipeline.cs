@@ -22,7 +22,7 @@ namespace LTU.SearchEngine.Infrastructure.Indexing
     /// fully constructed index document.
     /// </para>
     /// </remarks>
-    public class IndexingPipeline
+    public class IndexingPipeline : IIndexingPipeline
     {
         /// <summary>
         /// Transforms a CrawlResult into an IndexDocument. 
