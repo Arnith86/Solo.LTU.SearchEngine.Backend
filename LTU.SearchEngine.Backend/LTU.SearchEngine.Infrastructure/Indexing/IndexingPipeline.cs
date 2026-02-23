@@ -42,6 +42,7 @@ namespace LTU.SearchEngine.Infrastructure.Indexing
         }
         public virtual IndexDocument Transform(CrawlResult crawlResult)
         {
+<<<<<<< HEAD
             if (crawlResult == null) throw new ArgumentNullException(nameof(crawlResult));
 
             var document = new IndexDocument(crawlResult.Url,crawlResult.Url, crawlResult.Title);
@@ -59,6 +60,18 @@ namespace LTU.SearchEngine.Infrastructure.Indexing
 
             return document; 
 
+=======
+            // Skapa ett unikt ID för dokumentet
+            var id = Guid.NewGuid().ToString();
+
+            // Skapa dokumentet med URL och titel från crawlResult
+            var document = new IndexDocument(id, crawlResult.Url, crawlResult.Title);
+
+            // Här kan du senare lägga till logik för att bearbeta crawlResult.Text 
+            // till de faktiska termerna i dokumentet.
+
+            return document;
+>>>>>>> 15ef7b7805358d92b5b9f0be5ffd17e3684a8319
         }
     }
 }

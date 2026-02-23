@@ -16,22 +16,28 @@ public class CrawlerSettingsTests
 		};
 	}
 
-	public CrawlerSettings CreateSut(
-		string userAgent = "LTUSearchCrawler/1.0 (Academic project; contact: some.mail@student.ltu.se)",
-		int maxConcurrencyPerDomain = 5,
-		int minDelayMs = 100
-		)
-	{
-		
-		return new CrawlerSettings(
-			userAgent,
-			maxConcurrencyPerDomain,
-			minDelayMs,
-			retryIntervals
-		);
-	}
+    public CrawlerSettings CreateSut(
+        string userAgent = "LTUSearchCrawler/1.0 (Academic project; contact: some.mail@student.ltu.se)",
+        int maxConcurrencyPerDomain = 5,
+        int minDelayMs = 100,
+        List<TimeSpan> retryIntervals = null, 
+        List<string> seedUrls = null        
+    )
+    {
+      
+        var effectiveRetryIntervals = retryIntervals ?? new List<TimeSpan> { TimeSpan.FromSeconds(1) };
+        var effectiveSeedUrls = seedUrls ?? new List<string> { "ltu.se" };
 
-	[Theory]
+        return new CrawlerSettings(
+            userAgent,
+            maxConcurrencyPerDomain,
+            minDelayMs,
+            effectiveRetryIntervals, 
+            effectiveSeedUrls       
+        );
+    }
+
+    [Theory]
 	[InlineData("TestAgent", 1, 0)]
 	[InlineData("Test Agent", 5, 100)]
 	public void CrawlerSettings_ValidParameters_ShouldCreateInstance(
@@ -39,15 +45,20 @@ public class CrawlerSettingsTests
 		int maxConcurrencyPerDomain, 
 		int minDelayMs)
 	{
-		// Arrange & Act
-		CrawlerSettings sut = CreateSut(userAgent, maxConcurrencyPerDomain, minDelayMs);
+        //Arrange
+        var expectedRetryIntervals = new List<TimeSpan> { TimeSpan.FromSeconds(1) };
+        var expectedSeedUrls = new List<string> { "ltu.se" };
+
+        // Act
+        CrawlerSettings sut = CreateSut(userAgent, maxConcurrencyPerDomain, minDelayMs);
 
 		// Assert
 		Assert.Equal(userAgent, sut.UserAgent);
 		Assert.Equal(maxConcurrencyPerDomain, sut.MaxConcurrencyPerDomain);
 		Assert.Equal(minDelayMs, sut.MinDelayMs);
-		Assert.Equal(retryIntervals, sut.RetryIntervals);
-	}
+		Assert.Equal(expectedRetryIntervals, sut.RetryIntervals);
+        Assert.Equal(expectedSeedUrls, sut.SeedUrls);
+    }
 
 	[Fact]
 	public void CrawlerSettings_Constructor_WithNullUserAgent_ThrowsArgumentException()
@@ -71,98 +82,115 @@ public class CrawlerSettingsTests
 		);
 	}
 
-	[Fact]
-	public void CrawlerSettings_Constructor_RetryIntervals_Null_ThrowsArgumentException()
-	{
-		// Arrange
-		string userAgent = "LTUSearchCrawler/1.0 (Academic project; contact: some.mail@student.ltu.se)";
-		int maxConcurrencyPerDomain = 5;
-		int minDelayMs = 100;
+    [Fact]
+    public void CrawlerSettings_Constructor_RetryIntervals_Null_ThrowsArgumentException()
+    {
+        // Arrange
+        string userAgent = "LTUSearchCrawler/1.0 (Academic project; contact: some.mail@student.ltu.se)";
+        int maxConcurrencyPerDomain = 5;
+        int minDelayMs = 100;
+       
+        var validSeedUrls = new List<string> { "ltu.se" };
 
-		// Act & Assert
-		Assert.Throws<ArgumentException>(() => new CrawlerSettings(
-			userAgent,
-			maxConcurrencyPerDomain,
-			minDelayMs,
-			null!)
-		);
-	}
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => new CrawlerSettings(
+            userAgent,
+            maxConcurrencyPerDomain,
+            minDelayMs,
+            null!,       
+            validSeedUrls 
+        ));
+    }
 
 
-	// Tests each index of the retryIntervals list by giving it a zero TimeSpan value.
-	[Theory]
-	[InlineData(0)]
-	[InlineData(1)]
-	[InlineData(2)]
-	public void CrawlerSettings_Constructor_RetryIntervals_ZeroInterval_ThrowsArgumentOutOfRangeException(int index)
-	{
-		// Arrange
-		List<TimeSpan> intervals = new List<TimeSpan>
-		{
-			TimeSpan.FromSeconds(3600),    // 01:00:00		// 1 hour
-			TimeSpan.FromSeconds(86400),   // 1.00:00:00	// 1 day
-			TimeSpan.FromSeconds(604800)   // 7.00:00:00	// 1 week
-		};
+    // Tests each index of the retryIntervals list by giving it a zero TimeSpan value.
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void CrawlerSettings_Constructor_RetryIntervals_ZeroInterval_ThrowsArgumentOutOfRangeException(int index)
+    {
+        // Arrange
+        List<TimeSpan> intervals = new List<TimeSpan>
+        {
+            TimeSpan.FromSeconds(3600),    // 1 hour
+            TimeSpan.FromSeconds(86400),   // 1 day
+            TimeSpan.FromSeconds(604800)   // 1 week
+        };
 
-		intervals[index] = TimeSpan.Zero;
-		
-		string userAgent = "LTUSearchCrawler/1.0 (Academic project; contact: some.mail@student.ltu.se)";
-		int maxConcurrencyPerDomain = 5;
-		int minDelayMs = 100;
+        intervals[index] = TimeSpan.Zero;
 
-		// Act & Assert
-		Assert.Throws<ArgumentOutOfRangeException>(() => new CrawlerSettings(
-			userAgent,
-			maxConcurrencyPerDomain,
-			minDelayMs,
-			intervals)
-		);
-	}
+        string userAgent = "LTUSearchCrawler/1.0 (Academic project; contact: some.mail@student.ltu.se)";
+        int maxConcurrencyPerDomain = 5;
+        int minDelayMs = 100;
 
-	// Tests each index of the retryIntervals list by giving it a negative TimeSpan value.
-	[Theory]
-	[InlineData(0)]
-	[InlineData(1)]
-	[InlineData(2)]
-	public void CrawlerSettings_Constructor_RetryIntervals_NegativeTime_ThrowsArgumentOutOfRangeException(int index)
-	{
-		// Arrange
-		List<TimeSpan> intervals = new List<TimeSpan>
-		{
-			TimeSpan.FromSeconds(3600),    // 01:00:00		// 1 hour
-			TimeSpan.FromSeconds(86400),   // 1.00:00:00	// 1 day
-			TimeSpan.FromSeconds(604800)   // 7.00:00:00	// 1 week
-		};
+        var validSeedUrls = new List<string> { "ltu.se" };
 
-		intervals[index] = TimeSpan.FromSeconds(-1);
+        // Act & Assert
+        Assert.Throws<ArgumentOutOfRangeException>(() => new CrawlerSettings(
+            userAgent,
+            maxConcurrencyPerDomain,
+            minDelayMs,
+            intervals,
+            validSeedUrls) 
+        );
+    }
 
-		string userAgent = "LTUSearchCrawler/1.0 (Academic project; contact: some.mail@student.ltu.se)";
-		int maxConcurrencyPerDomain = 5;
-		int minDelayMs = 100;
+    // Tests each index of the retryIntervals list by giving it a negative TimeSpan value.
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void CrawlerSettings_Constructor_RetryIntervals_NegativeTime_ThrowsArgumentOutOfRangeException(int index)
+    {
+        // Arrange
+        List<TimeSpan> intervals = new List<TimeSpan>
+        {
+            TimeSpan.FromSeconds(3600),    // 1 hour
+            TimeSpan.FromSeconds(86400),   // 1 day
+            TimeSpan.FromSeconds(604800)   // 1 week
+        };
 
-		// Act & Assert
-		Assert.Throws<ArgumentOutOfRangeException>(() => new CrawlerSettings(
-			userAgent,
-			maxConcurrencyPerDomain,
-			minDelayMs,
-			intervals)
-		);
-	}
+        intervals[index] = TimeSpan.FromSeconds(-1);
 
-	[Theory]
+        string userAgent = "LTUSearchCrawler/1.0 (Academic project; contact: some.mail@student.ltu.se)";
+        int maxConcurrencyPerDomain = 5;
+        int minDelayMs = 100;
+
+        // Vi skapar en giltig lista för seedUrls så att valideringen för domäner går igenom
+        var validSeedUrls = new List<string> { "ltu.se" };
+
+        // Act & Assert
+        Assert.Throws<ArgumentOutOfRangeException>(() => new CrawlerSettings(
+            userAgent,
+            maxConcurrencyPerDomain,
+            minDelayMs,
+            intervals,
+            validSeedUrls) // Här lägger vi till det femte argumentet som saknades
+        );
+    }
+
+    [Theory]
 	[InlineData(1)]
 	[InlineData(2)]
 	[InlineData(3)]
 	public void GetRetryDelayInterval_ValidAttempt_ShouldPass(int attemptNr)
 	{
-		// Arrange
-		CrawlerSettings sut = CreateSut();
+        // Arrange
+        var myRetryIntervals = new List<TimeSpan>
+    {
+        TimeSpan.FromSeconds(1),
+        TimeSpan.FromSeconds(2),
+        TimeSpan.FromSeconds(3)
+    };
 
-		// Act
-		TimeSpan delay = sut.GetRetryDelayInterval(attemptNr);
+        CrawlerSettings sut = CreateSut(retryIntervals: myRetryIntervals);
+
+        // Act
+        TimeSpan delay = sut.GetRetryDelayInterval(attemptNr);
 
 		// Assert
-		Assert.Equal(retryIntervals[attemptNr - 1], delay);
+		Assert.Equal(myRetryIntervals[attemptNr - 1], delay);
 	}
 
 	[Theory]
@@ -177,20 +205,28 @@ public class CrawlerSettingsTests
 		Assert.Throws<ArgumentOutOfRangeException>(() => sut.GetRetryDelayInterval(attemptNr)); 
 	}
 
-	[Theory]
-	[InlineData(4)]
-	[InlineData(100)]
-	[InlineData(100000)]
-	public void GetRetryDelayInterval_MoreThenAllowed_ShouldThrow_ArgumentOutOfRangeException(int attemptNr)
-	{
-		// Arrange
-		CrawlerSettings sut = CreateSut();
+    [Theory]
+    [InlineData(4)]
+    [InlineData(100)]
+    [InlineData(100000)]
+    public void GetRetryDelayInterval_MoreThanAllowed_ShouldReturnLastInterval(int attemptNr)
+    {
+        // Arrange
+        // Vi skapar en lista med t.ex. 3 intervaller
+        var intervals = new List<TimeSpan>
+    {
+        TimeSpan.FromSeconds(1),
+        TimeSpan.FromSeconds(2),
+        TimeSpan.FromSeconds(3) // Detta är index 2 (sista elementet)
+    };
 
-		// Act
-		TimeSpan delay = sut.GetRetryDelayInterval(attemptNr);
+        CrawlerSettings sut = CreateSut(retryIntervals: intervals);
 
-		// Assert
-		Assert.Equal(retryIntervals[2], delay);
+        // Act
+        TimeSpan delay = sut.GetRetryDelayInterval(attemptNr);
 
-	}
+        // Assert
+        // Eftersom attemptNr är högre än 3, ska den alltid returnera det sista värdet (3 sekunder)
+        Assert.Equal(intervals[2], delay);
+    }
 }

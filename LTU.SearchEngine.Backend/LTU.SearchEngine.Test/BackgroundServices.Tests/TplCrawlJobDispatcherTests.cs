@@ -43,8 +43,9 @@ public class TplCrawlJobDispatcherTests
 			TimeSpan.FromMilliseconds(50),
 			TimeSpan.FromMilliseconds(150),
 			TimeSpan.FromMilliseconds(200)
-			}
-		);
+			},
+            seedUrls: new List<string> { "ltu.se" }
+        );
 	}
 
 	public TplCrawlJobDispatcherTests()
