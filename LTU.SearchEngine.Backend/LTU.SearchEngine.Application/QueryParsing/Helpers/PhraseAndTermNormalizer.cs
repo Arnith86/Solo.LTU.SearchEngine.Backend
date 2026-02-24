@@ -1,4 +1,5 @@
-﻿using LTU.SearchEngine.Backend.Core.Enums;
+﻿using LTU.SearchEngine.Backend.Core;
+using LTU.SearchEngine.Backend.Core.Enums;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 
 namespace LTU.SearchEngine.Application.QueryParsing.Helpers
