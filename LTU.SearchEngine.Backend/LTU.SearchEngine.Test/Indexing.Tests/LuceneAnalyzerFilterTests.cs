@@ -38,5 +38,35 @@ namespace LTU.SearchEngine.Test.Indexing.Tests
 
             Assert.Equal("program", result);
         }
+
+        [Fact]
+        public void Apply_GivenEmptyString_ShouldReturnNull()
+        {
+            Assert.Null(_filter.Apply(""));
+        }
+
+        [Fact]
+        public void Apply_GivenWhitespace_ShouldReturnNull()
+        {
+            Assert.Null(_filter.Apply(" "));
+        }
+
+        [Fact]
+        public void Apply_GivenNull_ShouldReturnNull()
+        {
+            Assert.Null(_filter.Apply(null));
+        }
+
+        [Fact]
+        public void Apply_GivenNumber_ShouldReturnSameNumber()
+        {
+            Assert.Equal("123", _filter.Apply("123"));
+        }
+
+        [Fact]
+        public void Apply_GivenAlphaNumeric_ShouldPreserveNumbers()
+        {
+            Assert.Equal("c3po", _filter.Apply("C3PO"));
+        }
     }
 }

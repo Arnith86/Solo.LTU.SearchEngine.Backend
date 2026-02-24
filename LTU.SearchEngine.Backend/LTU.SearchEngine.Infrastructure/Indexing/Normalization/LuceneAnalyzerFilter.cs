@@ -38,6 +38,8 @@ namespace LTU.SearchEngine.Infrastructure.Indexing.Normalization
 
         public string? Apply(string rawTerm)
         {
+            if (string.IsNullOrWhiteSpace(rawTerm)) return null;
+
             using var reader = new StringReader(rawTerm);
             using var tokenStream = _analyzer.GetTokenStream("field", reader);
 
@@ -49,7 +51,7 @@ namespace LTU.SearchEngine.Infrastructure.Indexing.Normalization
             {
                 var result = termAttr.ToString();
                 tokenStream.End();
-                return result;
+                return string.IsNullOrWhiteSpace(result) ? null : result; ;
             }
 
             tokenStream.End();

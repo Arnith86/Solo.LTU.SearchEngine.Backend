@@ -21,34 +21,49 @@ public class IndexDocument
         ContentTerms = new Dictionary<string, int>();
     }
 
-    /*
-      Controls Term Frequency (TF) calculation.
-
-        Separates terms based on their source (Title / Header / Body).
-
-        Throws error on null term.
-
-        Defines behavior when an invalid or unknown TermSource is provided.
-
-        Maintains the internal consistency of the document’s index state.
-     
-     */
+    /// <summary>
+    /// Adds a term to the document and updates its Term Frequency (TF).
+    /// </summary>
+    /// <param name="term">
+    /// The normalized term to add. 
+    /// Must not be null, empty, or whitespace.
+    /// </param>
+    /// <param name="source">
+    /// Indicates where the term was found (Title, Header, or Body).
+    /// </param>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="term"/> is null.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// Thrown when <paramref name="term"/> is empty or consists only of whitespace.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="source"/> is not a valid <see cref="TermSource"/> value.
+    /// </exception>
+    /// <remarks>
+    /// This method:
+    /// - Separates terms based on their source (Title, Header, Body).
+    /// - Increments frequency if the term already exists.
+    /// - Ensures the document maintains a valid and consistent indexing state.
+    /// </remarks>
     public void AddTerm(string term, TermSource source)
     {
         if (term == null) throw new ArgumentNullException(nameof(term));
+        if (string.IsNullOrWhiteSpace(term))
+            throw new ArgumentException("Term cannot be empty or whitespace.", nameof(term));
+
 
         var targetDictionary = source switch
         {
             TermSource.Title => TitleTerms,
             TermSource.Header => HeaderTerms,
             TermSource.Body => ContentTerms,
-            _ => null
+            _ => throw new ArgumentOutOfRangeException(nameof(source), "Invalid TermSource.")
         };
-
-        if (targetDictionary == null) return;
+    
         targetDictionary.TryGetValue(term, out var count);
         targetDictionary[term] = count + 1;
-        
+
     }
 
 }
