@@ -45,6 +45,11 @@ namespace LTU.SearchEngine.Infrastructure.Configurations
             return true;
         }
 
+        /// <summary>
+        /// Retrieves the exclusion rules for a specific domain, using a cache to avoid redundant network requests.
+        /// </summary>
+        /// <param name="uri">The URI of the page being evaluated.</param>
+        /// <returns>A list of compiled regular expressions representing disallowed paths.</returns>
         private List<Regex> GetRobotsRulesForDomain(Uri uri)
         {
             var domain = uri.Host;
@@ -59,6 +64,12 @@ namespace LTU.SearchEngine.Infrastructure.Configurations
             return rules;
         }
 
+        /// <summary>
+        /// Fetches the robots.txt file from the host and parses it into a list of Regex rules
+        /// targeting the configured User-Agent or the wildcard (*).
+        /// </summary>
+        /// <param name="uri">The URI of the domain to fetch robots.txt from.</param>
+        /// <returns>A task representing the asynchronous operation, containing the list of disallowed Regex rules.</returns>
         private async Task<List<Regex>> FetchAndParseRobotsTxt(Uri uri)
         {
             var disallowedRules = new List<Regex>();
