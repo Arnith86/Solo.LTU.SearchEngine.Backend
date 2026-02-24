@@ -97,5 +97,64 @@ namespace LTU.SearchEngine.Test.Configuration.Tests
             ItExpr.IsAny<CancellationToken>()
         );
         }
+
+        [Fact]
+        public void Constructor_WhenHttpClientIsNull_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => new RobotsHandler(null, _settings));
+        }
+
+        [Fact]
+        public void Constructor_WhenSettingsIsNull_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => new RobotsHandler(_httpClient, null));
+        }
+
+        [Fact]
+        public void IsAllowed_WhenRobotsTxtDoesNotExist_ReturnsTrue()
+        {
+            // Arrange: Simulera en 404 Not Found
+            _httpMessageHandlerMock.Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.IsAny<HttpRequestMessage>(),
+                    ItExpr.IsAny<CancellationToken>()
+                )
+                .ReturnsAsync(new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.NotFound
+                });
+
+            var handler = new RobotsHandler(_httpClient, _settings);
+
+            // Act
+            var result = handler.IsAllowed("https://example.com/some-page");
+
+            // Assert
+            Assert.True(result, "Should allow crawling if robots.txt is missing");
+        }
+
+        [Fact]
+        public void IsAllowed_WhenDomainIsConfiguredAsDisallowed_ReturnsFalse()
+        {
+            // Arrange
+            var settingsWithBlacklist = new CrawlerSettings(
+                userAgent: "TestCrawler",
+                maxConcurrencyPerDomain: 5,
+                minDelayMs: 0,
+                retryIntervals: new[] { TimeSpan.FromSeconds(1) },
+                seedUrls: new[] { "https://ltu.se" }
+            );
+
+            settingsWithBlacklist.DisallowedDomains = new List<string> { "blocked-site.com" };
+
+            var handler = new RobotsHandler(_httpClient, settingsWithBlacklist);
+
+            // Act
+            var result = handler.IsAllowed("https://blocked-site.com/index.html");
+
+            // Assert
+            Assert.False(result, "Should be blocked because the domain is in the disallowed configuration");
+        }
     }
 }

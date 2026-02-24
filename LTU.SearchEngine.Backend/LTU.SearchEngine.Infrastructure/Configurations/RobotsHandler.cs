@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 
 namespace LTU.SearchEngine.Infrastructure.Configurations
 {
+    /// <inheritdoc/>
     public class RobotsHandler : IRobotsHandler
     {
         private readonly HttpClient _httpClient;
@@ -12,8 +13,8 @@ namespace LTU.SearchEngine.Infrastructure.Configurations
 
         public RobotsHandler(HttpClient httpClient, CrawlerSettings settings)
         {
-            _httpClient = httpClient;
-            _settings = settings;
+            _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         }
 
         public bool IsAllowed(string url)
@@ -22,6 +23,12 @@ namespace LTU.SearchEngine.Infrastructure.Configurations
 
             if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
                 return false;
+
+            if (_settings.DisallowedDomains != null &&
+        _settings.DisallowedDomains.Any(d => d.Equals(uri.Host, StringComparison.OrdinalIgnoreCase)))
+            {
+                return false;
+            }
 
             //Get rules for the domain
             var disallowedRules = GetRobotsRulesForDomain(uri);
