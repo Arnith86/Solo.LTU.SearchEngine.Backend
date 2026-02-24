@@ -1,5 +1,6 @@
 using LTU.SearchEngine.Application;
 using LTU.SearchEngine.Backend.Core;
+using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.BackgroundServices;
 using LTU.SearchEngine.Infrastructure;
 using LTU.SearchEngine.Infrastructure.Configuration;
@@ -56,7 +57,7 @@ public class Program
         builder.Services.AddTransient<IDomainValidator, DomainValidator>();
         builder.Services.AddTransient<ITextFilter, LuceneAnalyzerFilter>();
         builder.Services.AddTransient<ITextNormalizer, TextNormalizer>();
-        builder.Services.AddTransient<IndexingPipeline>();
+        builder.Services.AddTransient<IIndexingPipeline, IndexingPipeline>();
 
         // Services that orchestrate the actual work (Fetching and Indexing).
         builder.Services.AddTransient<ICrawler, Crawler>();
