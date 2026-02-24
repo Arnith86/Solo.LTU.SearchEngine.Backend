@@ -4,6 +4,12 @@ using System.Text;
 
 namespace LTU.SearchEngine.Infrastructure.Indexing.Normalization
 {
+
+    // TODO: This implementation should be updated to implement the generic 
+    // ITextNormalizer<T> interface located in the Core project.
+
+
+
     /// <summary>
     /// Defines the contract for normalizing textual terms before indexing.
     /// </summary>
