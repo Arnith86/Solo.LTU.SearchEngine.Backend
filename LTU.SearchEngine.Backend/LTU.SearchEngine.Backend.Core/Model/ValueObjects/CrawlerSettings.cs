@@ -12,6 +12,7 @@ public class CrawlerSettings
 	public int MinDelayMs { get; }
 	public IReadOnlyList<TimeSpan> RetryIntervals { get; }
     public IReadOnlyList<string> SeedUrls { get; }
+    public List<string> DisallowedDomains { get; set; } = new();
 
 
     /// <summary>Initializes a new instance of the <see cref="CrawlerSettings"/> class.</summary>
