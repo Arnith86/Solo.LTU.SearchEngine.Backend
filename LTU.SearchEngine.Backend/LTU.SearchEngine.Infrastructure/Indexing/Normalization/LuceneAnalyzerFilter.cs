@@ -17,10 +17,10 @@ namespace LTU.SearchEngine.Infrastructure.Indexing.Normalization
 
         public LuceneAnalyzerFilter()
         {
-            _analyzer = CreatAnalyzer();
+            _analyzer = CreateAnalyzer();
         }
 
-        private Analyzer CreatAnalyzer()
+        private Analyzer CreateAnalyzer()
         {
             return Analyzer.NewAnonymous((fieldName, reader) =>
             {
@@ -51,7 +51,7 @@ namespace LTU.SearchEngine.Infrastructure.Indexing.Normalization
             {
                 var result = termAttr.ToString();
                 tokenStream.End();
-                return string.IsNullOrWhiteSpace(result) ? null : result; ;
+                return string.IsNullOrWhiteSpace(result) ? null : result; 
             }
 
             tokenStream.End();
