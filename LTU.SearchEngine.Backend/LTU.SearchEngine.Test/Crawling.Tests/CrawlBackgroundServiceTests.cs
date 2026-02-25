@@ -70,7 +70,7 @@ namespace LTU.SearchEngine.Test.Crawling.Tests
             services.AddTransient<IIndexer, Indexer>();
 
             
-            var mockNormalizer = new Mock<ITextNormalizer>();
+            var mockNormalizer = new Mock<ITextNormalizer<string>>();
 
             var mockPipeline = new Mock<IIndexingPipeline>();
 

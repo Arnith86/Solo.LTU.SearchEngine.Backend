@@ -1,4 +1,5 @@
-﻿using LTU.SearchEngine.Backend.Core.Model;
+﻿using LTU.SearchEngine.Backend.Core;
+using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure.Indexing.Normalization;
 using System;
@@ -34,9 +35,9 @@ namespace LTU.SearchEngine.Infrastructure.Indexing
         /// 5. Add normalized term to IndexDocument.
         /// 6. Return completed IndexDocument.
         /// </summary>
-        private readonly ITextNormalizer _textNormalizer;
+        private readonly ITextNormalizer<string> _textNormalizer;
 
-        public IndexingPipeline(ITextNormalizer normalizer)
+        public IndexingPipeline(ITextNormalizer<string> normalizer)
         {
             _textNormalizer = normalizer;
         }

@@ -1,4 +1,5 @@
-﻿using LTU.SearchEngine.Backend.Core.Model;
+﻿using LTU.SearchEngine.Backend.Core;
+using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure.Indexing;
 using LTU.SearchEngine.Infrastructure.Indexing.Normalization;
@@ -11,12 +12,12 @@ namespace LTU.SearchEngine.Test.Indexing.Tests
 {
     public class IndexingPipelineTests
     {
-        private readonly Mock<ITextNormalizer> _normalizerMock;
+        private readonly Mock<ITextNormalizer<string>> _normalizerMock;
         private readonly IndexingPipeline _pipeline;
 
         public IndexingPipelineTests()
         {
-            _normalizerMock = new Mock<ITextNormalizer>();
+            _normalizerMock = new Mock<ITextNormalizer<string>>();
             _pipeline = new IndexingPipeline(_normalizerMock.Object);
         }
 

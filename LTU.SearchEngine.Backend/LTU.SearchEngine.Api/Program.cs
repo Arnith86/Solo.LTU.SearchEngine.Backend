@@ -56,7 +56,7 @@ public class Program
         // Domain Validator (White-listing logic) and Indexing Pipeline (Text Normalization).
         builder.Services.AddTransient<IDomainValidator, DomainValidator>();
         builder.Services.AddTransient<ITextFilter, LuceneAnalyzerFilter>();
-        builder.Services.AddTransient<ITextNormalizer, TextNormalizer>();
+        builder.Services.AddTransient<ITextNormalizer<string>, TextNormalizer>();
         builder.Services.AddTransient<IIndexingPipeline, IndexingPipeline>();
 
         // Services that orchestrate the actual work (Fetching and Indexing).

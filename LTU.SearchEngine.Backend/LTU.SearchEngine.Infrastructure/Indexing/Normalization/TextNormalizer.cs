@@ -1,10 +1,11 @@
-﻿using System;
+﻿using LTU.SearchEngine.Backend.Core;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace LTU.SearchEngine.Infrastructure.Indexing.Normalization
 {
-    public class TextNormalizer : ITextNormalizer
+    public class TextNormalizer : ITextNormalizer<string>
     {
         private readonly ITextFilter _punctuationFilter;
         private readonly ITextFilter _luceneFilter;
