@@ -1,4 +1,7 @@
-﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+﻿using LTU.SearchEngine.Backend.Core;
+using LTU.SearchEngine.Backend.Core.Model;
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using LTU.SearchEngine.Infrastructure.Indexing.Normalization;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -20,20 +23,44 @@ namespace LTU.SearchEngine.Infrastructure.Indexing
     /// fully constructed index document.
     /// </para>
     /// </remarks>
-    public class IndexingPipeline
+    public class IndexingPipeline : IIndexingPipeline
     {
+        /// <summary>
+        /// Transforms a CrawlResult into an IndexDocument. 
+        /// Steps:
+        /// 1. Validate input.
+        /// 2. Loop through each IndexedTerm.
+        /// 3. Normalize each raw term using ITextNormalizer.
+        /// 4. Skip terms that normalize to null.
+        /// 5. Add normalized term to IndexDocument.
+        /// 6. Return completed IndexDocument.
+        /// </summary>
+        private readonly ITextNormalizer<string> _textNormalizer;
+
+        public IndexingPipeline(ITextNormalizer<string> normalizer)
+        {
+            _textNormalizer = normalizer;
+        }
         public virtual IndexDocument Transform(CrawlResult crawlResult)
         {
-            // Skapa ett unikt ID för dokumentet
+            if (crawlResult == null) throw new ArgumentNullException(nameof(crawlResult));
+
             var id = Guid.NewGuid().ToString();
+            var document = new IndexDocument(id,crawlResult.Url, crawlResult.Title);
 
-            // Skapa dokumentet med URL och titel från crawlResult
-            var document = new IndexDocument(id, crawlResult.Url, crawlResult.Title);
 
-            // Här kan du senare lägga till logik för att bearbeta crawlResult.Text 
-            // till de faktiska termerna i dokumentet.
+            foreach (var indexedTerm in crawlResult.IndexedTerms)
+            {
+                var normalized = _textNormalizer.Normalize(indexedTerm.Term);
 
-            return document;
+                if (normalized == null)
+                    continue;
+
+                document.AddTerm(normalized, indexedTerm.Source);
+            }
+
+            return document; 
+
         }
     }
 }

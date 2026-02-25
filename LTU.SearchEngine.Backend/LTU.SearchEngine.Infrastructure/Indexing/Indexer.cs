@@ -1,4 +1,5 @@
-﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+﻿using LTU.SearchEngine.Backend.Core.Model;
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure.Indexing.Repositories;
 
 namespace LTU.SearchEngine.Infrastructure.Indexing
@@ -20,8 +21,8 @@ namespace LTU.SearchEngine.Infrastructure.Indexing
     public class Indexer : IIndexer
     {
         private readonly IIndexRepository _repository;
-        private readonly IndexingPipeline _pipeline;
-        public Indexer(IIndexRepository repository, IndexingPipeline pipeline) 
+        private readonly IIndexingPipeline _pipeline;
+        public Indexer(IIndexRepository repository, IIndexingPipeline pipeline)
         {
             _repository = repository;
             _pipeline = pipeline;
