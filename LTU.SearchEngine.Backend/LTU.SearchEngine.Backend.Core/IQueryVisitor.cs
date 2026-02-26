@@ -21,4 +21,14 @@ public interface IQueryVisitor<TResult>
 	/// <param name="node">The node containing the exact search phrase.</param>
 	/// <returns>The result of the operation on the phrase node.</returns>
 	TResult Visit(PhraseNode<TResult> node);
+
+	/// <summary>Processes a binary logical operation (e.g., AND, OR) or a NOT operation.</summary>
+	/// <param name="node">The node representing the logical connection between two query branches.</param>
+	/// <returns>The combined result of the binary operation.</returns>
+	TResult Visit(BinaryNode<TResult> node);
+
+	/// <summary>Processes a node marked with the required operator (+).</summary>
+	/// <param name="node">The node that must be present in the search results.</param>
+	/// <returns>The result of the operation on the required node.</returns>
+	TResult Visit(RequiredNode<TResult> node);
 }
