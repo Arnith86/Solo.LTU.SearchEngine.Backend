@@ -1,4 +1,6 @@
-﻿namespace LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
+﻿using LTU.SearchEngine.Backend.Core.Enums;
+
+namespace LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 
 
 /// <summary>
@@ -9,29 +11,27 @@
 /// This node is a structural component of the AST, used to represent logical operations <br />
 /// such as AND and OR by linking a left and a right <see cref="QueryNode{T}"/>.
 /// </remarks>
-public class BinaryNode<T> : QueryNode<T>
+public class LogicOperationNode<T> : QueryNode<T>
 {
 	public QueryNode<T> LeftNode { get; }
 	public QueryNode<T> RightNode { get; }
-	public BinaryNode<T> OperatorNode { get; }
+	public LogicalOperators Operator { get; }
 
-	/// <summary>Initializes a new instance of the <see cref="BinaryNode{T}"/> class.</summary>
+	/// <summary>Initializes a new instance of the <see cref="LogicOperationNode{T}"/> class.</summary>
 	/// <param name="leftNode">The left sub-expression. Cannot be null.</param>
 	/// <param name="rightNode">The right sub-expression. Cannot be null.</param>
-	/// <param name="operatorNode">The node representing the logical operator. Cannot be null.</param>
+	/// <param name="logicalOperator ">Enum representing the logical operator.param>
 	/// <exception cref="ArgumentNullException">Thrown if any of the provided nodes are null.</exception>
-	public BinaryNode(
+	public LogicOperationNode(
 		QueryNode<T> leftNode,
 		QueryNode<T> rightNode,
-		BinaryNode<T> operatorNode
+		LogicalOperators logicalOperator
 		)
 	{
 		LeftNode = leftNode ?? 
 			throw new ArgumentNullException(nameof(leftNode));
 		RightNode = rightNode ?? 
 			throw new ArgumentNullException(nameof(rightNode));
-		OperatorNode = operatorNode ?? 
-			throw new ArgumentNullException(nameof(operatorNode));
 	}
 
 	/// <inheritdoc>/>
