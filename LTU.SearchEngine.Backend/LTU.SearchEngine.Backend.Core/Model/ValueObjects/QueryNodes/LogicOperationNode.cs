@@ -15,7 +15,7 @@ public class LogicOperationNode<T> : QueryNode<T>
 {
 	public QueryNode<T> LeftNode { get; }
 	public QueryNode<T> RightNode { get; }
-	public LogicalOperators Operator { get; }
+	public LogicalOperators LogicalOperator { get; }
 
 	/// <summary>Initializes a new instance of the <see cref="LogicOperationNode{T}"/> class.</summary>
 	/// <param name="leftNode">The left sub-expression. Cannot be null.</param>
@@ -32,6 +32,7 @@ public class LogicOperationNode<T> : QueryNode<T>
 			throw new ArgumentNullException(nameof(leftNode));
 		RightNode = rightNode ?? 
 			throw new ArgumentNullException(nameof(rightNode));
+		LogicalOperator = logicalOperator;
 	}
 
 	/// <inheritdoc>/>
