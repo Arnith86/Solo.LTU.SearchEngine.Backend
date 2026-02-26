@@ -28,14 +28,32 @@ public class LogicOperationNode<T> : QueryNode<T>
 		LogicalOperators logicalOperator
 		)
 	{
-		LeftNode = leftNode ?? 
+		LeftNode = leftNode ??
 			throw new ArgumentNullException(nameof(leftNode));
-		RightNode = rightNode ?? 
+		RightNode = rightNode ??
 			throw new ArgumentNullException(nameof(rightNode));
+		
+		ValidateLogicalOperator(logicalOperator);
+
 		LogicalOperator = logicalOperator;
 	}
 
 	/// <inheritdoc>/>
 	public override T Accept(IQueryVisitor<T> visitor)
 		=> visitor.Visit(this);
+
+	private void ValidateLogicalOperator(LogicalOperators logicalOperator)
+	{
+		if (logicalOperator != LogicalOperators.AND &&
+			logicalOperator != LogicalOperators.OR &&
+			logicalOperator != LogicalOperators.NOT
+		)
+		{
+			throw new ArgumentException(
+				"Invalid logical operator. Only AND, OR, and NOT are allowed.",
+				nameof(logicalOperator)
+			);
+		}
+	}
+
 }
