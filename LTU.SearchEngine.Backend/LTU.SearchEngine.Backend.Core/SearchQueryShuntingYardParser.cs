@@ -13,6 +13,8 @@ public class SearchQueryShuntingYardParser : IShuntingYardParser<ExtractedQueryT
 	/// <inheritdoc/>
 	public Queue<ExtractedQueryToken> ConvertToPostfix(IEnumerable<ExtractedQueryToken> tokens)
 	{
+		VerifyTokens(tokens);
+
 		Queue<ExtractedQueryToken> outputQueue = new();
 		Stack<ExtractedQueryToken> operatorStack = new();
 
@@ -28,13 +30,19 @@ public class SearchQueryShuntingYardParser : IShuntingYardParser<ExtractedQueryT
 			}
 			else if (IsEndParentheses(token))
 			{
-				// Move operators to output until the matching start parenthesis is found
+				// Move operators to output until the matching start parenthesis is found.
 				while (ShouldPopOperator(operatorStack))
 				{
 					outputQueue.Enqueue(operatorStack.Pop());
 				}
 
-				// Discard the start parenthesis from the stack
+				// If stack is empty then there is a "(" missing.
+				if (operatorStack.Count == 0 || !IsStartParentheses(operatorStack.Peek()))
+				{
+					throw new FormatException("Mismatched parentheses: Found closing parenthesis ')' without a matching opening parenthesis.");
+				}
+
+				// Discard the start parenthesis from the stack.
 				if (operatorStack.Count > 0) operatorStack.Pop();
 			}
 			else if (IsLogicalOperator(token))
@@ -50,11 +58,25 @@ public class SearchQueryShuntingYardParser : IShuntingYardParser<ExtractedQueryT
 
 		// Empty any remaining operators into the output queue
 		while (operatorStack.Count > 0)
-			outputQueue.Enqueue(operatorStack.Pop());
+		{
+			var remainingToken = operatorStack.Pop();
+
+			if (IsStartParentheses(remainingToken))
+				throw new FormatException("Mismatched parentheses: Found opening parenthesis '(' without a matching closing parenthesis.");
+
+			outputQueue.Enqueue(remainingToken);
+		}
 
 		return outputQueue;
 	}
 
+	private void VerifyTokens(IEnumerable<ExtractedQueryToken> tokens)
+	{
+		if (tokens is null)
+			throw new ArgumentNullException(nameof(tokens), "must have a value.");
+		if (tokens.Count() < 1 )
+			throw new ArgumentOutOfRangeException(nameof(tokens), "cannot be empty.");
+	}
 
 	private bool NextPopDoesNotHavePrecedence(
 		Stack<ExtractedQueryToken> operatorStack, 
