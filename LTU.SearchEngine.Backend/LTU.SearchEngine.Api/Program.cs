@@ -9,6 +9,7 @@ using LTU.SearchEngine.Infrastructure.Data;
 using LTU.SearchEngine.Infrastructure.Indexing;
 using LTU.SearchEngine.Infrastructure.Indexing.Normalization;
 using LTU.SearchEngine.Infrastructure.Indexing.Repositories;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
 
@@ -74,6 +75,7 @@ public class Program
         // ========================================================================
         // The Dispatcher manages the TPL Dataflow pipeline (Queue).
         builder.Services.AddSingleton<ICrawlJobDispatcher, TplCrawlJobDispatcher>();
+        builder.Services.AddSingleton<IClock, ApplicationClock>();
 
         // The Hosted Service that starts the "Seed Job" on application startup (FRQ-1001).
         builder.Services.AddHostedService<CrawlBackgroundService>();

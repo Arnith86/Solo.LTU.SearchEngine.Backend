@@ -33,6 +33,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 	private PriorityQueue<CrawlJob, DateTime> _jobPriorityQueue;
 	private BufferBlock<CrawlJob> _buffer;
 	private ActionBlock<CrawlJob> _worker;
+	private readonly IClock _clock;
 
 	/// <summary>
 	/// Initializes a new instance of the <see cref="TplCrawlJobDispatcher"/> class.
@@ -52,7 +53,8 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 	public TplCrawlJobDispatcher(
 		IProcessCrawlJobUseCase processCrawlJobUseCase,
 		CrawlerSettings crawlerSettings,
-		SemaphoreProvider semaphoreProvider
+		SemaphoreProvider semaphoreProvider,
+		IClock clock
 		)
 	{
 		_processCrawlJobUseCase = processCrawlJobUseCase
@@ -61,6 +63,8 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 			?? throw new ArgumentNullException(nameof(crawlerSettings));
 		_semaphoreProvider = semaphoreProvider 
 			?? throw new ArgumentNullException(nameof(semaphoreProvider)); 
+		_clock = clock 
+			?? throw new ArgumentNullException(nameof(clock));
 
 		_jobPriorityQueue = new PriorityQueue<CrawlJob, DateTime>();
 		_buffer = new BufferBlock<CrawlJob>();
@@ -135,7 +139,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 		int index = (job.RetryCount - 1) >= 0 ? job.RetryCount - 1 : 0;
 
 		job.NextAttempt = 
-			DateTime.UtcNow + _crawlerSettings.RetryIntervals[index];
+			_clock.UtcNow + _crawlerSettings.RetryIntervals[index];
 
 		job.RetryCount++;
 		
@@ -149,7 +153,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 			CrawlJob newJob = new CrawlJob
 			{
 				Url = link,
-				NextAttempt = DateTime.UtcNow
+				NextAttempt = _clock.UtcNow
 			};
 
 			await Enqueue(newJob);
@@ -162,12 +166,12 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 		if (job == null) throw new ArgumentNullException(nameof(job));
 
 		// If job is due for immediate processing, send to buffer; otherwise, enqueue with scheduled time.
-		if (job.NextAttempt is null || job.NextAttempt <= DateTime.UtcNow)
+		if (job.NextAttempt is null || job.NextAttempt <= _clock.UtcNow)
 			return _buffer.SendAsync(job);
 		else
 		{
 			lock (_jobPriorityQueue)
-				_jobPriorityQueue.Enqueue(job, job.NextAttempt ?? DateTime.UtcNow);
+				_jobPriorityQueue.Enqueue(job, job.NextAttempt ?? _clock.UtcNow);
 		}
 
 		return Task.CompletedTask;
@@ -180,25 +184,37 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 			_worker, 
 			new DataflowLinkOptions { PropagateCompletion = true }
 		);
-
-		while (!ct.IsCancellationRequested)
+        try
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                await ProcessDueJobs(ct);
+                await Task.Delay(_crawlerSettings.MinDelayMs, ct);
+            }
+        }
+        catch (TaskCanceledException)
 		{
-			DateTime now = DateTime.UtcNow;
-
-			List<CrawlJob> ready = new List<CrawlJob>();
-
-			lock (_jobPriorityQueue)
-			{
-				while (_jobPriorityQueue.Count > 0 && 
-					_jobPriorityQueue.Peek().NextAttempt <= now) 
-				{
-					ready.Add(_jobPriorityQueue.Dequeue());
-				}
-			}
-
-			foreach (CrawlJob job in ready) await _buffer.SendAsync(job, ct);
-
-			await Task.Delay(_crawlerSettings.MinDelayMs);
+			// Expected cancellation
 		}
 	}
+
+
+	public async Task ProcessDueJobs(CancellationToken ct)
+	{
+        DateTime now = _clock.UtcNow;
+
+        List<CrawlJob> ready = new List<CrawlJob>();
+
+        lock (_jobPriorityQueue)
+        {
+            while (_jobPriorityQueue.Count > 0 &&
+                _jobPriorityQueue.Peek().NextAttempt <= now)
+            {
+                ready.Add(_jobPriorityQueue.Dequeue());
+            }
+        }
+
+        foreach (CrawlJob job in ready) await _buffer.SendAsync(job, ct);
+    }
+
 }
