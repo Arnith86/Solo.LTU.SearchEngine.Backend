@@ -9,7 +9,6 @@ using LTU.SearchEngine.Infrastructure.Data;
 using LTU.SearchEngine.Infrastructure.Indexing;
 using LTU.SearchEngine.Infrastructure.Indexing.Normalization;
 using LTU.SearchEngine.Infrastructure.Indexing.Repositories;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
 
