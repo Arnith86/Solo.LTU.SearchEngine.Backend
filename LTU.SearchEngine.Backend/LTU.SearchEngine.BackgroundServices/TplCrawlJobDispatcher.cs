@@ -33,7 +33,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 	private PriorityQueue<CrawlJob, DateTime> _jobPriorityQueue;
 	private BufferBlock<CrawlJob> _buffer;
 	private ActionBlock<CrawlJob> _worker;
-
+	
 	/// <summary>
 	/// Initializes a new instance of the <see cref="TplCrawlJobDispatcher"/> class.
 	/// </summary>
@@ -180,25 +180,24 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 			_worker, 
 			new DataflowLinkOptions { PropagateCompletion = true }
 		);
+        while (!ct.IsCancellationRequested)
+        {
+            DateTime now = DateTime.UtcNow;
 
-		while (!ct.IsCancellationRequested)
-		{
-			DateTime now = DateTime.UtcNow;
+            List<CrawlJob> ready = new List<CrawlJob>();
 
-			List<CrawlJob> ready = new List<CrawlJob>();
+            lock (_jobPriorityQueue)
+            {
+                while (_jobPriorityQueue.Count > 0 &&
+                    _jobPriorityQueue.Peek().NextAttempt <= now)
+                {
+                    ready.Add(_jobPriorityQueue.Dequeue());
+                }
+            }
 
-			lock (_jobPriorityQueue)
-			{
-				while (_jobPriorityQueue.Count > 0 && 
-					_jobPriorityQueue.Peek().NextAttempt <= now) 
-				{
-					ready.Add(_jobPriorityQueue.Dequeue());
-				}
-			}
+            foreach (CrawlJob job in ready) await _buffer.SendAsync(job, ct);
 
-			foreach (CrawlJob job in ready) await _buffer.SendAsync(job, ct);
-
-			await Task.Delay(_crawlerSettings.MinDelayMs);
-		}
-	}
+            await Task.Delay(_crawlerSettings.MinDelayMs);
+        }
+    }
 }
