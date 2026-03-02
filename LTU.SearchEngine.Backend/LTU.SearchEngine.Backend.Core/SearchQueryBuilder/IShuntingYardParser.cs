@@ -1,4 +1,4 @@
-﻿namespace LTU.SearchEngine.Backend.Core;
+﻿namespace LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
 
 /// <summary>
 /// Defines a generic contract for transforming a collection of tokens from Infix notation <br />

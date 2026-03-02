@@ -1,7 +1,7 @@
 ﻿using LTU.SearchEngine.Backend.Core.Enums;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 
-namespace LTU.SearchEngine.Backend.Core;
+namespace LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
 
 /// <summary>
 /// Implements the Shunting-yard algorithm to parse search queries. <br/>
@@ -13,6 +13,7 @@ public class SearchQueryShuntingYardParser : IShuntingYardParser<ExtractedQueryT
 	/// <inheritdoc/>
 	public Queue<ExtractedQueryToken> ConvertToPostfix(IEnumerable<ExtractedQueryToken> tokens)
 	{
+		// ToDo: Figure out a solution to handle required tokens.
 		VerifyTokens(tokens);
 
 		Queue<ExtractedQueryToken> outputQueue = new();

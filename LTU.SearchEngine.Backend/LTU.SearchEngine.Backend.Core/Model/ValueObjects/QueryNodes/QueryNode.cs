@@ -1,4 +1,6 @@
-﻿namespace LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
+﻿using LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
+
+namespace LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 
 /// <summary>
 /// Represents the base abstract class for all nodes in the Search Engine's Abstract Syntax Tree (AST).

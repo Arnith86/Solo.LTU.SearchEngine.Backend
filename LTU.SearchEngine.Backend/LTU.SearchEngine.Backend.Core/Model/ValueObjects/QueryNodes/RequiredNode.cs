@@ -1,4 +1,6 @@
-﻿namespace LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
+﻿using LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
+
+namespace LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 
 /// <summary>
 /// Represents a unary operator node in the query tree that marks a sub-expression as required.

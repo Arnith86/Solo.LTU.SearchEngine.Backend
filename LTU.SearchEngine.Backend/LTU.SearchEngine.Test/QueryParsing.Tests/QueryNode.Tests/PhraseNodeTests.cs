@@ -1,7 +1,7 @@
-﻿using LTU.SearchEngine.Backend.Core;
-using LTU.SearchEngine.Backend.Core.Enums;
+﻿using LTU.SearchEngine.Backend.Core.Enums;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
+using LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
 using Moq;
 
 namespace LTU.SearchEngine.Test.QueryParsing.Tests.QueryNode.Tests;
