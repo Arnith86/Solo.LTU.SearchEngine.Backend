@@ -66,7 +66,6 @@ namespace LTU.SearchEngine.Test.Crawling.Tests
             services.AddLogging();
 
             services.AddSingleton<ICrawlJobDispatcher, TplCrawlJobDispatcher>();
-            services.AddSingleton<IClock, ApplicationClock>();
             services.AddTransient<IProcessCrawlJobUseCase, ProcessCrawlJobUseCase>();
             services.AddTransient<IIndexer, Indexer>();
 

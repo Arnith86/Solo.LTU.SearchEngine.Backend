@@ -75,7 +75,6 @@ public class Program
         // ========================================================================
         // The Dispatcher manages the TPL Dataflow pipeline (Queue).
         builder.Services.AddSingleton<ICrawlJobDispatcher, TplCrawlJobDispatcher>();
-        builder.Services.AddSingleton<IClock, ApplicationClock>();
 
         // The Hosted Service that starts the "Seed Job" on application startup (FRQ-1001).
         builder.Services.AddHostedService<CrawlBackgroundService>();

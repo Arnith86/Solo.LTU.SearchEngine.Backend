@@ -16,7 +16,6 @@ public class TplCrawlJobDispatcherTests
 	private readonly SemaphoreProvider _semaphoreProvider;
 	private Mock<IProcessCrawlJobUseCase> _mockUseCase;
 	private readonly ICrawlJobDispatcher _sut;
-    private readonly Mock<IClock> _mockClock;
 
     private CrawlResult CreateResult()
 	{
@@ -54,15 +53,11 @@ public class TplCrawlJobDispatcherTests
 		_crawlerSettings = CreateSettings();
 		_semaphoreProvider = new SemaphoreProvider();
 		_mockUseCase = new Mock<IProcessCrawlJobUseCase>();
-        _mockClock = new Mock<IClock>();
-        _mockClock.Setup(c => c.UtcNow)
-                  .Returns(() => DateTime.UtcNow);
 
         _sut = new TplCrawlJobDispatcher(
 		  _mockUseCase.Object,
 		  _crawlerSettings,
-		  _semaphoreProvider,
-		  _mockClock.Object
+		  _semaphoreProvider
 		 );
     }
 
@@ -73,8 +68,7 @@ public class TplCrawlJobDispatcherTests
 		Assert.Throws<ArgumentNullException>(() => new TplCrawlJobDispatcher(
 			processCrawlJobUseCase: null!,
 			crawlerSettings: _crawlerSettings,
-			semaphoreProvider: _semaphoreProvider,
-			clock: _mockClock.Object)
+			semaphoreProvider: _semaphoreProvider)
 		);
 	}
 
@@ -85,8 +79,8 @@ public class TplCrawlJobDispatcherTests
 		Assert.Throws<ArgumentNullException>(() => new TplCrawlJobDispatcher(
 			processCrawlJobUseCase: _mockUseCase.Object,
 			crawlerSettings: null!,
-			semaphoreProvider: _semaphoreProvider,
-            clock: _mockClock.Object)
+			semaphoreProvider: _semaphoreProvider
+            )
 		);
 	}
 	
@@ -97,8 +91,8 @@ public class TplCrawlJobDispatcherTests
 		Assert.Throws<ArgumentNullException>(() => new TplCrawlJobDispatcher(
 			processCrawlJobUseCase: _mockUseCase.Object,
 			crawlerSettings: _crawlerSettings,
-			semaphoreProvider: null!,
-            clock: _mockClock.Object)
+			semaphoreProvider: null!
+			)
 		);
 	}
 
@@ -137,55 +131,41 @@ public class TplCrawlJobDispatcherTests
     [Fact]
     public async Task Enqueue_ScheduledJob_IsNotProcessedBeforeNextAttempt()
     {
-        var mockClock = new Mock<IClock>();
-        DateTime now = new DateTime(2026, 2, 26);
+       // Used to signal when the mocked Execute method is actually invoked.   
+        var executionSignal = new TaskCompletionSource<bool>();
 
-        mockClock.Setup(c => c.UtcNow)
-                 .Returns(() => now);
-
-        // sut to use a controlled mock clock
-        var sut = new TplCrawlJobDispatcher(
-            _mockUseCase.Object,
-            _crawlerSettings,
-            _semaphoreProvider,
-            mockClock.Object
-        );
+        // Signal when Execute is invoked to wait deterministically in the test.
+        _mockUseCase.Setup(u => u.Execute(It.IsAny<CrawlJob>()))
+		.Returns(async () =>
+		{
+			executionSignal.TrySetResult(true);
+			return CreateResult();
+		});
 
         var job = new CrawlJob
         {
             Id = 2,
             Url = "https://example.com",
-            NextAttempt = now.AddMilliseconds(300) 
+            NextAttempt = DateTime.UtcNow.AddMilliseconds(300) 
         };
 
-        _mockUseCase.Setup(u => u.Execute(It.IsAny<CrawlJob>()))
-                    .ReturnsAsync(CreateResult());
-
         using var cts = new CancellationTokenSource();
-        var startTask = sut.Start(cts.Token);
+        var startTask = _sut.Start(cts.Token);
 
-        await sut.Enqueue(job);
+		// Act
+        await _sut.Enqueue(job);
 
-        // Not yet time
-        await sut.ProcessDueJobs(CancellationToken.None);
+        // Assert (before scheduled time)
+        await Task.Delay(100);
+        // Verify that the job has not been executed yet
+        Assert.False(executionSignal.Task.IsCompleted);
 
-        _mockUseCase.Verify(
-            u => u.Execute(It.IsAny<CrawlJob>()),
-            Times.Never
-        );
+        // Assert (after scheduled time)
+        await Task.Delay(300);
+        // Wait until the mocked Execute method signals execution
+        await executionSignal.Task.WaitAsync(TimeSpan.FromSeconds(1));
 
-        // Advance time
-        now = now.AddMilliseconds(350);
-
-        await sut.ProcessDueJobs(CancellationToken.None);
-
-        // Give buffer a tiny moment to push to worker
-        await Task.Delay(10);
-
-        _mockUseCase.Verify(
-            u => u.Execute(It.IsAny<CrawlJob>()),
-            Times.Once
-        );
+        _mockUseCase.Verify(u => u.Execute(It.IsAny<CrawlJob>()), Times.Once);
 
         cts.Cancel();
         await startTask;
