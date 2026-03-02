@@ -1,10 +1,6 @@
 ﻿using LTU.SearchEngine.Backend.Core;
 using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
-using LTU.SearchEngine.Infrastructure.Indexing.Normalization;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace LTU.SearchEngine.Infrastructure.Indexing
 {

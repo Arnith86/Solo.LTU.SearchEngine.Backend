@@ -1,6 +1,8 @@
-﻿using System.Text;
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
 
-namespace LTU.SearchEngine.Infrastructure.Indexing.Normalization
+namespace LTU.SearchEngine.Backend.Core.TextNormalization
 {
     public class PunctuationFilter : ITextFilter
     {
