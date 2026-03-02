@@ -200,24 +200,4 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
             await Task.Delay(_crawlerSettings.MinDelayMs);
         }
     }
-
-
-	/*public async Task ProcessDueJobs(CancellationToken ct)
-	{
-        DateTime now = DateTime.UtcNow;
-
-        List<CrawlJob> ready = new List<CrawlJob>();
-
-        lock (_jobPriorityQueue)
-        {
-            while (_jobPriorityQueue.Count > 0 &&
-                _jobPriorityQueue.Peek().NextAttempt <= now)
-            {
-                ready.Add(_jobPriorityQueue.Dequeue());
-            }
-        }
-
-        foreach (CrawlJob job in ready) await _buffer.SendAsync(job, ct);
-    }*/
-
 }
