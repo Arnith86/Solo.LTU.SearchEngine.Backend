@@ -2,7 +2,6 @@
 using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure.Indexing;
-using LTU.SearchEngine.Infrastructure.Indexing.Normalization;
 using Moq;
 using System;
 using System.Net;
