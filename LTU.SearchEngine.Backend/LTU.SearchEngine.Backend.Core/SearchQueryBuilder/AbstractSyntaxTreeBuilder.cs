@@ -4,16 +4,27 @@ using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 
 namespace LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
 
+/// <summary>
+/// Provides a concrete implementation for building an Abstract Syntax Tree (AST) 
+/// from a sequence of query tokens using a Shunting-yard based approach.
+/// </summary>
+/// <typeparam name="TResult">The return type produced by a visitor during tree traversal.</typeparam>
+
 public class AbstractSyntaxTreeBuilder<TResult> : ITreeBuilder<TResult, ExtractedQueryToken>
 {
 	private readonly IShuntingYardParser<ExtractedQueryToken> _shuntingYardParser;
 
+	/// <summary>
+	/// Initializes a new instance of the <see cref="AbstractSyntaxTreeBuilder{TResult}"/> class.
+	/// </summary>
+	/// <param name="shuntingYardParser">The parser used to convert infix tokens to postfix notation.</param>
 	public AbstractSyntaxTreeBuilder(
 		IShuntingYardParser<ExtractedQueryToken> shuntingYardParser)
 	{
 		_shuntingYardParser = shuntingYardParser;
 	}
 
+	/// <inheritdoc/>
 	public QueryNode<TResult> BuildTree(IEnumerable<ExtractedQueryToken> tokens)
 	{
 		Queue<ExtractedQueryToken> postfix = 
