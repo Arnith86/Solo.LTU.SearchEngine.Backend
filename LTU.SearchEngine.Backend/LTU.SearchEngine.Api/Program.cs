@@ -1,13 +1,13 @@
 using LTU.SearchEngine.Application;
 using LTU.SearchEngine.Backend.Core;
 using LTU.SearchEngine.Backend.Core.Model;
+using LTU.SearchEngine.Backend.Core.TextNormalization;
 using LTU.SearchEngine.BackgroundServices;
 using LTU.SearchEngine.Infrastructure;
 using LTU.SearchEngine.Infrastructure.Configuration;
 using LTU.SearchEngine.Infrastructure.Crawling;
 using LTU.SearchEngine.Infrastructure.Data;
 using LTU.SearchEngine.Infrastructure.Indexing;
-using LTU.SearchEngine.Infrastructure.Indexing.Normalization;
 using LTU.SearchEngine.Infrastructure.Indexing.Repositories;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
