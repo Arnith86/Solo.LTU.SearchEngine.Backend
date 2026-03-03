@@ -14,6 +14,7 @@ public class SearchQueryShuntingYardParser : IShuntingYardParser<ExtractedQueryT
 	public Queue<ExtractedQueryToken> ConvertToPostfix(IEnumerable<ExtractedQueryToken> tokens)
 	{
 		// ToDo: Figure out a solution to handle required tokens.
+		// ToDo: Figure out a solution to handle implicit OR (word1 word2).
 		VerifyTokens(tokens);
 
 		Queue<ExtractedQueryToken> outputQueue = new();
@@ -40,7 +41,9 @@ public class SearchQueryShuntingYardParser : IShuntingYardParser<ExtractedQueryT
 				// If stack is empty then there is a "(" missing.
 				if (operatorStack.Count == 0 || !IsStartParentheses(operatorStack.Peek()))
 				{
-					throw new FormatException("Mismatched parentheses: Found closing parenthesis ')' without a matching opening parenthesis.");
+					throw new FormatException(
+						"Mismatched parentheses: Found closing parenthesis ')' without a matching opening parenthesis."
+					);
 				}
 
 				// Discard the start parenthesis from the stack.
@@ -63,7 +66,9 @@ public class SearchQueryShuntingYardParser : IShuntingYardParser<ExtractedQueryT
 			var remainingToken = operatorStack.Pop();
 
 			if (IsStartParentheses(remainingToken))
-				throw new FormatException("Mismatched parentheses: Found opening parenthesis '(' without a matching closing parenthesis.");
+				throw new FormatException(
+					"Mismatched parentheses: Found opening parenthesis '(' without a matching closing parenthesis."
+				);
 
 			outputQueue.Enqueue(remainingToken);
 		}
@@ -88,13 +93,14 @@ public class SearchQueryShuntingYardParser : IShuntingYardParser<ExtractedQueryT
 							GetPrecedenceValue(result.Token) >= currentOperatorValue;
 	}
 
+
 	private int GetPrecedenceValue(string op)
 	{
 		return op switch
 		{
-			"NOT" => 3,
-			"AND" => 2,
-			"OR" => 1,
+			"NOT" or "!" or "-" => 3,
+			"AND" or "&&" => 2,
+			"OR" or "||" => 1,
 			_ => 0
 		};
 	}
