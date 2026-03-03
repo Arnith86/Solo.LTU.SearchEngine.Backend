@@ -13,6 +13,8 @@ public class SearchQueryShuntingYardParserTests
 		_sut = new SearchQueryShuntingYardParser();
 	}
 
+	// ToDo: Make sure that tests use all versions of operators includes all operators including || && ! - and +
+
 	[Fact]
 	public void ConvertToPostfix_WhenTokensIsNull_ThrowsArgumentNullException()
 	{
@@ -66,6 +68,64 @@ public class SearchQueryShuntingYardParserTests
 		Assert.Equal("Luleå", result[1].Token);
 		Assert.Equal("AND", result[2].Token);
 	}
+
+	[Theory]
+	[InlineData("AND")]
+	[InlineData("&&")]
+	[InlineData("OR")]
+	[InlineData("||")]
+	[InlineData("NOT")]
+	[InlineData("!")]
+	[InlineData("-")]
+	public void ConvertToPostfix_HandlesAllExceptRequiredOperatorsCorrectly(string op)
+	{
+		// Arrange
+		// Infix: Java AND Luleå -> Postfix: Java Luleå AND
+		var tokens = new List<ExtractedQueryToken>
+		{
+			CreateToken("Java", QueryTokenType.Term),
+			CreateToken(op, QueryTokenType.LogicalOperator),
+			CreateToken("Luleå", QueryTokenType.Term)
+		};
+
+		// Act
+		var result = _sut
+			.ConvertToPostfix(tokens)
+			.ToList();
+
+		// Assert
+		Assert.Equal(3, result.Count);
+		Assert.Equal("Java", result[0].Token);
+		Assert.Equal("Luleå", result[1].Token);
+		Assert.Equal(op, result[2].Token);
+		Assert.Equivalent(QueryTokenType.LogicalOperator, result[2].TokenType);
+	}
+
+	// ToDo: implement this test when required operators are implemented in the parser.
+	//[Fact]
+	//public void ConvertToPostfix_HandlesRequiredOperatorsCorrectly()
+	//{
+	//	// Arrange
+	//	// Infix: +Java OR Luleå -> Postfix: +Java Luleå OR
+	//	var tokens = new List<ExtractedQueryToken>
+	//	{
+	//		CreateToken("Java", QueryTokenType.Term),
+	//		CreateToken(op, QueryTokenType.LogicalOperator),
+	//		CreateToken("Luleå", QueryTokenType.Term)
+	//	};
+
+	//	// Act
+	//	var result = _sut
+	//		.ConvertToPostfix(tokens)
+	//		.ToList();
+
+	//	// Assert
+	//	Assert.Equal(3, result.Count);
+	//	Assert.Equal("Java", result[0].Token);
+	//	Assert.Equal("Luleå", result[1].Token);
+	//	Assert.Equal(op, result[2].Token);
+	//	Assert.Equivalent(QueryTokenType.LogicalOperator, result[2].TokenType);
+	//}
 
 	[Fact]
 	public void ConvertToPostfix_PrecedenceNotOverAnd_ReturnsNotFirst()
