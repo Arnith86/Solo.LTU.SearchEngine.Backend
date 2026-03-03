@@ -4,52 +4,60 @@ using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 
 namespace LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
 
-public class AbstractSyntaxTreeBuilder<TResult>
+public class AbstractSyntaxTreeBuilder<TResult> : ITreeBuilder<TResult, ExtractedQueryToken>
 {
 	private readonly IShuntingYardParser<ExtractedQueryToken> _shuntingYardParser;
 
-	public AbstractSyntaxTreeBuilder(IShuntingYardParser<ExtractedQueryToken> shuntingYardParser)
+	public AbstractSyntaxTreeBuilder(
+		IShuntingYardParser<ExtractedQueryToken> shuntingYardParser)
 	{
 		_shuntingYardParser = shuntingYardParser;
 	}
 
 	public QueryNode<TResult> BuildTree(IEnumerable<ExtractedQueryToken> tokens)
 	{
-		Queue<ExtractedQueryToken> postfix = _shuntingYardParser.ConvertToPostfix(tokens);
+		Queue<ExtractedQueryToken> postfix = 
+			_shuntingYardParser.ConvertToPostfix(tokens);
 
-		Stack<QueryNode<TResult>> ASTStack = new Stack<QueryNode<TResult>>(); 
+		Stack<QueryNode<TResult>> Stack = new Stack<QueryNode<TResult>>();
 
 		foreach (ExtractedQueryToken token in postfix)
 		{
 			switch (token.TokenType)
 			{
 				case QueryTokenType.Term:
-					ASTStack.Push(new TermNode<TResult>(token.Token));
+					Stack.Push(new TermNode<TResult>(token.Token));
 					break;
 				case QueryTokenType.Phrase:
-					ASTStack.Push(
+					Stack.Push(
 						new PhraseNode<TResult>(ConvertPhraseToTermList(token.Token))
 					);
 					break;
 				case QueryTokenType.LogicalOperator:
-					HandleLogicalOperator(ASTStack, token);
+					HandleLogicalOperator(Stack, token);
 					break;
 				default:
 					break;
 			}
 		}
 
+		if (Stack.Count != 1)
+			throw new InvalidOperationException("Invalid query structure.");
+
+		return Stack.Pop();
 	}
+
 
 	private void HandleLogicalOperator(
 		Stack<QueryNode<TResult>> aSTStack, ExtractedQueryToken token)
 	{
+		// makes sure there are enough tokens to build a logical operation
 		if (aSTStack.Count < 2)
 			throw new InvalidOperationException("Invalid logical operation.");
 
-		QueryNode<TResult> left = AddTextNodes(aSTStack);
-		QueryNode<TResult> right = AddTextNodes(aSTStack);
-		  
+		QueryNode<TResult> right = aSTStack.Pop();
+		QueryNode<TResult> left = aSTStack.Pop();
+
 		LogicalOperators op = ParseOperatorType(token.Token);
 
 		aSTStack.Push(new LogicOperationNode<TResult>(
@@ -63,26 +71,12 @@ public class AbstractSyntaxTreeBuilder<TResult>
 	{
 		return token switch
 		{
-			"AND" => LogicalOperators.AND,
-			"OR" => LogicalOperators.OR,
-			"NOT" => LogicalOperators.NOT,
+			"AND" or "&&" => LogicalOperators.AND,
+			"OR" or "||" => LogicalOperators.OR,
+			"NOT" or "-" or "!" => LogicalOperators.NOT,
+			// "+" => LogicalOperators.REQUIRED, When Required gets implemented, this should be un-commented.
 			_ => throw new NotSupportedException()
 		};
-	}
-
-	private QueryNode<TResult> AddTextNodes(Stack<QueryNode<TResult>> aSTStack)
-	{
-
-		if (!aSTStack.TryPop(out var node))
-			throw new InvalidOperationException("Stack is empty. Expected a Term or Phrase node.");
-
-
-		if (node is not (TermNode<TResult> or PhraseNode<TResult>)) 	
-			throw new InvalidOperationException(
-				$"Invalid logical operation. Expected a Term or Phrase node but found {node.GetType}."
-			);
-		
-		return node;
 	}
 
 	private List<ExtractedQueryToken> ConvertPhraseToTermList(string phrase)
