@@ -1,4 +1,5 @@
-﻿using LTU.SearchEngine.Backend.Core.Enums;
+﻿using LTU.SearchEngine.Backend.Core;
+using LTU.SearchEngine.Backend.Core.Enums;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -12,12 +13,15 @@ namespace LTU.SearchEngine.Application.QueryParsing.Helpers;
 public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryTokenType>
 {
 	private readonly IQuerySyntaxHelper _syntaxHelper;
+    private readonly ITextNormalizer<string> _normalizer;
 
-	public QueryStringTokenizer(IQuerySyntaxHelper syntaxHelper)
+    public QueryStringTokenizer(IQuerySyntaxHelper syntaxHelper, ITextNormalizer<string> normalizer)
 	{
 		_syntaxHelper = syntaxHelper ?? 
 			throw new ArgumentNullException(nameof(syntaxHelper));
-	}
+        _normalizer = normalizer ?? 
+			throw new ArgumentNullException(nameof(normalizer));
+    }
 
 	// Finalizes a token build
 	/// <inheritdoc/>
@@ -28,10 +32,24 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 	{
 		if (stringBuilder.Length == 0) return;
 
-		var token = stringBuilder.ToString().Trim();
-		var extractedToken = new ExtractedQueryToken(queryTokenType, token);
 
-		if (token.Length > 0)
+		var token = stringBuilder.ToString().Trim();
+        var extractedToken = new ExtractedQueryToken(queryTokenType, token);
+
+        // Normalize BEFORE creating ExtractedQueryToken
+        if (queryTokenType == QueryTokenType.Term ||
+			queryTokenType == QueryTokenType.Phrase)
+		{
+			token = _normalizer.Normalize(token);
+
+			if (token == null)
+			{
+				stringBuilder.Clear();
+				return;
+			}
+		}
+
+        if (token.Length > 0)
 			tokens.Add(extractedToken);
 
 		stringBuilder.Clear();
