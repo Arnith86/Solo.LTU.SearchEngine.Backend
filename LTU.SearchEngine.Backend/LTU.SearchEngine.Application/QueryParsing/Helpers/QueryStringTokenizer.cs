@@ -38,16 +38,16 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 
         // Normalize BEFORE creating ExtractedQueryToken
         if (queryTokenType == QueryTokenType.Term ||
-		queryTokenType == QueryTokenType.Phrase)
-			{
-				token = _normalizer.Normalize(token);
+			queryTokenType == QueryTokenType.Phrase)
+		{
+			token = _normalizer.Normalize(token);
 
-				if (token == null)
-				{
-					stringBuilder.Clear();
-					return;
-				}
+			if (token == null)
+			{
+				stringBuilder.Clear();
+				return;
 			}
+		}
 
         if (token.Length > 0)
 			tokens.Add(extractedToken);
