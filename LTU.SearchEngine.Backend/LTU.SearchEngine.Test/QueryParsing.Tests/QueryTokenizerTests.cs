@@ -3,7 +3,6 @@ using LTU.SearchEngine.Backend.Core.Enums;
 using LTU.SearchEngine.Backend.Core.Exceptions;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using Moq;
-using System;
 using System.Text;
 
 namespace LTU.SearchEngine.Test.QueryParsing.Tests;
@@ -155,6 +154,29 @@ public class QueryTokenizerTests
 		Assert.Equivalent(start, result[0]);
 		Assert.Equivalent(expectedOperator, result[1]);
 		Assert.Equivalent(phrase, result[2]);
+		Assert.Equal(expectedOperator.TokenType, result[1].TokenType);
+	}
+
+	[Theory]
+	[InlineData("!")]
+	[InlineData("-")]
+	public void Tokenize_NotWithoutSpace_LogicalOperatorSeparateFromTerm(string operatorInput)
+	{
+		// Arrange
+		var input = $"first {operatorInput}second";
+
+		var first = new ExtractedQueryToken(QueryTokenType.Term, "first");
+		var expectedOperator = new ExtractedQueryToken(QueryTokenType.LogicalOperator, operatorInput);
+		var second = new ExtractedQueryToken(QueryTokenType.Term, "second");
+
+		// Act
+		var result = _sut.Tokenize(input);
+
+		// Assert
+		Assert.Equal(3, result.Count);
+		Assert.Equivalent(first, result[0]);
+		Assert.Equivalent(expectedOperator, result[1]);
+		Assert.Equivalent(second, result[2]);
 		Assert.Equal(expectedOperator.TokenType, result[1].TokenType);
 	}
 

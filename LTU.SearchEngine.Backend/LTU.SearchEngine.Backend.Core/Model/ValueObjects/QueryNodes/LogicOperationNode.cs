@@ -1,4 +1,5 @@
 ﻿using LTU.SearchEngine.Backend.Core.Enums;
+using LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
 
 namespace LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 
@@ -41,6 +42,14 @@ public class LogicOperationNode<T> : QueryNode<T>
 	/// <inheritdoc>/>
 	public override T Accept(IQueryVisitor<T> visitor)
 		=> visitor.Visit(this);
+
+	/// <summary>
+	/// Used for debugging and visualization purposes, returns the logical expression <br/>
+	/// enclosed inside of a pair of parentheses.
+	/// </summary>
+	/// <returns>The full logical expression as a single sting.</returns>
+	public override string ToString() => 
+		$"({LeftNode} {LogicalOperator} {RightNode})";
 
 	private void ValidateLogicalOperator(LogicalOperators logicalOperator)
 	{

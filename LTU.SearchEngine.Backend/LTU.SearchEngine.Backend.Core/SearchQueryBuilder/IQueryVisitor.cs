@@ -1,6 +1,6 @@
 ﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 
-namespace LTU.SearchEngine.Backend.Core;
+namespace LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
 
 /// <summary>
 /// Defines a generic Visitor for traversing and processing the Search Engine's Abstract Syntax Tree (AST).
