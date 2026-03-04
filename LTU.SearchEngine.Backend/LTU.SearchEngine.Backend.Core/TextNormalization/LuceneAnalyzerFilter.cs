@@ -1,15 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Lucene.Net.Analysis;
+﻿using Lucene.Net.Analysis;
 using Lucene.Net.Analysis.Core;
 using Lucene.Net.Analysis.En;
-using Lucene.Net.Analysis.Standard;
 using Lucene.Net.Analysis.TokenAttributes;
 using Lucene.Net.Util;
-using Lucene.Net.Analysis.Miscellaneous;
+using System;
+using System.Collections.Generic;
+using System.Text;
 
-namespace LTU.SearchEngine.Infrastructure.Indexing.Normalization
+namespace LTU.SearchEngine.Backend.Core.TextNormalization
 {
     public class LuceneAnalyzerFilter : ITextFilter
     {
@@ -51,7 +49,7 @@ namespace LTU.SearchEngine.Infrastructure.Indexing.Normalization
             {
                 var result = termAttr.ToString();
                 tokenStream.End();
-                return string.IsNullOrWhiteSpace(result) ? null : result; 
+                return string.IsNullOrWhiteSpace(result) ? null : result;
             }
 
             tokenStream.End();

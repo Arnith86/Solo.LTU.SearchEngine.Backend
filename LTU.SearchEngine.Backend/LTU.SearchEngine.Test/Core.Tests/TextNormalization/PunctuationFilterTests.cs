@@ -1,7 +1,7 @@
-﻿using LTU.SearchEngine.Infrastructure.Indexing.Normalization;
+﻿using LTU.SearchEngine.Backend.Core.TextNormalization;
 using Xunit;
 
-namespace LTU.SearchEngine.Test.Indexing.Tests
+namespace LTU.SearchEngine.Test.Core.Tests.TextNormalization
 {
     public class PunctuationFilterTests
     {

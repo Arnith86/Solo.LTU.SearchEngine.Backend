@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace LTU.SearchEngine.Infrastructure.Indexing.Normalization
+namespace LTU.SearchEngine.Backend.Core.TextNormalization
 {
     public interface ITextFilter
     {
