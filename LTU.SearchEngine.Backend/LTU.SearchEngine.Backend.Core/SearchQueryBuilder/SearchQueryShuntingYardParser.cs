@@ -80,7 +80,7 @@ public class SearchQueryShuntingYardParser : IShuntingYardParser<ExtractedQueryT
 	{
 		if (tokens is null)
 			throw new ArgumentNullException(nameof(tokens), "must have a value.");
-		if (tokens.Count() < 1 )
+		if (!tokens.Any())
 			throw new ArgumentOutOfRangeException(nameof(tokens), "cannot be empty.");
 	}
 
