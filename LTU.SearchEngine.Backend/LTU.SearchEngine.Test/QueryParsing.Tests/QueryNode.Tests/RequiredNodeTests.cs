@@ -1,6 +1,5 @@
 ﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 using LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
-using LTU.SearchEngine.Backend.Core.SearchQueryBuilder.QueryNodes;
 using Moq;
 
 namespace LTU.SearchEngine.Test.QueryParsing.Tests.QueryNode.Tests;
