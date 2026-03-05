@@ -40,7 +40,7 @@ public class LogicOperationNode<T> : QueryNode<T>
 	}
 
 	/// <inheritdoc>/>
-	public override T Accept(IQueryVisitor<T> visitor)
+	public override Task<T> Accept(IQueryVisitor<T> visitor)
 		=> visitor.Visit(this);
 
 	/// <summary>

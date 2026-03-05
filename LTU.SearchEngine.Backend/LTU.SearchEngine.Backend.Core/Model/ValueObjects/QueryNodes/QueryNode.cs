@@ -21,5 +21,5 @@ public abstract class QueryNode<T>
     /// This is the "Double Dispatch" mechanism that allows the visitor to identify 
     /// the concrete type of the node (e.g., TermNode or BinaryNode) at runtime.
     /// </remarks>
-	public abstract T Accept(IQueryVisitor<T> visitor);
+	public abstract Task<T> Accept(IQueryVisitor<T> visitor);
 }
