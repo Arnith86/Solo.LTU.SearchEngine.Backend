@@ -1,15 +1,10 @@
 ﻿using LTU.SearchEngine.Backend.Core.Entities;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Infrastructure.Data;
-using LTU.SearchEngine.Infrastructure.Indexing.Repositories;
+using LTU.SearchEngine.Infrastructure.Repositories;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Xunit;
 
 namespace LTU.SearchEngine.Test
 {

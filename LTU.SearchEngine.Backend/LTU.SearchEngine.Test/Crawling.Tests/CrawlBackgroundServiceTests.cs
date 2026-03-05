@@ -8,7 +8,7 @@ using LTU.SearchEngine.BackgroundServices;
 using LTU.SearchEngine.Infrastructure;
 using LTU.SearchEngine.Infrastructure.Crawling;
 using LTU.SearchEngine.Infrastructure.Indexing;
-using LTU.SearchEngine.Infrastructure.Indexing.Repositories;
+using LTU.SearchEngine.Infrastructure.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;

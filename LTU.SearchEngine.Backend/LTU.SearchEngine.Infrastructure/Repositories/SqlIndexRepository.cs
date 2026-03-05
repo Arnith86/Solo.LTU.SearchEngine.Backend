@@ -1,32 +1,22 @@
 ﻿using LTU.SearchEngine.Backend.Core.Entities;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 using LTU.SearchEngine.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace LTU.SearchEngine.Infrastructure.Indexing.Repositories
+namespace LTU.SearchEngine.Infrastructure.Repositories
 {
-    /// <summary>
-    /// Handles database operations for the search engine´s indexing against a SQL database.
-    /// Uses IDbContextFactory to ensure thread safety during parallel web crawling.
-    /// </summary>
-    public class SqlIndexRepository : IIndexRepository
+	/// <summary>
+	/// Handles database operations for the search engine´s indexing against a SQL database.
+	/// Uses IDbContextFactory to ensure thread safety during parallel web crawling.
+	/// </summary>
+	public class SqlIndexRepository : IIndexRepository
     {
         private readonly IDbContextFactory<SearchDbContext> _factory;
 
         public SqlIndexRepository(IDbContextFactory<SearchDbContext> factory)
         {
             _factory = factory;
-        }
-
-        //Retrives a list of pages based on their unique IDs
-        public async Task<List<Page>> GetPagesByIdsAsync(List<int> pageIds)
-        {
-            //Creates a new database context based on their unique IDs
-            await using var context = await _factory.CreateDbContextAsync();
-
-            return await context.Pages
-                .Where(p => pageIds.Contains(p.Id))
-                .ToListAsync();
         }
 
         // Saves a fully processed document from the pipeline to the database.
@@ -157,10 +147,11 @@ namespace LTU.SearchEngine.Infrastructure.Indexing.Repositories
             // Save all connections
             await context.SaveChangesAsync();
         }
+
         /// <summary>
         /// Finds the IDs of all pages containing a specific word.
         /// </summary>
-        public async Task<List<int>> GetPageIdsContainingTermAsync(string term)
+        public async Task<HashSet<int>> GetDocumentIdsForTermAsync(string term)
         {
             await using var context = await _factory.CreateDbContextAsync();
 
@@ -168,7 +159,24 @@ namespace LTU.SearchEngine.Infrastructure.Indexing.Repositories
             return await context.PageWordFrequencies
                 .Where(pwf => pwf.Term.Word == term)
                 .Select(pwf => pwf.PageId)
-                .ToListAsync();
+                .ToHashSetAsync();
         }
-    }
+
+		// Retrieves a list of documents based on their unique IDs
+		public async Task<List<Page>> GetDocumentsByIdAsync(List<int> pageIds)
+		{
+			//Creates a new database context based on their unique IDs
+			await using var context = await _factory.CreateDbContextAsync();
+
+			return await context.Pages
+				.Where(p => pageIds.Contains(p.Id))
+				.ToListAsync();
+		}
+
+		public Task<HashSet<int>> GetDocumentIdsForPhraseAsync(
+            PhraseNode<HashSet<int>> phrase)
+		{
+			throw new NotImplementedException();
+		}
+	}
 }

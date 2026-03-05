@@ -8,7 +8,7 @@ using LTU.SearchEngine.Infrastructure.Configuration;
 using LTU.SearchEngine.Infrastructure.Crawling;
 using LTU.SearchEngine.Infrastructure.Data;
 using LTU.SearchEngine.Infrastructure.Indexing;
-using LTU.SearchEngine.Infrastructure.Indexing.Repositories;
+using LTU.SearchEngine.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
 
