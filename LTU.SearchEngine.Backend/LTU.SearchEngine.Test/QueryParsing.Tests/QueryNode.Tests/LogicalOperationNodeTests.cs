@@ -78,14 +78,14 @@ public class LogicalOperationNodeTests
 		var expectedResult = Task.FromResult(new HashSet<int> { 1, 2, 3 });
 
 		mockVisitor
-			.Setup(v => v.Visit(sut))
+			.Setup(v => v.VisitAsync(sut))
 			.ReturnsAsync(expectedResult);
 
 		// Act
-		var result = await sut.Accept(mockVisitor.Object);
+		var result = await sut.AcceptAsync(mockVisitor.Object);
 
 		// Assert
 		Assert.Equal(expectedResult, result);
-		mockVisitor.Verify(v => v.Visit(sut), Times.Once);
+		mockVisitor.Verify(v => v.VisitAsync(sut), Times.Once);
 	}
 }

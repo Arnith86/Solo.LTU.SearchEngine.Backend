@@ -28,8 +28,8 @@ public class TermNode<T> : QueryNode<T>
 
 
 	/// <inheritdoc>/>
-	public override Task<T> Accept(IQueryVisitor<T> visitor)
-		=> visitor.Visit(this);
+	public override Task<T> AcceptAsync(IQueryVisitor<T> visitor)
+		=> visitor.VisitAsync(this);
 
 	/// <summary>
 	/// Used for debugging and visualization purposes, returns the term string contained in this node.

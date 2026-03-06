@@ -53,14 +53,14 @@ public class PhraseNodeTests
 		var expectedResult = Task.FromResult(new HashSet<int> { 101 });
 
 		mockVisitor
-			.Setup(v => v.Visit(node))
+			.Setup(v => v.VisitAsync(node))
 			.ReturnsAsync(expectedResult);
 
 		// Act
-		var result = await node.Accept(mockVisitor.Object);
+		var result = await node.AcceptAsync(mockVisitor.Object);
 
 		// Assert
 		Assert.Same(expectedResult, result);
-		mockVisitor.Verify(v => v.Visit(node), Times.Once);
+		mockVisitor.Verify(v => v.VisitAsync(node), Times.Once);
 	}
 }

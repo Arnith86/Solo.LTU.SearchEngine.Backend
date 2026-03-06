@@ -41,14 +41,14 @@ public class TermNodeTests
 		var expectedResult = "visited apple";
 
 		mockVisitor
-			.Setup(v => v.Visit(node))
+			.Setup(v => v.VisitAsync(node))
 			.ReturnsAsync(expectedResult);
 
 		// Act
-		var result = await node.Accept(mockVisitor.Object);
+		var result = await node.AcceptAsync(mockVisitor.Object);
 
 		// Assert
 		Assert.Equal(expectedResult, result);
-		mockVisitor.Verify(v => v.Visit(node), Times.Once);
+		mockVisitor.Verify(v => v.VisitAsync(node), Times.Once);
 	}
 }
