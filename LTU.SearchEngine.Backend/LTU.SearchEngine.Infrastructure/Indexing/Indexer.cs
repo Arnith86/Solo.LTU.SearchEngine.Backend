@@ -1,6 +1,6 @@
 ﻿using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
-using LTU.SearchEngine.Infrastructure.Indexing.Repositories;
+using LTU.SearchEngine.Infrastructure.Repositories;
 
 namespace LTU.SearchEngine.Infrastructure.Indexing
 {

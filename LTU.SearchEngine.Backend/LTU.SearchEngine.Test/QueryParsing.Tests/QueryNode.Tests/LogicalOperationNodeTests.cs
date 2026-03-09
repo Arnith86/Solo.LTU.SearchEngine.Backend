@@ -62,7 +62,7 @@ public class LogicalOperationNodeTests
 	}
 
 	[Fact]
-	public void Accept_CallsVisitOnVisitor_ReturnsExpectedValue()
+	public async Task Accept_CallsVisitOnVisitor_ReturnsExpectedValueAsync()
 	{
 		// Arrange
 		var dummy = new TermNode<Task<HashSet<int>>>("dummy");
@@ -78,14 +78,14 @@ public class LogicalOperationNodeTests
 		var expectedResult = Task.FromResult(new HashSet<int> { 1, 2, 3 });
 
 		mockVisitor
-			.Setup(v => v.Visit(sut))
-			.Returns(expectedResult);
+			.Setup(v => v.VisitAsync(sut))
+			.ReturnsAsync(expectedResult);
 
 		// Act
-		var result = sut.Accept(mockVisitor.Object);
+		var result = await sut.AcceptAsync(mockVisitor.Object);
 
 		// Assert
 		Assert.Equal(expectedResult, result);
-		mockVisitor.Verify(v => v.Visit(sut), Times.Once);
+		mockVisitor.Verify(v => v.VisitAsync(sut), Times.Once);
 	}
 }

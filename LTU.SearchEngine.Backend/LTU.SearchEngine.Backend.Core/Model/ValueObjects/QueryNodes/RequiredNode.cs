@@ -24,6 +24,6 @@ public class RequiredNode<T> : QueryNode<T>
 	}
 
 	/// <inheritdoc>/>
-	public override T Accept(IQueryVisitor<T> visitor)
-		=> visitor.Visit(this);
+	public override Task<T> AcceptAsync(IQueryVisitor<T> visitor)
+		=> visitor.VisitAsync(this);
 }

@@ -33,7 +33,7 @@ public class TermNodeTests
 
 
 	[Fact]
-	public void Accept_CallsVisitOnVisitor_ReturnsExpectedValue()
+	public async Task Accept_CallsVisitOnVisitor_ReturnsExpectedValueAsync()
 	{
 		// Arrange
 		var node = new TermNode<string>("apple");
@@ -41,14 +41,14 @@ public class TermNodeTests
 		var expectedResult = "visited apple";
 
 		mockVisitor
-			.Setup(v => v.Visit(node))
-			.Returns(expectedResult);
+			.Setup(v => v.VisitAsync(node))
+			.ReturnsAsync(expectedResult);
 
 		// Act
-		var result = node.Accept(mockVisitor.Object);
+		var result = await node.AcceptAsync(mockVisitor.Object);
 
 		// Assert
 		Assert.Equal(expectedResult, result);
-		mockVisitor.Verify(v => v.Visit(node), Times.Once);
+		mockVisitor.Verify(v => v.VisitAsync(node), Times.Once);
 	}
 }

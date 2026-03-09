@@ -27,8 +27,8 @@ public class PhraseNode<T> : QueryNode<T>
 	}
 
 	/// <inheritdoc>/>
-	public override T Accept(IQueryVisitor<T> visitor)
-		=> visitor.Visit(this);
+	public override Task<T> AcceptAsync(IQueryVisitor<T> visitor)
+		=> visitor.VisitAsync(this);
 
 	/// <summary>
 	/// Used for debugging and visualization purposes, returns the phrase as a <br/>

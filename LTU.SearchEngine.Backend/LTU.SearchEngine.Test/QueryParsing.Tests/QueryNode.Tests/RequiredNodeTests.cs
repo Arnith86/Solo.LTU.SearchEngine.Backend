@@ -29,7 +29,7 @@ public class RequiredNodeTests
 	}
 
 	[Fact]
-	public void Accept_CallsVisitOnVisitor_ReturnsExpectedValue()
+	public async Task Accept_CallsVisitOnVisitor_ReturnsExpectedValueAsync()
 	{
 		// Arrange
 		var innerNode = new Mock<QueryNode<Task<HashSet<int>>>>().Object;
@@ -41,14 +41,14 @@ public class RequiredNodeTests
 		);
 
 		mockVisitor
-			.Setup(v => v.Visit(sut))
-			.Returns(expectedResult);
+			.Setup(v => v.VisitAsync(sut))
+			.ReturnsAsync(expectedResult);
 
 		// Act
-		var result = sut.Accept(mockVisitor.Object);
+		var result = await sut.AcceptAsync(mockVisitor.Object);
 
 		// Assert
 		Assert.Same(expectedResult, result);
-		mockVisitor.Verify(v => v.Visit(sut), Times.Once);
+		mockVisitor.Verify(v => v.VisitAsync(sut), Times.Once);
 	}
 }

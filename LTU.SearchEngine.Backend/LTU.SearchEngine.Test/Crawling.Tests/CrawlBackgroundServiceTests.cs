@@ -4,11 +4,12 @@ using LTU.SearchEngine.Backend.Core.Entities;
 using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 using LTU.SearchEngine.BackgroundServices;
 using LTU.SearchEngine.Infrastructure;
 using LTU.SearchEngine.Infrastructure.Crawling;
 using LTU.SearchEngine.Infrastructure.Indexing;
-using LTU.SearchEngine.Infrastructure.Indexing.Repositories;
+using LTU.SearchEngine.Infrastructure.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -133,11 +134,17 @@ namespace LTU.SearchEngine.Test.Crawling.Tests
         public Task AddDocumentAsync(string url, string title, List<string> words)
             => SaveAsync(new IndexDocument(Guid.NewGuid().ToString(), url, title));
 
-        public Task AddDocumentAsync(string url, string title, string content)
+		public Task<List<IndexDocument>> SearchAsync(string query) =>
+			Task.FromResult(new List<IndexDocument>());
+
+		public Task AddDocumentAsync(string url, string title, string content)
             => SaveAsync(new IndexDocument(Guid.NewGuid().ToString(), url, title));
 
-        public Task<List<int>> GetPageIdsContainingTermAsync(string term) => Task.FromResult(new List<int>());
-        public Task<List<Page>> GetPagesByIdsAsync(List<int> pageIds) => Task.FromResult(new List<Page>());
-        public Task<List<IndexDocument>> SearchAsync(string query) => Task.FromResult(new List<IndexDocument>());
-    }
+        public Task<HashSet<int>> GetDocumentIdsForTermAsync(string term) => 
+            Task.FromResult(new HashSet<int>());
+        public Task<List<Page>> GetDocumentsByIdAsync(List<int> pageIds) => 
+            Task.FromResult(new List<Page>());
+        public Task<HashSet<int>> GetDocumentIdsForPhraseAsync(PhraseNode<HashSet<int>> phrase) =>
+            Task.FromResult(new HashSet<int>());
+	}
 }
