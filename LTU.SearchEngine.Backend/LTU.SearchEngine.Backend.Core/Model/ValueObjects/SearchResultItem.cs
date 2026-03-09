@@ -25,6 +25,6 @@ public class SearchResultItem
 	private void ValidateSingleAttribute(string attribute)
 	{
 		if (String.IsNullOrWhiteSpace(attribute))
-			throw new ArgumentException(nameof(attribute), "must have a value!");
+			throw new ArgumentException("Attribute must have a value.", nameof(attribute));
 	}
 }
