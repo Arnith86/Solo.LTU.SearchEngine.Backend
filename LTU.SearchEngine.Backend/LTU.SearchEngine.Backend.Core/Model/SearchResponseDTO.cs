@@ -6,5 +6,6 @@ namespace LTU.SearchEngine.Backend.Core.Model
 {
     public class SearchResponseDTO
     {
+        //TODO implement things here
     }
 }

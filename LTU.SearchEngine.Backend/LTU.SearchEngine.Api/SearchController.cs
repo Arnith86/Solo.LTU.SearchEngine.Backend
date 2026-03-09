@@ -5,8 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace LTU.SearchEngine.Api
 {
-    [Route("api/[controller]")]
-    [ApiController]
+
+    [ApiController] 
+    [Route("api/[controller]")] 
     public class SearchController : ControllerBase
     {
         private readonly IServiceManager _serviceManager;
