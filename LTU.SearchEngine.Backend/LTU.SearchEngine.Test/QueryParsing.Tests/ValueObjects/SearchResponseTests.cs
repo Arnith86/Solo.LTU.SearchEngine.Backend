@@ -50,8 +50,11 @@ public class SearchResponseTests
 		);
 	}
 
-	[Fact]
-	public void Constructor_CurrentPageLessThanOne_ShouldThrowArgumentOutOfRangeException()
+	[Theory]
+	[InlineData(0)]
+	[InlineData(-1)]
+	[InlineData(-10)]
+	public void Constructor_CurrentPageLessThanOne_ShouldThrowArgumentOutOfRangeException(int value)
 	{
 		// Arrange
 		var results = CreateValidResults();
@@ -60,7 +63,7 @@ public class SearchResponseTests
 		Assert.Throws<ArgumentOutOfRangeException>(() =>
 			new SearchResponse(
 				results,
-				currentPage: 0,
+				currentPage: value,
 				pageSize: 10,
 				totalResults: 1,
 				message: "msg"
@@ -68,8 +71,10 @@ public class SearchResponseTests
 		);
 	}
 
-	[Fact]
-	public void Constructor_PageSizeNegative_ShouldThrowArgumentOutOfRangeException()
+	[Theory]
+	[InlineData(-1)]
+	[InlineData(-10)]
+	public void Constructor_PageSizeNegative_ShouldThrowArgumentOutOfRangeException(int value)
 	{
 		// Arrange
 		var results = CreateValidResults();
@@ -79,15 +84,17 @@ public class SearchResponseTests
 			new SearchResponse(
 				results,
 				currentPage: 1,
-				pageSize: -1,
+				pageSize: value,
 				totalResults: 1,
 				message: "msg"
 			)
 		);
 	}
 
-	[Fact]
-	public void Constructor_TotalResultsNegative_ShouldThrowArgumentOutOfRangeException()
+	[Theory]
+	[InlineData(-1)]
+	[InlineData(-10)]
+	public void Constructor_TotalResultsNegative_ShouldThrowArgumentOutOfRangeException(int value)
 	{
 		// Arrange
 		var results = CreateValidResults();
@@ -98,7 +105,7 @@ public class SearchResponseTests
 				results,
 				currentPage: 1,
 				pageSize: 10,
-				totalResults: -5,
+				totalResults: value,
 				message: "msg"
 			)
 		);
