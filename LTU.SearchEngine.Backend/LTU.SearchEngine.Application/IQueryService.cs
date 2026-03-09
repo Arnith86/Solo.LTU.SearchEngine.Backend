@@ -1,4 +1,5 @@
-﻿using System;
+﻿using LTU.SearchEngine.Backend.Core.Model;
+using System;
 using System.Collections.Generic;
 using System.Text;
 

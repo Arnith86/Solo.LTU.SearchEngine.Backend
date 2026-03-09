@@ -1,4 +1,5 @@
 ﻿using LTU.SearchEngine.Application;
+using LTU.SearchEngine.Backend.Core.Model;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,10 +17,10 @@ namespace LTU.SearchEngine.Api
         }
 
         /// <summary>
-        /// Hanterar sökförfrågningar från användaren.
+        /// Handles search request from user.
         /// </summary>
-        /// <param name="query">Söksträngen (t.ex. "cats AND dogs").</param>
-        /// <returns>En lista med sökresultat.</returns>
+        /// <param name="query">searchstring (t.ex. "cats AND dogs").</param>
+        /// <returns>A list with search results.</returns>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<SearchResponseDTO>>> GetSearchResponses([FromQuery]string query)
         {
@@ -28,12 +29,12 @@ namespace LTU.SearchEngine.Api
                 return BadRequest("Search query cannot be empty.");
             }
 
-            // Anropar QueryService via ServiceManager för att hämta resultat
+            // Calls QueryService true ServiceManager to get results
             var results = await _serviceManager.QueryService.SearchAsync(query);
 
             if (results == null || !results.Any())
             {
-                // Enligt FRQ-4003 ska UI visa att inga resultat hittades
+              
                 return Ok(new List<SearchResponseDTO>());
             }
 
