@@ -52,8 +52,12 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 			LoopAction action = LoopAction.None;
 			var character = input[index];
 
-			// Checks for grouping operators. ( ) [ ] { } 
-			action = TryHandleIsGroupingOperator(tokens, stringBuilder, character);
+            // Checks implicit OR
+            action = TryHandleImplicitOr(tokens,stringBuilder,ref isBuildingAPhrase,character);
+
+            if (action.Equals(LoopAction.Continue)) continue;
+            // Checks for grouping operators. ( ) [ ] { } 
+            action = TryHandleIsGroupingOperator(tokens, stringBuilder, character);
 
 			if (action.Equals(LoopAction.Continue))	continue;
 
@@ -110,8 +114,32 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 		return tokens;
 	}
 
+    private LoopAction TryHandleImplicitOr(
+    List<ExtractedQueryToken> tokens,StringBuilder stringBuilder,ref bool isBuildingAPhrase,char character)
+    {
+        if (!char.IsWhiteSpace(character)) return LoopAction.None;
 
-	private LoopAction TryHandleIsGroupingOperator(
+        if (isBuildingAPhrase) return LoopAction.None;
+
+        Flush(stringBuilder, tokens, QueryTokenType.Term);
+
+        if (tokens.Count == 0)
+            return LoopAction.Continue;
+
+		var lastToken = tokens[tokens.Count - 1];
+
+		if (lastToken.TokenType == QueryTokenType.LogicalOperator)
+			return LoopAction.Continue;
+
+        tokens.Add(new ExtractedQueryToken(
+            QueryTokenType.LogicalOperator,
+            "OR"
+        ));
+
+        return LoopAction.Continue;
+    }
+
+    private LoopAction TryHandleIsGroupingOperator(
 		List<ExtractedQueryToken> tokens, StringBuilder stringBuilder, char character)
 	{
 		if (IsGroupingOperator(character))
