@@ -53,7 +53,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 			var character = input[index];
 
             // Checks implicit OR
-            action = TryHandleImplicitOr(tokens,stringBuilder,ref isBuildingAPhrase,character);
+            action = TryHandleImplicitOr(input, tokens, stringBuilder, ref isBuildingAPhrase, index);
 
             if (action.Equals(LoopAction.Continue)) continue;
             // Checks for grouping operators. ( ) [ ] { } 
@@ -115,26 +115,49 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 	}
 
     private LoopAction TryHandleImplicitOr(
-    List<ExtractedQueryToken> tokens,StringBuilder stringBuilder,ref bool isBuildingAPhrase,char character)
+       string input,
+       List<ExtractedQueryToken> tokens,
+       StringBuilder stringBuilder,
+       ref bool isBuildingAPhrase,
+       int index)
     {
-        if (!char.IsWhiteSpace(character)) return LoopAction.None;
+        char character = input[index];
 
-        if (isBuildingAPhrase) return LoopAction.None;
+        // Only handle whitespace outside phrases
+        if (!char.IsWhiteSpace(character) || isBuildingAPhrase)
+            return LoopAction.None;
+
+        // No term being built → nothing to separate
+        if (stringBuilder.Length == 0)
+            return LoopAction.None;
+
+        // Prevent implicit OR when term starts with quote (unclosed phrase case)
+        if (stringBuilder[0] == '"')
+            return LoopAction.None;
+
+        // Look ahead to next character
+        if (index + 1 < input.Length)
+        {
+            char next = input[index + 1];
+
+            // Do not insert OR before phrases or operators
+            if (next == '"' ||
+                "!+-&|".Contains(next) ||
+                IsCapitalLetterOperator(input, index + 1))
+            {
+                return LoopAction.None;
+            }
+        }
+
+        int tokenCountBeforeFlush = tokens.Count;
 
         Flush(stringBuilder, tokens, QueryTokenType.Term);
 
-        if (tokens.Count == 0)
+        // Flush may not add a token if normalization removes it
+        if (tokens.Count == tokenCountBeforeFlush)
             return LoopAction.Continue;
 
-		var lastToken = tokens[tokens.Count - 1];
-
-		if (lastToken.TokenType == QueryTokenType.LogicalOperator)
-			return LoopAction.Continue;
-
-        tokens.Add(new ExtractedQueryToken(
-            QueryTokenType.LogicalOperator,
-            "OR"
-        ));
+        tokens.Add(new ExtractedQueryToken(QueryTokenType.LogicalOperator,"OR"));
 
         return LoopAction.Continue;
     }
