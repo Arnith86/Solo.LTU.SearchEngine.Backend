@@ -10,7 +10,7 @@ namespace LTU.SearchEngine.Application
 
         public ServiceManager(IQueryService queryService)
         {
-            // Vi använder Lazy för att tjänsten bara ska skapas om den faktiskt anropas
+            // We use Lazy only for the service to be created if called
             _queryService = new Lazy<IQueryService>(() => queryService);
         }
 

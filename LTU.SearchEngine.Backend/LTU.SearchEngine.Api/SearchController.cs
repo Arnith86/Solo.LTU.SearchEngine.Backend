@@ -1,13 +1,12 @@
 ﻿using LTU.SearchEngine.Application;
-using LTU.SearchEngine.Backend.Core.Model;
-using Microsoft.AspNetCore.Http;
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LTU.SearchEngine.Api
 {
 
-    [ApiController] 
-    [Route("api/[controller]")] 
+    [ApiController]
+    [Route("api/[controller]")]
     public class SearchController : ControllerBase
     {
         private readonly IServiceManager _serviceManager;
@@ -18,12 +17,12 @@ namespace LTU.SearchEngine.Api
         }
 
         /// <summary>
-        /// Handles search request from user.
+        /// Executes a search query and returns a response containing results and metadata.
         /// </summary>
-        /// <param name="query">searchstring (t.ex. "cats AND dogs").</param>
-        /// <returns>A list with search results.</returns>
+        /// <param name="query">The search string to process (e.g., "cats AND dogs").</param>
+        /// <returns>A <see cref="SearchResponse"/> object containing the matching result items and pagination details.</returns>
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<SearchResponseDTO>>> GetSearchResponses([FromQuery]string query)
+        public async Task<ActionResult<SearchResponse>> GetSearchResponses([FromQuery] string query)
         {
             if (string.IsNullOrWhiteSpace(query))
             {
@@ -31,15 +30,17 @@ namespace LTU.SearchEngine.Api
             }
 
             // Calls QueryService true ServiceManager to get results
-            var results = await _serviceManager.QueryService.SearchAsync(query);
+            var resultsFromService = await _serviceManager.QueryService.SearchAsync(query);
 
-            if (results == null || !results.Any())
-            {
-              
-                return Ok(new List<SearchResponseDTO>());
-            }
+            var response = new SearchResponse(
+             searchResults: resultsFromService, 
+             currentPage: 1,
+             pageSize: resultsFromService.Count(),
+             totalResults: resultsFromService.Count(),
+             message: "Search completed successfully"
+      );
 
-            return Ok(results);
+            return Ok(response);
         }
     }
 }

@@ -69,6 +69,10 @@ public class Program
         // The main unit of work: Orchestrates Crawling -> Validating -> Indexing for a single job.
         builder.Services.AddTransient<IProcessCrawlJobUseCase, ProcessCrawlJobUseCase>();
 
+       // builder.Services.AddScoped<IQueryService, QueryService>();
+
+        builder.Services.AddScoped<IServiceManager, ServiceManager>();
+
         // ========================================================================
         // 5. Background Services & TPL Engine
         // ========================================================================
