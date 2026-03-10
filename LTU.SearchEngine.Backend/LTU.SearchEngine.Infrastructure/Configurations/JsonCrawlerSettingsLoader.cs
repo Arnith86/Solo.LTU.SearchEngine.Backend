@@ -1,4 +1,4 @@
-﻿using LTU.SearchEngine.Backend.Core.Model;
+﻿using LTU.SearchEngine.Backend.Core.Model.DTOs;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using Microsoft.Extensions.Configuration;
 
