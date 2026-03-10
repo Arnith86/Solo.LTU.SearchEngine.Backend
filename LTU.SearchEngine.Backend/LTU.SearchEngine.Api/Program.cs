@@ -70,7 +70,7 @@ public class Program
         builder.Services.AddTransient<IIndexer, Indexer>();
 
 
-       // builder.Services.AddScoped<IQueryService, QueryService>();
+        builder.Services.AddScoped<IQueryService, QueryService>();
 
         builder.Services.AddScoped<IServiceManager, ServiceManager>();
 
