@@ -1,4 +1,4 @@
-﻿namespace LTU.SearchEngine.Backend.Core.Model;
+﻿namespace LTU.SearchEngine.Backend.Core.Model.DTOs;
 
 public class CrawlerSettingsDTO
 {
