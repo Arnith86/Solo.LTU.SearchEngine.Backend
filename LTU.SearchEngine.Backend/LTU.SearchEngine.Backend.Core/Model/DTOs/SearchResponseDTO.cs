@@ -11,7 +11,7 @@ namespace LTU.SearchEngine.Backend.Core.Model.DTOs;
 /// <param name="pageSize">The maximum number of items requested per page.</param>
 /// <param name="totalResults">The total number of documents matching the search criteria across all pages.</param>
 /// <param name="message">An optional status or warning message (e.g., "No results found" or "Query expanded").</param>
-public record SearchResponse(
+public record SearchResponseDTO(
 	IEnumerable<SearchResultItem> searchResults,
 	int currentPage,
 	int pageSize,
