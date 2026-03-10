@@ -27,6 +27,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\LTU.SearchEngine.Application\LTU.SearchEngine.Application.csproj" />
     <ProjectReference Include="..\LTU.SearchEngine.BackgroundServices\LTU.SearchEngine.BackgroundServices.csproj" />
     <ProjectReference Include="..\LTU.SearchEngine.Infrastructure\LTU.SearchEngine.Infrastructure.csproj" />
   </ItemGroup>

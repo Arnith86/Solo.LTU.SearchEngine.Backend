@@ -1,4 +1,5 @@
 ﻿using LTU.SearchEngine.Application;
+using LTU.SearchEngine.Application.QueryParsing;
 using Moq;
 using System;
 using System.Collections.Generic;

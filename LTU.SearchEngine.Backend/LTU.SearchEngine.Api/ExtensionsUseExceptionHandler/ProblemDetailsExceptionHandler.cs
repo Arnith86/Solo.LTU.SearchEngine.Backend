@@ -1,4 +1,5 @@
 ﻿using LTU.SearchEngine.Api.ExtensionsUseExceptionHandler.CustomExceptions;
+using LTU.SearchEngine.Backend.Core.Exceptions.SearchQueryExceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
@@ -44,6 +45,16 @@ public static class ProblemDetailsExceptionHandler
 								statusCode,
 								title: querySyntaxException.Title,
 								detail: querySyntaxException.Message,
+								instance: context.Request.Path
+							);
+							break;
+						case QueryEvaluationException queryEvaluationException: // Query Evaluation Exception
+							statusCode = StatusCodes.Status400BadRequest;
+							problemDetails = problemDetailsFactory.CreateProblemDetails(
+								context,
+								statusCode,
+								title: queryEvaluationException.Title,
+								detail: queryEvaluationException.Message,
 								instance: context.Request.Path
 							);
 							break;
