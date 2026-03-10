@@ -1,7 +1,7 @@
 ﻿using LTU.SearchEngine.Api;
 using LTU.SearchEngine.Application;
-using LTU.SearchEngine.Backend.Core.Model.DTOs; 
-using LTU.SearchEngine.Backend.Core.Model.ValueObjects; 
+using LTU.SearchEngine.Backend.Core.Model.DTOs;
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Xunit;
@@ -30,29 +30,35 @@ namespace LTU.SearchEngine.Test.Api.Tests
             // Arrange
             string validQuery = "test search";
 
-            var expectedResults = new List<SearchResultItem>
+            var fakeItems = new List<SearchResultItem>
             {
-                new SearchResultItem ("Test", "http://test.com", "Test snippet" )
+                new SearchResultItem("Test", "http://test.com", "Test snippet")
             };
 
-            _mockQueryService.Setup(s => s.SearchAsync(validQuery))
-                .ReturnsAsync(expectedResults);
+            var expectedDto = new SearchResponseDTO(
+                searchResults: fakeItems,
+                currentPage: 1,
+                pageSize: 1,
+                totalResults: 1,
+                message: "Success"
+            );
+
+            _mockQueryService.Setup(s => s.GetSearchResultsAsync(validQuery))
+    .Returns(Task.FromResult(expectedDto)); 
 
             // Act
             var result = await _controller.GetSearchResponses(validQuery);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
-
             var responseDto = Assert.IsType<SearchResponseDTO>(okResult.Value);
-
 
             Assert.NotEmpty(responseDto.searchResults);
             Assert.Equal(1, responseDto.totalResults);
             Assert.Equal("Success", responseDto.message);
 
-            // Verify that the call reached the service layer
-            _mockQueryService.Verify(s => s.SearchAsync(validQuery), Times.Once);
+            // Verify that the call reached the service layer 
+            _mockQueryService.Verify(s => s.GetSearchResultsAsync(validQuery), Times.Once);
         }
 
         [Fact]
@@ -61,8 +67,16 @@ namespace LTU.SearchEngine.Test.Api.Tests
             // Arrange
             string query = "zero-results";
 
-            _mockQueryService.Setup(s => s.SearchAsync(query))
-                .ReturnsAsync(new List<SearchResultItem>());
+            var emptyDto = new SearchResponseDTO(
+                searchResults: new List<SearchResultItem>(),
+                currentPage: 1,
+                pageSize: 0,
+                totalResults: 0,
+                message: "No results found"
+            );
+
+            _mockQueryService.Setup(s => s.GetSearchResultsAsync(query))
+    .Returns(Task.FromResult(emptyDto)); 
 
             // Act
             var result = await _controller.GetSearchResponses(query);
@@ -73,7 +87,7 @@ namespace LTU.SearchEngine.Test.Api.Tests
 
             Assert.Empty(responseDto.searchResults);
             Assert.Equal(0, responseDto.totalResults);
-            Assert.Equal("No results found", responseDto.message); 
+            Assert.Equal("No results found", responseDto.message);
         }
 
         [Theory]
@@ -94,7 +108,8 @@ namespace LTU.SearchEngine.Test.Api.Tests
         {
             // Arrange
             string query = "error";
-            _mockQueryService.Setup(s => s.SearchAsync(query))
+
+            _mockQueryService.Setup(s => s.GetSearchResultsAsync(query))
                 .ThrowsAsync(new System.Exception("Database connection failed"));
 
             // Act & Assert

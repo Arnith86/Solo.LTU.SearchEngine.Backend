@@ -28,17 +28,9 @@ namespace LTU.SearchEngine.Api
                 return BadRequest("Search query cannot be empty.");
             }
 
-            var resultsList = await _serviceManager.QueryService.SearchAsync(query);
+            var responseDto = await _serviceManager.QueryService.GetSearchResultsAsync(query);
 
-            var dto = new SearchResponseDTO(
-                searchResults: resultsList,
-                currentPage: 1,
-                pageSize: resultsList.Count(),
-                totalResults: resultsList.Count(),
-                message: resultsList.Any() ? "Success" : "No results found"
-            );
-
-            return Ok(dto);
+            return Ok(responseDto);
         }
     }
 }

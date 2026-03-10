@@ -1,4 +1,4 @@
-﻿using LTU.SearchEngine.Backend.Core.Model;
+﻿using LTU.SearchEngine.Backend.Core.Model.DTOs;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using System;
 using System.Collections.Generic;
@@ -16,6 +16,6 @@ namespace LTU.SearchEngine.Application
         /// </summary>
         /// <param name="query">The search expression to evaluate (e.g., "cats AND dogs").</param>
         /// <returns>A task representing the asynchronous operation, containing a collection of <see cref="SearchResultItem"/>.</returns>
-        Task<IEnumerable<SearchResultItem>> SearchAsync(string query);
+        Task<SearchResponseDTO> GetSearchResultsAsync(string query);
     }
 }
