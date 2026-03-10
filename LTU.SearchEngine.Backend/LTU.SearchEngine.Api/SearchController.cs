@@ -1,5 +1,5 @@
 ﻿using LTU.SearchEngine.Application;
-using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using LTU.SearchEngine.Backend.Core.Model.DTOs;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LTU.SearchEngine.Api
@@ -20,27 +20,25 @@ namespace LTU.SearchEngine.Api
         /// Executes a search query and returns a response containing results and metadata.
         /// </summary>
         /// <param name="query">The search string to process (e.g., "cats AND dogs").</param>
-        /// <returns>A <see cref="SearchResponse"/> object containing the matching result items and pagination details.</returns>
         [HttpGet]
-        public async Task<ActionResult<SearchResponse>> GetSearchResponses([FromQuery] string query)
+        public async Task<ActionResult<SearchResponseDTO>> GetSearchResponses([FromQuery] string query)
         {
             if (string.IsNullOrWhiteSpace(query))
             {
                 return BadRequest("Search query cannot be empty.");
             }
 
-            // Calls QueryService true ServiceManager to get results
-            var resultsFromService = await _serviceManager.QueryService.SearchAsync(query);
+            var resultsList = await _serviceManager.QueryService.SearchAsync(query);
 
-            var response = new SearchResponse(
-             searchResults: resultsFromService, 
-             currentPage: 1,
-             pageSize: resultsFromService.Count(),
-             totalResults: resultsFromService.Count(),
-             message: "Search completed successfully"
-      );
+            var dto = new SearchResponseDTO(
+                searchResults: resultsList,
+                currentPage: 1,
+                pageSize: resultsList.Count(),
+                totalResults: resultsList.Count(),
+                message: resultsList.Any() ? "Success" : "No results found"
+            );
 
-            return Ok(response);
+            return Ok(dto);
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using LTU.SearchEngine.Api;
 using LTU.SearchEngine.Application;
-using LTU.SearchEngine.Backend.Core.Model;
+using LTU.SearchEngine.Backend.Core.Model.DTOs; 
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects; 
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Xunit;
@@ -28,9 +29,10 @@ namespace LTU.SearchEngine.Test.Api.Tests
         {
             // Arrange
             string validQuery = "test search";
-            var expectedResults = new List<SearchResponseDTO>
+
+            var expectedResults = new List<SearchResultItem>
             {
-                new SearchResponseDTO() // Add mocked data here if needed
+                new SearchResultItem ("Test", "http://test.com", "Test snippet" )
             };
 
             _mockQueryService.Setup(s => s.SearchAsync(validQuery))
@@ -41,8 +43,13 @@ namespace LTU.SearchEngine.Test.Api.Tests
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            var returnValues = Assert.IsAssignableFrom<IEnumerable<SearchResponseDTO>>(okResult.Value);
-            Assert.NotEmpty(returnValues);
+
+            var responseDto = Assert.IsType<SearchResponseDTO>(okResult.Value);
+
+
+            Assert.NotEmpty(responseDto.searchResults);
+            Assert.Equal(1, responseDto.totalResults);
+            Assert.Equal("Success", responseDto.message);
 
             // Verify that the call reached the service layer
             _mockQueryService.Verify(s => s.SearchAsync(validQuery), Times.Once);
@@ -53,16 +60,20 @@ namespace LTU.SearchEngine.Test.Api.Tests
         {
             // Arrange
             string query = "zero-results";
+
             _mockQueryService.Setup(s => s.SearchAsync(query))
-                .ReturnsAsync(new List<SearchResponseDTO>()); // Returns empty list
+                .ReturnsAsync(new List<SearchResultItem>());
 
             // Act
             var result = await _controller.GetSearchResponses(query);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            var returnValues = Assert.IsAssignableFrom<IEnumerable<SearchResponseDTO>>(okResult.Value);
-            Assert.Empty(returnValues); // Matches the requirement in FRQ-4003 
+            var responseDto = Assert.IsType<SearchResponseDTO>(okResult.Value);
+
+            Assert.Empty(responseDto.searchResults);
+            Assert.Equal(0, responseDto.totalResults);
+            Assert.Equal("No results found", responseDto.message); 
         }
 
         [Theory]
@@ -87,8 +98,6 @@ namespace LTU.SearchEngine.Test.Api.Tests
                 .ThrowsAsync(new System.Exception("Database connection failed"));
 
             // Act & Assert
-            // This depends on whether you have a global error handler,
-            // but usually, we want to see that the controller handles the error or rethrows it.
             await Assert.ThrowsAsync<System.Exception>(() => _controller.GetSearchResponses(query));
         }
     }
