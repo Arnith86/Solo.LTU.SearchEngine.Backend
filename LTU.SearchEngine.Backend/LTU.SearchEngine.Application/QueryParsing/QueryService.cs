@@ -1,12 +1,11 @@
 ﻿using LTU.SearchEngine.Backend.Core.Model.DTOs;
-using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 using LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
 using LTU.SearchEngine.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace LTU.SearchEngine.Application.QueryParsing;
 
-public class QueryService
+public class QueryService : IQueryService
 {
 	private readonly IDbContextFactory<SearchDbContext> _context;
 	private readonly IQueryParser _queryParser;
@@ -23,13 +22,13 @@ public class QueryService
 		_queryEvaluatorVisitor = queryEvaluatorVisitor;
 	}
 
-	public Task<SearchResponseDTO> GetSearchResultsAsync(string rawQuery, int page)
+	public async Task<SearchResponseDTO> GetSearchResultsAsync(string rawQuery, int page)
 	{
 		var queryNode = _queryParser.Parse(rawQuery);
 
 
 		var resultIds = _queryEvaluatorVisitor.ExecuteAsync(queryNode);
 
-		return 
+		return
 	}
 }

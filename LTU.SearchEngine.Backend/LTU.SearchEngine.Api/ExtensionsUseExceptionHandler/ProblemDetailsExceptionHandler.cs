@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Diagnostics;
+﻿using LTU.SearchEngine.Api.ExtensionsUseExceptionHandler.CustomExceptions;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 
@@ -36,6 +37,16 @@ public static class ProblemDetailsExceptionHandler
 
 					switch (contextFeature.Error)
 					{
+						case QuerySyntaxException querySyntaxException: // Query Syntax Violations
+							statusCode = StatusCodes.Status400BadRequest;
+							problemDetails = problemDetailsFactory.CreateProblemDetails(
+								context,
+								statusCode,
+								title: querySyntaxException.Title,
+								detail: querySyntaxException.Message,
+								instance: context.Request.Path
+							);
+							break;
 						//case PaginationArgumentOutOfRangeException argumentOutOfRangeException: // Paging parameters out of range
 						//	statusCode = StatusCodes.Status400BadRequest;
 						//	problemDetails = problemDetailsFactory.CreateProblemDetails(
