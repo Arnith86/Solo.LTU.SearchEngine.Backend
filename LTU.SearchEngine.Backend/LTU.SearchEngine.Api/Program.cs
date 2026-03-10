@@ -69,10 +69,12 @@ public class Program
         builder.Services.AddTransient<IIndexer, Indexer>();
 
 
-		// ========================================================================
-		// 4. Search & Query Logic (Core)
-		// ========================================================================
-		// Tokenizer and TreeBuilder used by the Parser to transform strings into ASTs.
+        // ========================================================================
+        // 4. Search & Query Logic (Core)
+        // ========================================================================
+        // Tokenizer and TreeBuilder used by the Parser to transform strings into ASTs.
+        builder.Services.AddTransient<IQuerySyntaxHelper, QuerySyntaxHelper>();
+
 		builder.Services.AddTransient<
             IStringTokenizer<ExtractedQueryToken, QueryTokenType>, 
             QueryStringTokenizer>();
@@ -80,6 +82,10 @@ public class Program
         builder.Services.AddTransient<
             ITreeBuilder<HashSet<int>, ExtractedQueryToken>, 
             AbstractSyntaxTreeBuilder<HashSet<int>>>();
+
+        builder.Services.AddTransient<
+            IShuntingYardParser<ExtractedQueryToken>, 
+            SearchQueryShuntingYardParser>();
 
 		// The Parser that orchestrates the transformation.
 		builder.Services.AddTransient<IQueryParser, QueryParser>();
