@@ -1,6 +1,11 @@
 using LTU.SearchEngine.Application;
+using LTU.SearchEngine.Application.QueryParsing;
+using LTU.SearchEngine.Application.QueryParsing.Helpers;
 using LTU.SearchEngine.Backend.Core;
+using LTU.SearchEngine.Backend.Core.Enums;
 using LTU.SearchEngine.Backend.Core.Model;
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
 using LTU.SearchEngine.Backend.Core.TextNormalization;
 using LTU.SearchEngine.BackgroundServices;
 using LTU.SearchEngine.Infrastructure;
@@ -63,14 +68,39 @@ public class Program
         builder.Services.AddTransient<ICrawler, Crawler>();
         builder.Services.AddTransient<IIndexer, Indexer>();
 
-        // ========================================================================
-        // 4. Application Logic (Use Cases)
-        // ========================================================================
-        // The main unit of work: Orchestrates Crawling -> Validating -> Indexing for a single job.
-        builder.Services.AddTransient<IProcessCrawlJobUseCase, ProcessCrawlJobUseCase>();
 
         // ========================================================================
-        // 5. Background Services & TPL Engine
+        // 4. Search & Query Logic (Core)
+        // ========================================================================
+        // Tokenizer and TreeBuilder used by the Parser to transform strings into ASTs.
+        builder.Services.AddTransient<IQuerySyntaxHelper, QuerySyntaxHelper>();
+
+		builder.Services.AddTransient<
+            IStringTokenizer<ExtractedQueryToken, QueryTokenType>, 
+            QueryStringTokenizer>();
+		
+        builder.Services.AddTransient<
+            ITreeBuilder<HashSet<int>, ExtractedQueryToken>, 
+            AbstractSyntaxTreeBuilder<HashSet<int>>>();
+
+        builder.Services.AddTransient<
+            IShuntingYardParser<ExtractedQueryToken>, 
+            SearchQueryShuntingYardParser>();
+
+		// The Parser that orchestrates the transformation.
+		builder.Services.AddTransient<IQueryParser, QueryParser>();
+
+		// Visitor that evaluates the resulting tree against the database.
+		builder.Services.AddTransient<IQueryVisitor<HashSet<int>>, QueryEvaluatorVisitor>();
+
+		// ========================================================================
+		// 5. Application Logic (Use Cases)
+		// ========================================================================
+		// The main unit of work: Orchestrates Crawling -> Validating -> Indexing for a single job.
+		builder.Services.AddTransient<IProcessCrawlJobUseCase, ProcessCrawlJobUseCase>();
+
+        // ========================================================================
+        // 6. Background Services & TPL Engine
         // ========================================================================
         // The Dispatcher manages the TPL Dataflow pipeline (Queue).
         builder.Services.AddSingleton<ICrawlJobDispatcher, TplCrawlJobDispatcher>();
@@ -79,7 +109,7 @@ public class Program
         builder.Services.AddHostedService<CrawlBackgroundService>();
 
         // ========================================================================
-        // 6. API & Presentation
+        // 7. API & Presentation
         // ========================================================================
         builder.Services.AddControllers();
         builder.Services.AddOpenApi();
