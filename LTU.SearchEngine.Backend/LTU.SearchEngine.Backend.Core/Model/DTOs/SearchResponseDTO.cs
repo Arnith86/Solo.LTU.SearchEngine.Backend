@@ -12,7 +12,7 @@ namespace LTU.SearchEngine.Backend.Core.Model.DTOs;
 /// <param name="totalResults">The total number of documents matching the search criteria across all pages.</param>
 /// <param name="message">An optional status or warning message (e.g., "No results found" or "Query expanded").</param>
 public record SearchResponseDTO(
-	IEnumerable<SearchResultItem> searchResults,
+	IEnumerable<DocumentDTO> searchResults,
 	int currentPage,
 	int pageSize,
 	int totalResults,
