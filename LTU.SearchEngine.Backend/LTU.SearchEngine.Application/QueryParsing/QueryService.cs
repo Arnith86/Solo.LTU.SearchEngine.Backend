@@ -1,8 +1,9 @@
-﻿using LTU.SearchEngine.Backend.Core.Model.DTOs;
+﻿using System.Diagnostics;
+using System.Globalization;
+using LTU.SearchEngine.Backend.Core.Model.DTOs;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 using LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
 using LTU.SearchEngine.Infrastructure.Repositories;
-using Microsoft.EntityFrameworkCore;
 
 namespace LTU.SearchEngine.Application.QueryParsing;
 
@@ -27,12 +28,21 @@ public class QueryService : IQueryService
 	{
 		QueryNode<HashSet<int>> queryNode;
 
+		var stopWatch = Stopwatch.StartNew();
+
 		queryNode = _queryParser.Parse(rawQuery);
 		
 		var resultIds = await _queryEvaluatorVisitor.ExecuteAsync(queryNode);
 		
 		var documentResults = await _indexRepository
 			.GetDocumentsByIdAsync(resultIds.ToList());
+
+		stopWatch.Stop();
+		var elapsedTime = stopWatch.Elapsed.TotalMilliseconds;
+		string timingMessage = string.Create(
+			CultureInfo.InvariantCulture, 
+			$"Search completed in {elapsedTime:F2} ms!"
+		);
 
 		return new SearchResponseDTO(
 			searchResults: documentResults.Select(doc => new DocumentDTO(
@@ -43,7 +53,7 @@ public class QueryService : IQueryService
 			currentPage: 1,
 			pageSize: 1,
 			totalResults: documentResults.Count(),
-			message: null
+			message: timingMessage
 		);
 	}
 }
