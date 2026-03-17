@@ -1,4 +1,7 @@
-﻿namespace LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
+﻿using LTU.SearchEngine.Backend.Core.Model.Entities;
+using LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
+
+namespace LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 
 
 /// <summary>
@@ -23,6 +26,18 @@ public class PhraseNode<T> : QueryNode<T>
 		Phrase = phrase;
 	}
 
+	/// <inheritdoc>/>
+	public override Task<T> AcceptAsync(IQueryVisitor<T> visitor)
+		=> visitor.VisitAsync(this);
+
+	/// <summary>
+	/// Used for debugging and visualization purposes, returns the phrase as a <br/>
+	/// single string contained in this node.
+	/// </summary>
+	/// <returns>The currently stored phrase as a single string.</returns>
+	public override string ToString() => 
+		$"\"{string.Join(" ", Phrase.Select(t => t.Token))}\"";
+
 	private void ValidatePhrase(List<ExtractedQueryToken> phrase)
 	{
 		if (phrase is null)
@@ -31,8 +46,4 @@ public class PhraseNode<T> : QueryNode<T>
 		if (phrase.Count < 1)
 			throw new ArgumentException(nameof(phrase), "cannot be empty.");
 	}
-
-	/// <inheritdoc>/>
-	public override T Accept(IQueryVisitor<T> visitor)
-		=> visitor.Visit(this);
 }

@@ -1,7 +1,7 @@
-﻿using LTU.SearchEngine.Backend.Core;
-using LTU.SearchEngine.Backend.Core.Enums;
+﻿using LTU.SearchEngine.Backend.Core.Enums;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
+using LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
 using Moq;
 
 namespace LTU.SearchEngine.Test.QueryParsing.Tests.QueryNode.Tests;
@@ -43,7 +43,7 @@ public class PhraseNodeTests
 	}
 
 	[Fact]
-	public void Accept_CallsVisitOnVisitor_ReturnsExpectedValue()
+	public async Task Accept_CallsVisitOnVisitor_ReturnsExpectedValueAsync()
 	{
 		// Arrange
 		var phraseTokens = new List<ExtractedQueryToken> { new ExtractedQueryToken(QueryTokenType.Term, "test") };
@@ -53,14 +53,14 @@ public class PhraseNodeTests
 		var expectedResult = Task.FromResult(new HashSet<int> { 101 });
 
 		mockVisitor
-			.Setup(v => v.Visit(node))
-			.Returns(expectedResult);
+			.Setup(v => v.VisitAsync(node))
+			.ReturnsAsync(expectedResult);
 
 		// Act
-		var result = node.Accept(mockVisitor.Object);
+		var result = await node.AcceptAsync(mockVisitor.Object);
 
 		// Assert
 		Assert.Same(expectedResult, result);
-		mockVisitor.Verify(v => v.Visit(node), Times.Once);
+		mockVisitor.Verify(v => v.VisitAsync(node), Times.Once);
 	}
 }

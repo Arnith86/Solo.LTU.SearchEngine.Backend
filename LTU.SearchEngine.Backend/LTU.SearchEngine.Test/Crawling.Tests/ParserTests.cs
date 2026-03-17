@@ -156,4 +156,50 @@ public class ParserTests
         Assert.DoesNotContain(result, t => t.Term == "search"); // Not expecting "search" yet
     }
 
+    [Fact]
+    public async Task ExtractRawText_ShouldReturnCleanText_IgnoringCodeTags()
+    {
+        // ARRANGE
+        var html = await _client.GetStringAsync("./TextExtractionQuality.html");
+        var parser = new HapHtmlParser();
+
+        // ACT
+        var result = parser.ExtractRawText(html);
+
+        // ASSERT
+        Assert.DoesNotContain("body {", result); 
+        Assert.DoesNotContain("var x =", result); 
+        Assert.Contains("Search Engine", result); 
+    }
+
+    [Fact]
+    public void ExtractRawText_ShouldDecodeEntitiesAndTrim()
+    {
+        // ARRANGE
+        var parser = new HapHtmlParser();
+        var html = "<div> &nbsp; Student &amp; Forskning &nbsp; </div>";
+
+        // ACT
+        var result = parser.ExtractRawText(html);
+
+        // ASSERT
+        Assert.Equal("Student & Forskning", result);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void ExtractRawText_ShouldReturnEmpty_WhenInputIsInvalid(string badHtml)
+    {
+        // ARRANGE
+        var parser = new HapHtmlParser();
+
+        // ACT
+        var result = parser.ExtractRawText(badHtml);
+
+        // ASSERT
+        Assert.Equal(string.Empty, result);
+    }
+
 }

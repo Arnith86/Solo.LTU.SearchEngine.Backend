@@ -1,4 +1,6 @@
-﻿namespace LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
+﻿using LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
+
+namespace LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 
 
 /// <summary>
@@ -26,6 +28,12 @@ public class TermNode<T> : QueryNode<T>
 
 
 	/// <inheritdoc>/>
-	public override T Accept(IQueryVisitor<T> visitor)
-		=> visitor.Visit(this);
+	public override Task<T> AcceptAsync(IQueryVisitor<T> visitor)
+		=> visitor.VisitAsync(this);
+
+	/// <summary>
+	/// Used for debugging and visualization purposes, returns the term string contained in this node.
+	/// </summary>
+	/// <returns>The currently stored term.</returns>
+	public override string ToString() => Term;
 }
