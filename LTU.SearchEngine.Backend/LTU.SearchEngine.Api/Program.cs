@@ -117,7 +117,10 @@ public class Program
         // 7. API & Presentation
         // ========================================================================
         builder.Services.AddControllers();
-        builder.Services.AddOpenApi();
+        
+        // builder.Services.AddOpenApi();
+        builder.Services.AddEndpointsApiExplorer();
+        builder.Services.AddSwaggerGen();
 
         var app = builder.Build();
 
@@ -126,7 +129,9 @@ public class Program
 		// Configure the HTTP request pipeline.
 		if (app.Environment.IsDevelopment())
         {
-            app.MapOpenApi();
+            // app.MapOpenApi();
+            app.UseSwagger();
+            app.UseSwaggerUI();
         }
 
         app.UseHttpsRedirection();
