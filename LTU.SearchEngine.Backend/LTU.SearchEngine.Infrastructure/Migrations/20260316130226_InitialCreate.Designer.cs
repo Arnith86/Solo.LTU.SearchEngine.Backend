@@ -12,15 +12,15 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LTU.SearchEngine.Infrastructure.Migrations
 {
     [DbContext(typeof(SearchDbContext))]
-    [Migration("20260213135907_CheckRelations")]
-    partial class CheckRelations
+    [Migration("20260316130226_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.3")
+                .HasAnnotation("ProductVersion", "10.0.5")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -69,7 +69,7 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                     b.ToTable("Pages");
                 });
 
-            modelBuilder.Entity("LTU.SearchEngine.Infrastructure.Entities.PageLink", b =>
+            modelBuilder.Entity("LTU.SearchEngine.Backend.Core.Model.Entities.PageLink", b =>
                 {
                     b.Property<int>("FromPageId")
                         .HasColumnType("int");
@@ -84,7 +84,7 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                     b.ToTable("PageLinks");
                 });
 
-            modelBuilder.Entity("LTU.SearchEngine.Infrastructure.Entities.PageWordFrequency", b =>
+            modelBuilder.Entity("LTU.SearchEngine.Backend.Core.Model.Entities.PageWordFrequency", b =>
                 {
                     b.Property<int>("PageId")
                         .HasColumnType("int");
@@ -105,7 +105,7 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                     b.ToTable("PageWordFrequencies");
                 });
 
-            modelBuilder.Entity("LTU.SearchEngine.Infrastructure.Entities.Term", b =>
+            modelBuilder.Entity("LTU.SearchEngine.Backend.Core.Model.Entities.Term", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -128,7 +128,7 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                     b.ToTable("Terms");
                 });
 
-            modelBuilder.Entity("LTU.SearchEngine.Infrastructure.Entities.PageLink", b =>
+            modelBuilder.Entity("LTU.SearchEngine.Backend.Core.Model.Entities.PageLink", b =>
                 {
                     b.HasOne("LTU.SearchEngine.Backend.Core.Entities.Page", "FromPage")
                         .WithMany("OutgoingLinks")
@@ -147,7 +147,7 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                     b.Navigation("ToPage");
                 });
 
-            modelBuilder.Entity("LTU.SearchEngine.Infrastructure.Entities.PageWordFrequency", b =>
+            modelBuilder.Entity("LTU.SearchEngine.Backend.Core.Model.Entities.PageWordFrequency", b =>
                 {
                     b.HasOne("LTU.SearchEngine.Backend.Core.Entities.Page", "Page")
                         .WithMany("WordFrequencies")
@@ -155,7 +155,7 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("LTU.SearchEngine.Infrastructure.Entities.Term", "Term")
+                    b.HasOne("LTU.SearchEngine.Backend.Core.Model.Entities.Term", "Term")
                         .WithMany("PageFrequencies")
                         .HasForeignKey("TermId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -173,7 +173,7 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                     b.Navigation("WordFrequencies");
                 });
 
-            modelBuilder.Entity("LTU.SearchEngine.Infrastructure.Entities.Term", b =>
+            modelBuilder.Entity("LTU.SearchEngine.Backend.Core.Model.Entities.Term", b =>
                 {
                     b.Navigation("PageFrequencies");
                 });

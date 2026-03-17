@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\LTU.SearchEngine.Backend.Core\LTU.SearchEngine.Backend.Core.csproj" />
     <ProjectReference Include="..\LTU.SearchEngine.Infrastructure\LTU.SearchEngine.Infrastructure.csproj" />
   </ItemGroup>
 

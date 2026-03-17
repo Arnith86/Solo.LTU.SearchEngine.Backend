@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace LTU.SearchEngine.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialSqlServer : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -50,8 +50,7 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                 columns: table => new
                 {
                     FromPageId = table.Column<int>(type: "int", nullable: false),
-                    ToPageId = table.Column<int>(type: "int", nullable: false),
-                    PageId = table.Column<int>(type: "int", nullable: true)
+                    ToPageId = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -62,11 +61,6 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                         principalTable: "Pages",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_PageLinks_Pages_PageId",
-                        column: x => x.PageId,
-                        principalTable: "Pages",
-                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_PageLinks_Pages_ToPageId",
                         column: x => x.ToPageId,
@@ -82,9 +76,7 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                     PageId = table.Column<int>(type: "int", nullable: false),
                     TermId = table.Column<int>(type: "int", nullable: false),
                     Frequency = table.Column<int>(type: "int", nullable: false),
-                    TfWeight = table.Column<double>(type: "float", nullable: false),
-                    PageId1 = table.Column<int>(type: "int", nullable: true),
-                    TermId1 = table.Column<int>(type: "int", nullable: true)
+                    TfWeight = table.Column<double>(type: "float", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -96,27 +88,12 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_PageWordFrequencies_Pages_PageId1",
-                        column: x => x.PageId1,
-                        principalTable: "Pages",
-                        principalColumn: "Id");
-                    table.ForeignKey(
                         name: "FK_PageWordFrequencies_Terms_TermId",
                         column: x => x.TermId,
                         principalTable: "Terms",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_PageWordFrequencies_Terms_TermId1",
-                        column: x => x.TermId1,
-                        principalTable: "Terms",
-                        principalColumn: "Id");
                 });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_PageLinks_PageId",
-                table: "PageLinks",
-                column: "PageId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_PageLinks_ToPageId",
@@ -130,19 +107,9 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_PageWordFrequencies_PageId1",
-                table: "PageWordFrequencies",
-                column: "PageId1");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_PageWordFrequencies_TermId",
                 table: "PageWordFrequencies",
                 column: "TermId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_PageWordFrequencies_TermId1",
-                table: "PageWordFrequencies",
-                column: "TermId1");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Terms_Word",

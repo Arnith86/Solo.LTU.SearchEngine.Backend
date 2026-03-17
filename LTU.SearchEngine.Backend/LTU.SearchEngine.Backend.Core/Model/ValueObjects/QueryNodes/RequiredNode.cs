@@ -1,4 +1,6 @@
-﻿namespace LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
+﻿using LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
+
+namespace LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 
 /// <summary>
 /// Represents a unary operator node in the query tree that marks a sub-expression as required.
@@ -22,6 +24,6 @@ public class RequiredNode<T> : QueryNode<T>
 	}
 
 	/// <inheritdoc>/>
-	public override T Accept(IQueryVisitor<T> visitor)
-		=> visitor.Visit(this);
+	public override Task<T> AcceptAsync(IQueryVisitor<T> visitor)
+		=> visitor.VisitAsync(this);
 }

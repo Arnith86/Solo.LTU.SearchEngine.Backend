@@ -1,10 +1,12 @@
 ﻿using LTU.SearchEngine.Application.QueryParsing.Helpers;
+using LTU.SearchEngine.Backend.Core;
 using LTU.SearchEngine.Backend.Core.Enums;
 using LTU.SearchEngine.Backend.Core.Exceptions;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using Moq;
-using System;
 using System.Text;
+using Xunit;
+using Xunit.Sdk;
 
 namespace LTU.SearchEngine.Test.QueryParsing.Tests;
 
@@ -12,19 +14,28 @@ public class QueryTokenizerTests
 {
 	private readonly QueryStringTokenizer _sut;
 	private readonly Mock<IQuerySyntaxHelper> _mockSyntaxHelper;
+	private readonly Mock<ITextNormalizer<string>> _mockNormalizer;
 
 	public QueryTokenizerTests()
 	{
 		_mockSyntaxHelper = new Mock<IQuerySyntaxHelper>();
-		_sut = new QueryStringTokenizer(_mockSyntaxHelper.Object);
-	}
+		_mockNormalizer = new Mock<ITextNormalizer<string>>();
+		_sut = new QueryStringTokenizer(_mockSyntaxHelper.Object, _mockNormalizer.Object);
+
+        _mockNormalizer
+            .Setup(n => n.Normalize(It.IsAny<string>()))
+            .Returns((string s) => s);
+    }
 
 	[Fact]
 	public void Constructor_NullIQuerySyntaxHelper_ShouldThrowArgumentNullException()
 	{
-		// Act & Assert 
-		Assert.Throws<ArgumentNullException>(() => new QueryStringTokenizer(null!));
-	}
+        // Act & Assert 
+        Assert.Throws<ArgumentNullException>(() =>
+		new QueryStringTokenizer(
+        new Mock<IQuerySyntaxHelper>().Object,
+        null!));
+    }
 
 	[Fact]
 	public void Tokenize_ValidateGroupThrowsInvalidQueryStringException_ShouldPropagate()
@@ -247,6 +258,29 @@ public class QueryTokenizerTests
 	}
 
 	[Theory]
+	[InlineData("!")]
+	[InlineData("-")]
+	public void Tokenize_NotWithoutSpace_LogicalOperatorSeparateFromTerm(string operatorInput)
+	{
+		// Arrange
+		var input = $"first {operatorInput}second";
+
+		var first = new ExtractedQueryToken(QueryTokenType.Term, "first");
+		var expectedOperator = new ExtractedQueryToken(QueryTokenType.LogicalOperator, operatorInput);
+		var second = new ExtractedQueryToken(QueryTokenType.Term, "second");
+
+		// Act
+		var result = _sut.Tokenize(input);
+
+		// Assert
+		Assert.Equal(3, result.Count);
+		Assert.Equivalent(first, result[0]);
+		Assert.Equivalent(expectedOperator, result[1]);
+		Assert.Equivalent(second, result[2]);
+		Assert.Equal(expectedOperator.TokenType, result[1].TokenType);
+	}
+
+	[Theory]
 	[InlineData("(", ")")]
 	[InlineData("{", "}")]
 	[InlineData("[", "]")]
@@ -302,7 +336,7 @@ public class QueryTokenizerTests
 		QueryTokenType type
 		)
 	{
-		// Assert
+		// Arrange
 		var tokens = new List<ExtractedQueryToken>();
 		var sb = new StringBuilder(termOrPhrase);
 
@@ -316,5 +350,46 @@ public class QueryTokenizerTests
 		Assert.Equivalent(token, tokens[0]);
 		Assert.Equal(0, sb.Length);
 	}
+
+    [Fact]
+    public void Tokenize_Should_Call_Normalizer_For_Term()
+    {
+		// Arrange 
+        _mockNormalizer
+            .Setup(n => n.Normalize(It.IsAny<string>()))
+            .Returns((string s) => s);
+
+		// Act 
+        _sut.Tokenize("the Running man");
+
+		// Assert
+        _mockNormalizer.Verify(
+            n => n.Normalize(It.IsAny<string>()),
+            Times.Exactly(3));
+    }
+
+    [Theory]
+    [InlineData("AND")]
+    [InlineData("OR")]
+    [InlineData("NOT")]
+    [InlineData("!")]
+    [InlineData("||")]
+    [InlineData("&&")]
+    [InlineData("+")]
+    [InlineData("-")]
+    public void Tokenize_Should_Not_Normalize_LogicalOperators(string input)
+    {
+        // Arrange
+        var result = _sut.Tokenize(input);
+
+		// Act 
+        Assert.Single(result);
+        Assert.Equal(QueryTokenType.LogicalOperator, result[0].TokenType);
+		
+		// Assert 
+        _mockNormalizer.Verify(
+            n => n.Normalize(It.IsAny<string>()),
+            Times.Never);
+    }
 }
 

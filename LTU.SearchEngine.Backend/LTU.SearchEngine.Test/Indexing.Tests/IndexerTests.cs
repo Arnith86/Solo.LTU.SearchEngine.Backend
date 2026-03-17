@@ -2,7 +2,7 @@
 using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure.Indexing;
-using LTU.SearchEngine.Infrastructure.Indexing.Repositories;
+using LTU.SearchEngine.Infrastructure.Repositories;
 using Moq;
 using System.Net;
 using System.Threading.Tasks; // Behövs för Task

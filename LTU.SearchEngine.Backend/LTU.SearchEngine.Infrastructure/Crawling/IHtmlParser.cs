@@ -27,7 +27,7 @@ public interface IHtmlParser
 	/// </summary>
 	/// <param name="html">The raw HTML content to parse.</param>
 	/// <returns>A plain-text representation of the visible content.</returns>
-	string ExtractText(string html);
+	string ExtractRawText(string html);
 
 	/// <summary>
 	/// Extracts the document title from the given HTML content.

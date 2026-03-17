@@ -169,15 +169,27 @@ namespace LTU.SearchEngine.Infrastructure
 
             foreach (var word in words)
             {
-
                 terms.Add(new IndexedTerm(word.Trim(), source));
-        
             }
         }
 
-        public string ExtractText(string html)
+        public string ExtractRawText(string html)
         {
-            throw new NotImplementedException();
+            if (string.IsNullOrWhiteSpace(html)) return string.Empty;
+
+            var doc = new HtmlDocument();
+            doc.LoadHtml(html);
+
+            //Remove garbage
+            var garbageNodes = doc.DocumentNode.SelectNodes("//script|//style|//noscript|//nav|//footer");
+            if(garbageNodes != null)
+            {
+                foreach (var node in garbageNodes) node.Remove();
+            }
+
+            //return all text as a single string
+            string plainText = doc.DocumentNode.InnerText;
+            return HtmlEntity.DeEntitize(plainText).Trim();
         }
 
         public string ExtractTitle(string html)
