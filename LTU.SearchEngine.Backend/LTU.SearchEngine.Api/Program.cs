@@ -1,3 +1,4 @@
+using LTU.SearchEngine.Api.ExtensionsUseExceptionHandler;
 using LTU.SearchEngine.Application;
 using LTU.SearchEngine.Application.QueryParsing;
 using LTU.SearchEngine.Application.QueryParsing.Helpers;
@@ -69,7 +70,7 @@ public class Program
         builder.Services.AddTransient<IIndexer, Indexer>();
 
 
-       // builder.Services.AddScoped<IQueryService, QueryService>();
+        builder.Services.AddScoped<IQueryService, QueryService>();
 
         builder.Services.AddScoped<IServiceManager, ServiceManager>();
 
@@ -120,8 +121,10 @@ public class Program
 
         var app = builder.Build();
 
-        // Configure the HTTP request pipeline.
-        if (app.Environment.IsDevelopment())
+		app.ConfigureExceptionHandler();
+
+		// Configure the HTTP request pipeline.
+		if (app.Environment.IsDevelopment())
         {
             app.MapOpenApi();
         }

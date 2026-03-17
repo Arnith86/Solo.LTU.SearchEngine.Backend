@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace LTU.SearchEngine.Application
+namespace LTU.SearchEngine.Application.QueryParsing
 {
     /// <summary>
     /// Defines the core search functionality for the application, handling query parsing and document retrieval.

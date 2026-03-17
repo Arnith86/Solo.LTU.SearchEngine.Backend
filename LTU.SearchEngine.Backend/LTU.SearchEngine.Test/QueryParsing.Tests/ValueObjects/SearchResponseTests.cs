@@ -1,15 +1,38 @@
-﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+﻿using LTU.SearchEngine.Backend.Core.Entities;
+using LTU.SearchEngine.Backend.Core.Model.DTOs;
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 
 namespace LTU.SearchEngine.Test.QueryParsing.Tests.ValueObjects;
 
 public class SearchResponseTests
 {
-	private List<SearchResultItem> CreateValidResults()
+	private List<Page> CreateValidResults()
 	{
-		return new List<SearchResultItem>
+		return new List<Page>
+	{
+		new Page
 		{
-			new SearchResultItem("Title", "https://example.com", "snippet")
-		};
+			Title = "Exempel Titel",
+			Url = "https://example.com",
+			Language = "sv",
+			LastCrawled = DateTime.UtcNow,
+			PageRankScore = 1.0,
+			HttpStatus = 200,
+			ContentHash = "abc123hash",
+			WordCount = 100
+		},
+		new Page
+		{
+			Title = "Andra Sidan",
+			Url = "https://example.com",
+			Language = "sv",
+			LastCrawled = DateTime.UtcNow,
+			PageRankScore = 0.8,
+			HttpStatus = 200,
+			ContentHash = "def456hash",
+			WordCount = 50
+		}
+	};
 	}
 
 	[Fact]

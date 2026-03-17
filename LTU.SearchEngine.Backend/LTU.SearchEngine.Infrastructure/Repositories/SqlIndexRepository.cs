@@ -6,11 +6,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LTU.SearchEngine.Infrastructure.Repositories;
 
-	/// <summary>
-	/// Handles database operations for the search engine´s indexing against a SQL database.
-	/// Uses IDbContextFactory to ensure thread safety during parallel web crawling.
-	/// </summary>
-	public class SqlIndexRepository : IIndexRepository
+/// <summary>
+/// Handles database operations for the search engine´s indexing against a SQL database.
+/// Uses IDbContextFactory to ensure thread safety during parallel web crawling.
+/// </summary>
+public class SqlIndexRepository : IIndexRepository
 {
     private readonly IDbContextFactory<SearchDbContext> _factory;
 
@@ -162,20 +162,20 @@ namespace LTU.SearchEngine.Infrastructure.Repositories;
             .ToHashSetAsync();
     }
 
-		// Retrieves a list of documents based on their unique IDs
-		public async Task<List<Page>> GetDocumentsByIdAsync(List<int> pageIds)
-		{
-			//Creates a new database context based on their unique IDs
-			await using var context = await _factory.CreateDbContextAsync();
+	// Retrieves a list of documents based on their unique IDs
+	public async Task<List<Page>> GetDocumentsByIdAsync(List<int> pageIds)
+	{
+		//Creates a new database context based on their unique IDs
+		await using var context = await _factory.CreateDbContextAsync();
 
-			return await context.Pages
-				.Where(p => pageIds.Contains(p.Id))
-				.ToListAsync();
-		}
-
-		public Task<HashSet<int>> GetDocumentIdsForPhraseAsync(
-        PhraseNode<HashSet<int>> phrase)
-		{
-			throw new NotImplementedException();
-		}
+		return await context.Pages
+			.Where(p => pageIds.Contains(p.Id))
+			.ToListAsync();
 	}
+
+	public Task<HashSet<int>> GetDocumentIdsForPhraseAsync(
+    PhraseNode<HashSet<int>> phrase)
+	{
+		throw new NotImplementedException();
+	}
+}

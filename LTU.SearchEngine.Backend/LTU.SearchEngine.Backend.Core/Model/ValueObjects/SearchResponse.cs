@@ -1,4 +1,7 @@
-﻿namespace LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+﻿using LTU.SearchEngine.Backend.Core.Entities;
+using LTU.SearchEngine.Backend.Core.Model.DTOs;
+
+namespace LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 
 /// <summary>
 /// Represents a complete search result response, including the result items and pagination metadata.
@@ -6,7 +9,7 @@
 public class SearchResponse
 {
 	/// <summary>Gets the collection of search result items.</summary>
-	public IEnumerable<SearchResultItem> SearchResults { get; }
+	public IEnumerable<Page> SearchResults { get; }
 
 	/// <summary>Gets the current page number in the paginated result set.</summary>
 	public int CurrentPage { get; }
@@ -30,7 +33,7 @@ public class SearchResponse
 	/// <exception cref="ArgumentNullException">Thrown if <paramref name="searchResults"/> is null.</exception>
 	/// <exception cref="ArgumentOutOfRangeException">Thrown if numeric values are outside valid ranges.</exception>
 	public SearchResponse(
-		IEnumerable<SearchResultItem> searchResults,
+		IEnumerable<Page> searchResults,
 		int currentPage,
 		int pageSize,
 		int totalResults,
@@ -49,7 +52,7 @@ public class SearchResponse
 	}
 
 	private void ValidateAttributes(
-		IEnumerable<SearchResultItem> searchResults, 
+		IEnumerable<Page> searchResults, 
 		int currentPage, 
 		int pageSize, 
 		int totalResults,

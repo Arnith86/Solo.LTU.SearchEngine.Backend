@@ -7,7 +7,7 @@ namespace LTU.SearchEngine.Infrastructure.Data
     public class SearchDbContext : DbContext
     {
         public SearchDbContext(DbContextOptions<SearchDbContext> options)
-    : base(options)
+         : base(options)
         {
         }
         public DbSet<Page> Pages { get; set; }

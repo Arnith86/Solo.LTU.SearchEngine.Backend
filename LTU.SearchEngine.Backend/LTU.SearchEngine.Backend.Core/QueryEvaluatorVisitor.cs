@@ -1,4 +1,6 @@
-﻿using LTU.SearchEngine.Backend.Core.Enums;
+﻿using LTU.SearchEngine.Api.ExtensionsUseExceptionHandler.CustomExceptions;
+using LTU.SearchEngine.Backend.Core.Enums;
+using LTU.SearchEngine.Backend.Core.Exceptions.SearchQueryExceptions;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 using LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
 using LTU.SearchEngine.Infrastructure.Repositories;
@@ -27,14 +29,32 @@ public class QueryEvaluatorVisitor : IQueryVisitor<HashSet<int>>
 	}
 
 	/// <inheritdoc/>
-	public async Task<HashSet<int>> VisitAsync(TermNode<HashSet<int>> node) =>
-		await _indexRepository
-			.GetDocumentIdsForTermAsync(node.Term);
+	public async Task<HashSet<int>> VisitAsync(TermNode<HashSet<int>> node)
+	{
+		try
+		{
+			return await _indexRepository
+				.GetDocumentIdsForTermAsync(node.Term);
+		}
+		catch (Exception ex)
+		{
+			throw new QueryEvaluationException($"Failed evaluating term '{node.Term}'", ex);
+		}
+	}
 
 	/// <inheritdoc/>
-	public async Task<HashSet<int>> VisitAsync(PhraseNode<HashSet<int>> node) =>
-		 await _indexRepository
-			.GetDocumentIdsForPhraseAsync(node);
+	public async Task<HashSet<int>> VisitAsync(PhraseNode<HashSet<int>> node)
+	{
+		try
+		{
+			return await _indexRepository
+				.GetDocumentIdsForPhraseAsync(node);
+		}
+		catch (Exception ex)
+		{
+			throw new QueryEvaluationException($"Failed evaluating phrase '{node.Phrase}'", ex);
+		}
+	}
 
 	/// <inheritdoc/>
 	public async Task<HashSet<int>> VisitAsync(LogicOperationNode<HashSet<int>> node)

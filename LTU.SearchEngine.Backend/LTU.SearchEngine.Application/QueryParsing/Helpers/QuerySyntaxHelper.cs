@@ -1,5 +1,6 @@
 ﻿
 using LTU.SearchEngine.Backend.Core.Exceptions;
+using LTU.SearchEngine.Backend.Core.Exceptions.SearchQueryExceptions;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 
 namespace LTU.SearchEngine.Application.QueryParsing.Helpers;
@@ -33,7 +34,7 @@ public class QuerySyntaxHelper : IQuerySyntaxHelper
 			{
 				if (stack.Count == 0 || stack.Pop() != pairs[character])
 				{
-					throw new InvalidQueryStringException(
+					throw new QuerySyntaxException(
 						$"Mismatched or extra closing operator: {character}", token.Token);
 				}
 			}
@@ -41,7 +42,7 @@ public class QuerySyntaxHelper : IQuerySyntaxHelper
 
 		if (stack.Count > 0)
 		{
-			throw new InvalidQueryStringException(
+			throw new QuerySyntaxException(
 				$"Unclosed operator remaining: {stack.Peek()}", "");
 		}
 	}
