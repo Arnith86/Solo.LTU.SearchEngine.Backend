@@ -39,7 +39,7 @@ public class Program
         // ========================================================================
         // 2. Database & Persistence
         // ========================================================================
-        // Uses DbContextFactory to handle concurrency safely within TPL (Thread Parallel Library).
+        // Uses DbContextFactory to handle concurrency safely within TPL (Thread Parallel Library) .
         builder.Services.AddDbContextFactory<SearchDbContext>(options =>
             options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
