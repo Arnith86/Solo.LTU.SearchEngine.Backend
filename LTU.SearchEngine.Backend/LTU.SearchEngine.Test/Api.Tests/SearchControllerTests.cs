@@ -1,10 +1,11 @@
 ﻿using LTU.SearchEngine.Api;
 using LTU.SearchEngine.Application;
+using LTU.SearchEngine.Application.QueryParsing;
+using LTU.SearchEngine.Backend.Core.Entities;
 using LTU.SearchEngine.Backend.Core.Model.DTOs;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
-using Xunit;
 
 namespace LTU.SearchEngine.Test.Api.Tests
 {
@@ -30,9 +31,9 @@ namespace LTU.SearchEngine.Test.Api.Tests
             // Arrange
             string validQuery = "test search";
 
-            var fakeItems = new List<SearchResultItem>
+            var fakeItems = new List<DocumentDTO>
             {
-                new SearchResultItem("Test", "http://test.com", "Test snippet")
+                new DocumentDTO("Test", "http://test.com", "sv"/*, "Test snippet"*/)
             };
 
             var expectedDto = new SearchResponseDTO(
@@ -43,8 +44,9 @@ namespace LTU.SearchEngine.Test.Api.Tests
                 message: "Success"
             );
 
-            _mockQueryService.Setup(s => s.GetSearchResultsAsync(validQuery))
-    .Returns(Task.FromResult(expectedDto)); 
+            _mockQueryService
+                .Setup(s => s.GetSearchResultsAsync(validQuery))
+                .Returns(Task.FromResult(expectedDto)); 
 
             // Act
             var result = await _controller.GetSearchResponses(validQuery);
@@ -68,15 +70,16 @@ namespace LTU.SearchEngine.Test.Api.Tests
             string query = "zero-results";
 
             var emptyDto = new SearchResponseDTO(
-                searchResults: new List<SearchResultItem>(),
+                searchResults: new List<DocumentDTO>(),
                 currentPage: 1,
                 pageSize: 0,
                 totalResults: 0,
                 message: "No results found"
             );
 
-            _mockQueryService.Setup(s => s.GetSearchResultsAsync(query))
-    .Returns(Task.FromResult(emptyDto)); 
+            _mockQueryService
+                .Setup(s => s.GetSearchResultsAsync(query))
+                .Returns(Task.FromResult(emptyDto)); 
 
             // Act
             var result = await _controller.GetSearchResponses(query);
@@ -109,7 +112,8 @@ namespace LTU.SearchEngine.Test.Api.Tests
             // Arrange
             string query = "error";
 
-            _mockQueryService.Setup(s => s.GetSearchResultsAsync(query))
+            _mockQueryService
+                .Setup(s => s.GetSearchResultsAsync(query))
                 .ThrowsAsync(new System.Exception("Database connection failed"));
 
             // Act & Assert

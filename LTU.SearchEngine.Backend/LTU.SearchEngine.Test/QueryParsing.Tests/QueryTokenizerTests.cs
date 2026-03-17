@@ -6,6 +6,7 @@ using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using Moq;
 using System.Text;
 using Xunit;
+using Xunit.Sdk;
 
 namespace LTU.SearchEngine.Test.QueryParsing.Tests;
 
@@ -138,8 +139,96 @@ public class QueryTokenizerTests
 		Assert.Equivalent(phrase, result[2]);
 	}
 
+    [Fact]
+    public void Tokenize_TwoTermsSeparatedBySpace_InsertsImplicitOr()
+    {
+        // Arrange
+        var input = "apple banana";
+        var result = _sut.Tokenize(input);
 
-	[Theory]
+        Assert.Equal(3, result.Count);
+        Assert.Equal(QueryTokenType.Term, result[0].TokenType);
+        Assert.Equal("apple", result[0].Token);
+
+        Assert.Equal(QueryTokenType.LogicalOperator, result[1].TokenType);
+        Assert.Equal("OR", result[1].Token);
+
+        Assert.Equal(QueryTokenType.Term, result[2].TokenType);
+        Assert.Equal("banana", result[2].Token);
+    }
+
+    [Fact]
+    public void Tokenize_MultipleTermsSeparatedBySpaces_InsertsImplicitOrBetweenAll()
+    {
+		//Arrange
+		var input = "apple banana orange";
+        var result = _sut.Tokenize(input);
+
+        Assert.Equal(5, result.Count);
+
+        Assert.Equal("apple", result[0].Token);
+        Assert.Equal("OR", result[1].Token);
+        Assert.Equal("banana", result[2].Token);
+        Assert.Equal("OR", result[3].Token);
+        Assert.Equal("orange", result[4].Token);
+    }
+
+    [Fact]
+    public void Tokenize_TermFollowedByExplicitOperator_DoesNotInsertImplicitOr()
+    {
+		// Arrange
+		var input = "start AND phrase";
+        var result = _sut.Tokenize(input);
+
+        Assert.Equal(3, result.Count);
+
+        Assert.Equal("start", result[0].Token);
+        Assert.Equal("AND", result[1].Token);
+        Assert.Equal("phrase", result[2].Token);
+    }
+
+    [Fact]
+    public void Tokenize_TermPhraseTerm_DoesNotInsertImplicitOr()
+    {
+        var input = "cat \"hello dolly\" dog";
+
+        var result = _sut.Tokenize(input);
+
+        Assert.Equal(3, result.Count);
+        Assert.Equal(QueryTokenType.Term, result[0].TokenType);
+        Assert.Equal(QueryTokenType.Phrase, result[1].TokenType);
+        Assert.Equal(QueryTokenType.Term, result[2].TokenType);
+    }
+
+    [Fact]
+    public void Tokenize_UnclosedQuote_DoesNotInsertImplicitOr()
+    {
+		// Arrange 
+		var input = "start \"unclosed phrase";
+        var result = _sut.Tokenize(input);
+
+        Assert.Equal(3, result.Count);
+
+        Assert.Equal("start", result[0].Token);
+        Assert.Equal("\"unclosed", result[1].Token);
+        Assert.Equal("phrase", result[2].Token);
+    }
+
+    [Fact]
+    public void Tokenize_TermFollowedBySymbolicOperator_DoesNotInsertImplicitOr()
+    {
+		// Arrange
+		var input = "start && phrase";
+        var result = _sut.Tokenize(input);
+
+        Assert.Equal(3, result.Count);
+
+        Assert.Equal("start", result[0].Token);
+        Assert.Equal("&&", result[1].Token);
+        Assert.Equal("phrase", result[2].Token);
+    }
+
+    [Theory]
 	[InlineData("!")]
 	[InlineData("-")]
 	[InlineData("+")]
@@ -247,7 +336,7 @@ public class QueryTokenizerTests
 		QueryTokenType type
 		)
 	{
-		// Assert
+		// Arrange
 		var tokens = new List<ExtractedQueryToken>();
 		var sb = new StringBuilder(termOrPhrase);
 
@@ -265,29 +354,39 @@ public class QueryTokenizerTests
     [Fact]
     public void Tokenize_Should_Call_Normalizer_For_Term()
     {
+		// Arrange 
         _mockNormalizer
             .Setup(n => n.Normalize(It.IsAny<string>()))
             .Returns((string s) => s);
 
-        _sut.Tokenize("Running");
+		// Act 
+        _sut.Tokenize("the Running man");
 
+		// Assert
         _mockNormalizer.Verify(
-            n => n.Normalize("Running"),
-            Times.Once);
+            n => n.Normalize(It.IsAny<string>()),
+            Times.Exactly(3));
     }
 
     [Theory]
     [InlineData("AND")]
     [InlineData("OR")]
     [InlineData("NOT")]
+    [InlineData("!")]
+    [InlineData("||")]
+    [InlineData("&&")]
+    [InlineData("+")]
+    [InlineData("-")]
     public void Tokenize_Should_Not_Normalize_LogicalOperators(string input)
     {
-        
+        // Arrange
         var result = _sut.Tokenize(input);
 
+		// Act 
         Assert.Single(result);
         Assert.Equal(QueryTokenType.LogicalOperator, result[0].TokenType);
-
+		
+		// Assert 
         _mockNormalizer.Verify(
             n => n.Normalize(It.IsAny<string>()),
             Times.Never);

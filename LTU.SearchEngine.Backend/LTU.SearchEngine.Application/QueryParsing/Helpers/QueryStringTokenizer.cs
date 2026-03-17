@@ -41,11 +41,15 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 			queryTokenType == QueryTokenType.Phrase)
 		{
 			token = _normalizer.Normalize(token);
-
+			
 			if (token == null)
 			{
 				stringBuilder.Clear();
 				return;
+			}
+			else
+			{
+				extractedToken = new ExtractedQueryToken(queryTokenType, token);	
 			}
 		}
 
@@ -70,8 +74,12 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 			LoopAction action = LoopAction.None;
 			var character = input[index];
 
-			// Checks for grouping operators. ( ) [ ] { } 
-			action = TryHandleIsGroupingOperator(tokens, stringBuilder, character);
+            // Checks implicit OR
+            action = TryHandleImplicitOr(input, tokens, stringBuilder, ref isBuildingAPhrase, index);
+
+            if (action.Equals(LoopAction.Continue)) continue;
+            // Checks for grouping operators. ( ) [ ] { } 
+            action = TryHandleIsGroupingOperator(tokens, stringBuilder, character);
 
 			if (action.Equals(LoopAction.Continue))	continue;
 
@@ -128,8 +136,55 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 		return tokens;
 	}
 
+    private LoopAction TryHandleImplicitOr(
+       string input,
+       List<ExtractedQueryToken> tokens,
+       StringBuilder stringBuilder,
+       ref bool isBuildingAPhrase,
+       int index)
+    {
+        char character = input[index];
 
-	private LoopAction TryHandleIsGroupingOperator(
+        // Only handle whitespace outside phrases
+        if (!char.IsWhiteSpace(character) || isBuildingAPhrase)
+            return LoopAction.None;
+
+        // No term being built → nothing to separate
+        if (stringBuilder.Length == 0)
+            return LoopAction.None;
+
+        // Prevent implicit OR when term starts with quote (unclosed phrase case)
+        if (stringBuilder[0] == '"')
+            return LoopAction.None;
+
+        // Look ahead to next character
+        if (index + 1 < input.Length)
+        {
+            char next = input[index + 1];
+
+            // Do not insert OR before phrases or operators
+            if (next == '"' ||
+                "!+-&|".Contains(next) ||
+                IsCapitalLetterOperator(input, index + 1))
+            {
+                return LoopAction.None;
+            }
+        }
+
+        int tokenCountBeforeFlush = tokens.Count;
+
+        Flush(stringBuilder, tokens, QueryTokenType.Term);
+
+        // Flush may not add a token if normalization removes it
+        if (tokens.Count == tokenCountBeforeFlush)
+            return LoopAction.Continue;
+
+        tokens.Add(new ExtractedQueryToken(QueryTokenType.LogicalOperator,"OR"));
+
+        return LoopAction.Continue;
+    }
+
+    private LoopAction TryHandleIsGroupingOperator(
 		List<ExtractedQueryToken> tokens, StringBuilder stringBuilder, char character)
 	{
 		if (IsGroupingOperator(character))

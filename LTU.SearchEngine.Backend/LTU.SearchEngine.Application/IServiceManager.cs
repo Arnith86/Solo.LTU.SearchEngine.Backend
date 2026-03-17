@@ -1,4 +1,5 @@
-﻿using System;
+﻿using LTU.SearchEngine.Application.QueryParsing;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
