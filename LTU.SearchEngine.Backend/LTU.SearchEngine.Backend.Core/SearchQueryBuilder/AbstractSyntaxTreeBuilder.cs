@@ -1,4 +1,5 @@
 ﻿using LTU.SearchEngine.Backend.Core.Enums;
+using LTU.SearchEngine.Backend.Core.Exceptions.SearchQueryExceptions;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 
@@ -53,7 +54,7 @@ public class AbstractSyntaxTreeBuilder<TResult> : ITreeBuilder<TResult, Extracte
 		}
 
 		if (Stack.Count != 1)
-			throw new InvalidOperationException("Invalid query structure.");
+			throw new QuerySyntaxException("Invalid query structure.");
 
 		return Stack.Pop();
 	}
@@ -64,7 +65,7 @@ public class AbstractSyntaxTreeBuilder<TResult> : ITreeBuilder<TResult, Extracte
 	{
 		// makes sure there are enough tokens to build a logical operation
 		if (aSTStack.Count < 2)
-			throw new InvalidOperationException("Invalid logical operation.");
+			throw new QuerySyntaxException("Invalid logical operation, not enough terms or phrases, or a right side NOT operator was encountered in the query.");
 
 		QueryNode<TResult> right = aSTStack.Pop();
 		QueryNode<TResult> left = aSTStack.Pop();
