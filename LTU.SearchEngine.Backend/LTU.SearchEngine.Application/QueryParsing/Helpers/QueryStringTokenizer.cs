@@ -41,11 +41,15 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 			queryTokenType == QueryTokenType.Phrase)
 		{
 			token = _normalizer.Normalize(token);
-
+			
 			if (token == null)
 			{
 				stringBuilder.Clear();
 				return;
+			}
+			else
+			{
+				extractedToken = new ExtractedQueryToken(queryTokenType, token);	
 			}
 		}
 
