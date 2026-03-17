@@ -6,6 +6,7 @@ using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using Moq;
 using System.Text;
 using Xunit;
+using Xunit.Sdk;
 
 namespace LTU.SearchEngine.Test.QueryParsing.Tests;
 
@@ -335,7 +336,7 @@ public class QueryTokenizerTests
 		QueryTokenType type
 		)
 	{
-		// Assert
+		// Arrange
 		var tokens = new List<ExtractedQueryToken>();
 		var sb = new StringBuilder(termOrPhrase);
 
@@ -353,29 +354,39 @@ public class QueryTokenizerTests
     [Fact]
     public void Tokenize_Should_Call_Normalizer_For_Term()
     {
+		// Arrange 
         _mockNormalizer
             .Setup(n => n.Normalize(It.IsAny<string>()))
             .Returns((string s) => s);
 
-        _sut.Tokenize("Running");
+		// Act 
+        _sut.Tokenize("the Running man");
 
+		// Assert
         _mockNormalizer.Verify(
-            n => n.Normalize("Running"),
-            Times.Once);
+            n => n.Normalize(It.IsAny<string>()),
+            Times.Exactly(3));
     }
 
     [Theory]
     [InlineData("AND")]
     [InlineData("OR")]
     [InlineData("NOT")]
+    [InlineData("!")]
+    [InlineData("||")]
+    [InlineData("&&")]
+    [InlineData("+")]
+    [InlineData("-")]
     public void Tokenize_Should_Not_Normalize_LogicalOperators(string input)
     {
-        
+        // Arrange
         var result = _sut.Tokenize(input);
 
+		// Act 
         Assert.Single(result);
         Assert.Equal(QueryTokenType.LogicalOperator, result[0].TokenType);
-
+		
+		// Assert 
         _mockNormalizer.Verify(
             n => n.Normalize(It.IsAny<string>()),
             Times.Never);
