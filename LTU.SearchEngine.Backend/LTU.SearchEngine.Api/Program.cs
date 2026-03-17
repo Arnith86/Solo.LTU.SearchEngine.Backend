@@ -16,7 +16,6 @@ using LTU.SearchEngine.Infrastructure.Data;
 using LTU.SearchEngine.Infrastructure.Indexing;
 using LTU.SearchEngine.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
-using System.Diagnostics;
 
 namespace LTU.SearchEngine.Backend.Api;
 
@@ -44,6 +43,7 @@ public class Program
         builder.Services.AddDbContextFactory<SearchDbContext>(options =>
             options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+    
         // Repository pattern for abstracting database operations.
         builder.Services.AddTransient<IIndexRepository, SqlIndexRepository>();
 
