@@ -1,4 +1,5 @@
 ﻿using LTU.SearchEngine.Backend.Core.Enums;
+using LTU.SearchEngine.Backend.Core.Exceptions.SearchQueryExceptions;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 using LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
@@ -148,7 +149,7 @@ public class AbstractSyntaxTreeBuilderTests
 		var builder = CreateBuilder();
 
 		// Act & Assert
-		Assert.Throws<InvalidOperationException>(() =>
+		Assert.Throws<QuerySyntaxException>(() =>
 			builder.BuildTree(new List<ExtractedQueryToken>())
 		);
 	}
@@ -171,7 +172,7 @@ public class AbstractSyntaxTreeBuilderTests
 
 
 		// Act & Assert
-		Assert.Throws<InvalidOperationException>(() =>
+		Assert.Throws<QuerySyntaxException>(() =>
 			builder.BuildTree(new List<ExtractedQueryToken>())
 		);
 	}
