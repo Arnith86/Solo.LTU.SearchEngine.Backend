@@ -334,7 +334,11 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 		bool checkEndPhrase = false
 		)
 	{
-		if (checkEndPhrase) return input[index].Equals('"');
+		if (checkEndPhrase) 
+		{
+			char c = input[index];
+			return c == '"' || c == '“' || c == '”';
+		}
 
 		return input[index].Equals('"') &&
 				IsNotNullIndex(index + 1, input.Length) &&
@@ -344,8 +348,10 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 
 	private bool ContainsEndQuote(string input, int index)
 	{
-		for (int i = index; i < input.Length - 1; i++)
-			if (input[i].Equals('"')) return true;
+		if (index < 0 || index >= input.Length) return false;
+
+		for (int i = index; i < input.Length; i++)
+			if (input[i] == '"' || input[i] == '“' || input[i] == '”') return true;
 
 		return false;
 	}
