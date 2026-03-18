@@ -19,7 +19,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LTU.SearchEngine.Backend.Api;
 
-public class Program
+public partial class Program
 {
     public static void Main(string[] args)
     {
@@ -30,11 +30,12 @@ public class Program
         // ========================================================================
         // Loads crawler configuration (seed URLs, delays, concurrency limits) from JSON.
         builder.Services.AddSingleton<ICrawlerSettingsLoader, JsonCrawlerSettingsLoader>();
-        builder.Services.AddSingleton(serviceProvider =>
-        {
-            var loader = serviceProvider.GetRequiredService<ICrawlerSettingsLoader>();
-            return loader.Load(); // Returns the immutable CrawlerSettings object
-        });
+        // builder.Services.AddSingleton(serviceProvider =>
+        // {
+        //     var loader = serviceProvider.GetRequiredService<ICrawlerSettingsLoader>();
+        //     return loader.Load(); // Returns the immutable CrawlerSettings object
+        // });
+        builder.Services.AddSingleton(sp => sp.GetRequiredService<ICrawlerSettingsLoader>().Load());
 
         // ========================================================================
         // 2. Database & Persistence

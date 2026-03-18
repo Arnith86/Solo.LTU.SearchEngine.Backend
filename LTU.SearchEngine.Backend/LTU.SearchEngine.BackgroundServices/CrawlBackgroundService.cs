@@ -1,5 +1,6 @@
 ﻿using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -9,13 +10,16 @@ public class CrawlBackgroundService : BackgroundService
 {
     private readonly ICrawlJobDispatcher _dispatcher;
     private readonly ILogger<CrawlBackgroundService> _logger;
+    private readonly CrawlerSettings _crawlerSettings;
 
-    // Future improvement: Inject IOptions<CrawlerSettings> to fetch the Seed URL from config instead of a constant
-    private const string SeedUrl = "https://www.ltu.se";
 
-    public CrawlBackgroundService(ICrawlJobDispatcher dispatcher, ILogger<CrawlBackgroundService> logger)
+    public CrawlBackgroundService(
+        ICrawlJobDispatcher dispatcher, 
+        CrawlerSettings crawlerSettings,
+        ILogger<CrawlBackgroundService> logger)
     {
         _dispatcher = dispatcher;
+        _crawlerSettings = crawlerSettings;
         _logger = logger;
     }
 
@@ -31,14 +35,14 @@ public class CrawlBackgroundService : BackgroundService
             // Create the initial Seed Job (Requirement FRQ-1001)
             var seedJob = new CrawlJob
             {
-                Url = SeedUrl,
+                Url = _crawlerSettings.SeedUrls[0],
                 // Set default values as required by the CrawlJob model
                 Status = CrawlJobStatus.Pending,
                 RetryCount = 0,
                 NextAttempt = DateTime.UtcNow
             };
 
-            _logger.LogInformation($"Enqueuing Seed Job: {SeedUrl}");
+            _logger.LogInformation($"Enqueuing Seed Job: {_crawlerSettings.SeedUrls[0]}");
 
             // Hand over the job to our TPL-based Dispatcher for processing
             await _dispatcher.Enqueue(seedJob);
@@ -54,9 +58,5 @@ public class CrawlBackgroundService : BackgroundService
         {
             _logger.LogError(ex, "Failed to enqueue seed job.");
         }
-
-        // The BackgroundService stays alive, even though ExecuteAsync has finished its initialization.
-        // To implement recurring tasks (e.g., scheduled re-crawling), a 
-        // `while (!stoppingToken.IsCancellationRequested)` loop could be added here.
     }
 }
