@@ -39,7 +39,7 @@ namespace LTU.SearchEngine.Test.Indexing.Tests
         public void Transform_GivenNullCrawlResult_ShouldThrowArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                _pipeline.Transform(null));
+                _pipeline.Transform(null!));
         }
 
         [Fact]

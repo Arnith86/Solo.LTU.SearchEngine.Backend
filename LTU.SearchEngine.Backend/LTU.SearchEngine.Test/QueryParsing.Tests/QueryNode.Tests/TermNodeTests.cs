@@ -20,14 +20,16 @@ public class TermNodeTests
 	}
 
 	[Theory]
-	[InlineData(null)]
+	[InlineData("NULL_TEST")]
 	[InlineData("")]
 	[InlineData(" ")]
-	public void Constructor_InvalidTerm_ThrowsArgumentNullException(string invalidTerm)
+	public void Constructor_InvalidTerm_ThrowsArgumentNullException(string input)
 	{
+		string? invalidTerm = input.Equals("NULL_TEST") ? null : input;
+
 		// Act & Assert
 		Assert.Throws<ArgumentNullException>(
-			() => new TermNode<string>(invalidTerm)
+			() => new TermNode<string>(invalidTerm!)
 		);
 	}
 

@@ -11,39 +11,20 @@ namespace LTU.SearchEngine.Test.IntegrationTesting;
 public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly WebApplicationFactory<Program> _factory; 
-    private string _seedURL;
-    private string _page1;
-    private string _page2;
-    private string _final;
      
     public CrawlerIntegrationTests(WebApplicationFactory<Program> factory)
     {
-        _seedURL = "http://localhost/seed.html";
-        _page1 = "http://localhost/page1.html";
-        _page2 = "http://localhost/page2.html";
-        _final = "http://localhost/final.html";
         _factory = factory;
     } 
 
-    [Fact]
-    [Trait("TestCase", "TC-FRQ-1001")]
-    public async Task Crawler_ShouldVisitAllLinkedPagesRecursivly()
+    private WebApplicationFactory<Program> CreateTestFactory(
+        string seedURL,
+        string whiteListDomain,
+        Mock<IIndexer> indexerMock,
+        HttpClient httpClientForCrawler)
     {
-        // Arrange 
-        var visitedList = new List<CrawlResult>();
-        var indexerMock = new Mock<IIndexer>();
-
-        indexerMock
-            .Setup(im => im.IndexAsync(It.IsAny<CrawlResult>()))
-            .Callback<CrawlResult>(result => visitedList.Add(result))
-            .Returns(Task.CompletedTask);
-
-        var webHelper = new HelperClasses.WebHostBuilder();
-        using var httpClientForCrawler = webHelper.BuildHttpClient();
-
-
         // Creates a version of the application, but with a mock index instead.
-        var testFactory =_factory.WithWebHostBuilder(builder =>
+        var testFactory = _factory.WithWebHostBuilder(builder =>
         {
             builder.ConfigureServices(services =>
             {
@@ -56,14 +37,45 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             {
                 var testConfig = new Dictionary<string, string?>
                 {
-                    ["CrawlerSettings:SeedUrls:0"] = _seedURL,
+                    ["CrawlerSettings:SeedUrls:0"] = seedURL,
                     ["CrawlerSettings:SeedUrls:1"] = null,
-                    ["CrawlerSettings:WhiteList:0"] = "localhost"
+                    ["CrawlerSettings:WhiteList:0"] = whiteListDomain
                 };
 
                 config.AddInMemoryCollection(testConfig);
             });
         });
+        return testFactory;
+    }
+
+    [Fact]
+    [Trait("TestCase", "TC-FRQ-1001")]
+    public async Task Crawler_ShouldVisitAllLinkedPagesRecursivly()
+    {
+        // Arrange 
+        string seedURL = "http://localhost/seed.html";
+        string page1 = "http://localhost/page1.html";
+        string page2 = "http://localhost/page2.html";
+        string final = "http://localhost/final.html";
+        
+        var visitedList = new List<CrawlResult>();
+        var indexerMock = new Mock<IIndexer>();
+
+        indexerMock
+            .Setup(im => im.IndexAsync(It.IsAny<CrawlResult>()))
+            .Callback<CrawlResult>(result => visitedList.Add(result))
+            .Returns(Task.CompletedTask);
+
+        var webHelper = new HelperClasses.WebHostBuilder();
+        using var httpClientForCrawler = webHelper.BuildHttpClient();
+        
+        WebApplicationFactory<Program> testFactory = CreateTestFactory(
+            seedURL, 
+            whiteListDomain: "localhost", 
+            indexerMock, 
+            httpClientForCrawler
+        );
+
 
         // Retrieve the actuall implementation of the crawler. 
         using var scope = testFactory.Services.CreateScope();
@@ -71,13 +83,13 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
 
         // Act
-        await crawler.FetchAsync(_seedURL);
-        
-        int timeoutMs = 5000; 
+        await crawler.FetchAsync(seedURL);
+
+        int timeoutMs = 5000;
         int elapsedTime = 0;
 
         // Wait up to 5 sec to fill list 
-        while(visitedList.Count < 4 && elapsedTime < timeoutMs)
+        while (visitedList.Count < 4 && elapsedTime < timeoutMs)
         {
             await Task.Delay(100); // wait with 100 ms intervalls
             elapsedTime += 100;
@@ -85,9 +97,63 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
         // Assert
         Assert.Equal(4, visitedList.Count);
-        Assert.Equal(_seedURL, visitedList[0].Url);
-        Assert.Equal(_page1, visitedList[1].Url);
-        Assert.Equal(_page2, visitedList[2].Url);
-        Assert.Equal(_final, visitedList[3].Url);
+        Assert.Equal(seedURL, visitedList[0].Url);
+        Assert.Equal(page1, visitedList[1].Url);
+        Assert.Equal(page2, visitedList[2].Url);
+        Assert.Equal(final, visitedList[3].Url);
+    }
+
+
+    [Fact]
+    [Trait("TestCase", "TC-FRQ-1001-N1")]
+    public async Task Crawler_ShouldIgnoreSeedUrl_WhenDomainIsNotWhitelisted()
+    {
+        // Arrange 
+        string externalURL = "http://forbidden-domain.com";
+        
+        var visitedList = new List<CrawlResult>();
+        var indexerMock = new Mock<IIndexer>();
+
+        indexerMock
+            .Setup(im => im.IndexAsync(It.IsAny<CrawlResult>()))
+            .Callback<CrawlResult>(result => visitedList.Add(result))
+            .Returns(Task.CompletedTask);
+
+        var webHelper = new HelperClasses.WebHostBuilder();
+        using var httpClientForCrawler = webHelper.BuildHttpClient();
+        
+        WebApplicationFactory<Program> testFactory = CreateTestFactory(
+            externalURL, 
+            whiteListDomain: "localhost", 
+            indexerMock, 
+            httpClientForCrawler
+        );
+
+
+        // Retrieve the actuall implementation of the crawler. 
+        using var scope = testFactory.Services.CreateScope();
+        var crawler = scope.ServiceProvider.GetRequiredService<ICrawler>();
+
+
+        // Act
+        await crawler.FetchAsync(externalURL);
+
+        int timeoutMs = 500;
+        int elapsedTime = 0;
+
+        // Wait up to 5 sec to fill list 
+        while (elapsedTime < timeoutMs)
+        {
+            await Task.Delay(100); // wait with 100 ms intervalls
+            elapsedTime += 100;
+        }
+
+        // Assert
+        Assert.Empty(visitedList);
+        indexerMock.Verify(im => im.IndexAsync(
+            It.IsAny<CrawlResult>()), 
+            Times.Never()
+        );
+
     }
 }

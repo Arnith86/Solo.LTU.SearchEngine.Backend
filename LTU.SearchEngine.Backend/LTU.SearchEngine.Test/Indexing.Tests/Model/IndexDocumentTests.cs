@@ -43,7 +43,7 @@ namespace LTU.SearchEngine.Test.Indexing.Tests.Model
             var document = CreateDocument();
 
             Assert.Throws<ArgumentNullException>(() =>
-                document.AddTerm(null, TermSource.Title));
+                document.AddTerm(null!, TermSource.Title));
         }
 
         [Fact]

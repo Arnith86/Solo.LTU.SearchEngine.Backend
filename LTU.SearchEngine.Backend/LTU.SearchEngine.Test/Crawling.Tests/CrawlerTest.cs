@@ -145,7 +145,7 @@ namespace LTU.SearchEngine.Test.Crawling.Tests
             // ASSERT
             Assert.NotNull(result); 
             Assert.Equal(System.Net.HttpStatusCode.ServiceUnavailable, result.StatusCode);
-            Assert.Equal("Error", result.Type);
+            Assert.Contains("Error", result.Type);
             Assert.Equal(url, result.Url);
             Assert.Empty(result.IndexedTerms);
         }

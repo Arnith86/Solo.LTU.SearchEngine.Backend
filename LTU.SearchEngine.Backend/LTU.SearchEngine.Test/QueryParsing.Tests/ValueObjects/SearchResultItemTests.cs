@@ -22,47 +22,53 @@ public class SearchResultItemTests
 	}
 
 	[Theory]
-	[InlineData(null)]
+	[InlineData("NULL_TEST")]
 	[InlineData("")]
 	[InlineData("   ")]
-	public void Constructor_InvalidTitle_ShouldThrowArgumentException(string invalidTitle)
+	public void Constructor_InvalidTitle_ShouldThrowArgumentException(string input)
 	{
+		string? invalidTitle = input.Equals("NULL_TEST") ? null : input;
+
 		// Arrange
 		string url = "https://example.com";
 		string snippet = "snippet";
 
 		// Act & Assert
 		Assert.Throws<ArgumentException>(() =>
-			new SearchResultItem(invalidTitle, url, snippet));
+			new SearchResultItem(invalidTitle!, url, snippet));
 	}
 
 	[Theory]
-	[InlineData(null)]
+	[InlineData("NULL_TEST")]
 	[InlineData("")]
 	[InlineData("   ")]
-	public void Constructor_InvalidUrl_ShouldThrowArgumentException(string invalidUrl)
+	public void Constructor_InvalidUrl_ShouldThrowArgumentException(string input)
 	{
+		string? invalidUrl = input.Equals("NULL_TEST") ? null : input;
+		
 		// Arrange
 		string title = "title";
 		string snippet = "snippet";
 
 		// Act & Assert
 		Assert.Throws<ArgumentException>(() =>
-			new SearchResultItem(title, invalidUrl, snippet));
+			new SearchResultItem(title, invalidUrl!, snippet));
 	}
 
 	[Theory]
-	[InlineData(null)]
+	[InlineData("NULL_TEST")]
 	[InlineData("")]
 	[InlineData("   ")]
-	public void Constructor_InvalidSnippet_ShouldThrowArgumentException(string invalidSnippet)
+	public void Constructor_InvalidSnippet_ShouldThrowArgumentException(string input)
 	{
+		string? invalidSnippet = input.Equals("NULL_TEST") ? null : input;
+		
 		// Arrange
 		string title = "title";
 		string url = "https://example.com";
 
 		// Act & Assert
 		Assert.Throws<ArgumentException>(() =>
-			new SearchResultItem(title, url, invalidSnippet));
+			new SearchResultItem(title, url, invalidSnippet!));
 	}
 }
