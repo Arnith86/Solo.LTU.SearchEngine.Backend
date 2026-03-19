@@ -69,7 +69,7 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         var webHelper = new HelperClasses.WebHostBuilder();
         using var httpClientForCrawler = webHelper.BuildHttpClient();
         
-        WebApplicationFactory<Program> testFactory = CreateTestFactory(
+        using WebApplicationFactory<Program> testFactory = CreateTestFactory(
             seedURL, 
             whiteListDomain: "localhost", 
             indexerMock, 
@@ -122,7 +122,7 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         var webHelper = new HelperClasses.WebHostBuilder();
         using var httpClientForCrawler = webHelper.BuildHttpClient();
         
-        WebApplicationFactory<Program> testFactory = CreateTestFactory(
+        using WebApplicationFactory<Program> testFactory = CreateTestFactory(
             externalURL, 
             whiteListDomain: "localhost", 
             indexerMock, 
@@ -178,7 +178,7 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         var webHelper = new HelperClasses.WebHostBuilder();
         using var httpClientForCrawler = webHelper.BuildHttpClient();
         
-        WebApplicationFactory<Program> testFactory = CreateTestFactory(
+        using WebApplicationFactory<Program> testFactory = CreateTestFactory(
             seedURL, 
             whiteListDomain: "localhost", 
             indexerMock, 
@@ -210,5 +210,7 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         Assert.Equal(page1, visitedList[1].Url);
         Assert.Equal(page2, visitedList[2].Url);
         Assert.Equal(final, visitedList[3].Url);
+
+        testFactory.Dispose();
     }
 }
