@@ -154,6 +154,61 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             It.IsAny<CrawlResult>()), 
             Times.Never()
         );
+    }
 
+    [Fact]
+    [Trait("TestCase", "TC-FRQ-1003-B")]
+    public async Task Crawler_WhitelistEnforcement_IgnoresNonWhiteListedDomains()
+    {
+        // Arrange 
+        string seedURL = "http://localhost/SeedIncludingExternalUrl.html"; // includes http://forbidden-domain.com
+        string page1 = "http://localhost/page1.html";
+        string page2 = "http://localhost/page2.html";
+        string final = "http://localhost/final.html";
+        
+
+        var visitedList = new List<CrawlResult>();
+        var indexerMock = new Mock<IIndexer>();
+
+        indexerMock
+            .Setup(im => im.IndexAsync(It.IsAny<CrawlResult>()))
+            .Callback<CrawlResult>(result => visitedList.Add(result))
+            .Returns(Task.CompletedTask);
+
+        var webHelper = new HelperClasses.WebHostBuilder();
+        using var httpClientForCrawler = webHelper.BuildHttpClient();
+        
+        WebApplicationFactory<Program> testFactory = CreateTestFactory(
+            seedURL, 
+            whiteListDomain: "localhost", 
+            indexerMock, 
+            httpClientForCrawler
+        );
+
+
+        // Retrieve the actuall implementation of the crawler. 
+        using var scope = testFactory.Services.CreateScope();
+        var crawler = scope.ServiceProvider.GetRequiredService<ICrawler>();
+
+
+        // Act
+        await crawler.FetchAsync(seedURL);
+
+        int timeoutMs = 4000;
+        int elapsedTime = 0;
+
+        // Wait up to 5 sec to fill list 
+        while (visitedList.Count < 4 && elapsedTime < timeoutMs)
+        {
+            await Task.Delay(100); // wait with 100 ms intervalls
+            elapsedTime += 100;
+        }
+
+        // Assert
+        Assert.Equal(4, visitedList.Count);
+        Assert.Equal(seedURL, visitedList[0].Url);
+        Assert.Equal(page1, visitedList[1].Url);
+        Assert.Equal(page2, visitedList[2].Url);
+        Assert.Equal(final, visitedList[3].Url);
     }
 }
