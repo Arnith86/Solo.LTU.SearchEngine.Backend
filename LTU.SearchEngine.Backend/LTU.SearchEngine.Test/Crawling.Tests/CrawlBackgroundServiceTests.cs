@@ -11,10 +11,8 @@ using LTU.SearchEngine.Infrastructure.Crawling;
 using LTU.SearchEngine.Infrastructure.Indexing;
 using LTU.SearchEngine.Infrastructure.Repositories;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Moq;
 using System.Net;
-using Xunit;
 
 namespace LTU.SearchEngine.Test.Crawling.Tests
 {
@@ -56,7 +54,8 @@ namespace LTU.SearchEngine.Test.Crawling.Tests
                 maxConcurrencyPerDomain: 5,
                 minDelayMs: 10, // Ge trådarna tid att andas
                 retryIntervals: new[] { TimeSpan.FromMilliseconds(10) },
-                seedUrls: new[] { "www.ltu.se", "ltu.se" }
+                seedUrls: new[] { "www.ltu.se", "ltu.se" },
+                whiteList: new List<string>() { "ltu.se" }
             );
 
             var services = new ServiceCollection();

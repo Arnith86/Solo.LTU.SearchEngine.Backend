@@ -40,11 +40,12 @@ public class TplCrawlJobDispatcherTests
 			minDelayMs: 100,
 			retryIntervals: new List<TimeSpan>
 			{
-			TimeSpan.FromMilliseconds(50),
-			TimeSpan.FromMilliseconds(150),
-			TimeSpan.FromMilliseconds(200)
+				TimeSpan.FromMilliseconds(50),
+				TimeSpan.FromMilliseconds(150),
+				TimeSpan.FromMilliseconds(200)
 			},
-            seedUrls: new List<string> { "ltu.se" }
+            seedUrls: new List<string> { "ltu.se" },
+			whiteList: new List<string> { "ltu.se" }
         );
 	}
 
