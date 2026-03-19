@@ -35,8 +35,8 @@ public class JsonCrawlerSettingsLoader : ICrawlerSettingsLoader
 			maxConcurrencyPerDomain: dto.MaxConcurrencyPerDomain,
 			minDelayMs: dto.MinDelayMs,
 			retryIntervals: dto.RetryIntervals!,
-            seedUrls: dto.SeedUrls ?? new List<string>()
-
+            seedUrls: dto.SeedUrls ?? new List<string>(),
+			whiteList: dto.WhiteList ?? new List<string>() 
         );
 	}
 }

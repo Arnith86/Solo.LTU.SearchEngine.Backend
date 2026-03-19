@@ -12,6 +12,7 @@ public class CrawlerSettings
 	public int MinDelayMs { get; }
 	public IReadOnlyList<TimeSpan> RetryIntervals { get; }
     public IReadOnlyList<string> SeedUrls { get; }
+    public IReadOnlyList<string> WhiteList { get; } 
     public List<string> DisallowedDomains { get; set; } = new();
 
 
@@ -34,9 +35,9 @@ public class CrawlerSettings
 		int maxConcurrencyPerDomain, 
 		int minDelayMs,
 		IReadOnlyList<TimeSpan> retryIntervals,
-
-        IReadOnlyList<string> seedUrls
-        )
+        IReadOnlyList<string> seedUrls,
+		IReadOnlyList<string> whiteList
+       )
 	{
 		if (string.IsNullOrWhiteSpace(userAgent))
 			throw new ArgumentException("UserAgent must be provided.", nameof(userAgent));
@@ -59,12 +60,16 @@ public class CrawlerSettings
         if (seedUrls is null || seedUrls.Count == 0)
             throw new ArgumentException("Must provide at least one seed URL/Domain.", nameof(seedUrls));
 
+		if (whiteList is null || whiteList.Count == 0)
+			throw new ArgumentException("Must provide at least one URL/Domain.", nameof(whiteList));
 
         UserAgent = userAgent; 
 		MaxConcurrencyPerDomain = maxConcurrencyPerDomain;
 		MinDelayMs = minDelayMs;
 		RetryIntervals = retryIntervals;
         SeedUrls = seedUrls;
+		WhiteList = whiteList;
+
     }
 
 	/// <summary>Returns the retry delay to use for a given attempt number.</summary>
@@ -88,3 +93,6 @@ public class CrawlerSettings
 		return RetryIntervals[index];
 	}
 }
+
+
+

@@ -57,7 +57,8 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
                 var testConfig = new Dictionary<string, string?>
                 {
                     ["CrawlerSettings:SeedUrls:0"] = _seedURL,
-                    ["CrawlerSettings:SeedUrls:1"] = null
+                    ["CrawlerSettings:SeedUrls:1"] = null,
+                    ["CrawlerSettings:WhiteList:0"] = "localhost"
                 };
 
                 config.AddInMemoryCollection(testConfig);

@@ -23,7 +23,8 @@ namespace LTU.SearchEngine.Test.Configuration.Tests
                 maxConcurrencyPerDomain: 5,
                 minDelayMs: 0,
                 retryIntervals: new[] { TimeSpan.FromSeconds(1) },
-                seedUrls: new[] { "https://ltu.se" }
+                seedUrls: new[] { "https://ltu.se" },
+                whiteList: new List<string> { "ltu.se" }
             );
         }
 
@@ -143,7 +144,8 @@ namespace LTU.SearchEngine.Test.Configuration.Tests
                 maxConcurrencyPerDomain: 5,
                 minDelayMs: 0,
                 retryIntervals: new[] { TimeSpan.FromSeconds(1) },
-                seedUrls: new[] { "https://ltu.se" }
+                seedUrls: new[] { "https://ltu.se" },
+                whiteList: new List<string> { "https://ltu.se" }
             );
 
             settingsWithBlacklist.DisallowedDomains = new List<string> { "blocked-site.com" };

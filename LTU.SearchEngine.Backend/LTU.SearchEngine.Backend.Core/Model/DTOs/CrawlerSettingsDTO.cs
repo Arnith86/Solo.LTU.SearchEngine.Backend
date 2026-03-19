@@ -7,4 +7,5 @@ public class CrawlerSettingsDTO
 	public int MinDelayMs { get; set; }
 	public List<TimeSpan>? RetryIntervals { get; set; }
     public List<string>? SeedUrls { get; set; }
+	public List<string>? WhiteList { get; set; }
 }

@@ -5,8 +5,6 @@ using LTU.SearchEngine.Backend.Core.Exceptions;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using Moq;
 using System.Text;
-using Xunit;
-using Xunit.Sdk;
 
 namespace LTU.SearchEngine.Test.QueryParsing.Tests;
 

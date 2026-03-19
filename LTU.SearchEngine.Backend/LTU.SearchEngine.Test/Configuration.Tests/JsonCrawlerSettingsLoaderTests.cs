@@ -26,7 +26,10 @@ public class JsonCrawlerSettingsLoaderTests
 				"seedUrls": [
 			    "ltu.se",
 		        "www.ltu.se"
-		    ]
+		    	],
+				"WhiteList":[
+				"ltu.se"
+				]
 			}
 		}
 		""";
