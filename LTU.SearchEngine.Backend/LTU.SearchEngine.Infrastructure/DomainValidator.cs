@@ -1,5 +1,6 @@
 ﻿using LTU.SearchEngine.Backend.Core;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using LTU.SearchEngine.Infrastructure.Configuration;
 
 namespace LTU.SearchEngine.Infrastructure;
 
@@ -9,13 +10,13 @@ namespace LTU.SearchEngine.Infrastructure;
 /// </summary>
 public class DomainValidator : IDomainValidator
 {
-    private readonly CrawlerSettings _settings;
+    private readonly ICrawlerSettingsLoader _crawlerSettingsLoader;
 
     /// <summary>Initializes a new instance of the <see cref="DomainValidator"/> class.</summary>
     /// <param name="settings">The crawler configuration containing the authorized domains (WhiteList).</param>
-    public DomainValidator(CrawlerSettings settings)
+    public DomainValidator(ICrawlerSettingsLoader crawlerSettingsLoader)
     {
-        _settings = settings;
+        _crawlerSettingsLoader = crawlerSettingsLoader;
     }
 
     /// <inheritdoc/>
@@ -25,7 +26,8 @@ public class DomainValidator : IDomainValidator
 
         string host = uri.Host;
 
-        return _settings.WhiteList.Any(allowedDomain => 
+        return _crawlerSettingsLoader.Load()
+        .WhiteList.Any(allowedDomain => 
             host.Equals(allowedDomain, StringComparison.OrdinalIgnoreCase) ||  // Checks exact match
             host.EndsWith("."+allowedDomain, StringComparison.OrdinalIgnoreCase) // Checks that if sub-domain "*.ltu.se"
         );

@@ -4,6 +4,7 @@ using LTU.SearchEngine.Backend.Core.Exceptions;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.BackgroundServices;
+using LTU.SearchEngine.Infrastructure.Configuration;
 using Moq;
 using System.Net;
 using System.Text;
@@ -12,7 +13,8 @@ namespace LTU.SearchEngine.Test.BackgroundServices.Tests;
 
 public class TplCrawlJobDispatcherTests
 {
-	private readonly CrawlerSettings _crawlerSettings;
+	// rivate readonly CrawlerSettings _crawlerSettings;
+	private readonly Mock<ICrawlerSettingsLoader> _mockCrawlerSettingsLoader;
 	private readonly SemaphoreProvider _semaphoreProvider;
 	private Mock<IProcessCrawlJobUseCase> _mockUseCase;
 	private readonly ICrawlJobDispatcher _sut;
@@ -51,15 +53,18 @@ public class TplCrawlJobDispatcherTests
 
 	public TplCrawlJobDispatcherTests()
 	{
-		_crawlerSettings = CreateSettings();
 		_semaphoreProvider = new SemaphoreProvider();
 		_mockUseCase = new Mock<IProcessCrawlJobUseCase>();
 
+		_mockCrawlerSettingsLoader = new Mock<ICrawlerSettingsLoader>();
+		_mockCrawlerSettingsLoader.Setup(csl => csl.Load()).Returns(CreateSettings());
+
+
         _sut = new TplCrawlJobDispatcher(
 		  _mockUseCase.Object,
-		  _crawlerSettings,
-		  _semaphoreProvider
-		 );
+		  _semaphoreProvider,
+		  _mockCrawlerSettingsLoader!.Object
+		);
     }
 
 	[Fact]
@@ -68,7 +73,7 @@ public class TplCrawlJobDispatcherTests
 		// Assert
 		Assert.Throws<ArgumentNullException>(() => new TplCrawlJobDispatcher(
 			processCrawlJobUseCase: null!,
-			crawlerSettings: _crawlerSettings,
+			crawlerSettingsLoader: _mockCrawlerSettingsLoader.Object,
 			semaphoreProvider: _semaphoreProvider)
 		);
 	}
@@ -79,7 +84,7 @@ public class TplCrawlJobDispatcherTests
 		// Assert
 		Assert.Throws<ArgumentNullException>(() => new TplCrawlJobDispatcher(
 			processCrawlJobUseCase: _mockUseCase.Object,
-			crawlerSettings: null!,
+			crawlerSettingsLoader: null!,
 			semaphoreProvider: _semaphoreProvider
             )
 		);
@@ -91,7 +96,7 @@ public class TplCrawlJobDispatcherTests
 		// Assert
 		Assert.Throws<ArgumentNullException>(() => new TplCrawlJobDispatcher(
 			processCrawlJobUseCase: _mockUseCase.Object,
-			crawlerSettings: _crawlerSettings,
+			crawlerSettingsLoader: _mockCrawlerSettingsLoader.Object,
 			semaphoreProvider: null!
 			)
 		);
@@ -101,6 +106,9 @@ public class TplCrawlJobDispatcherTests
 	public async Task Enqueue_ImmediateJob_IsProcessed()
 	{
 		// Arrange
+		var tcs = new TaskCompletionSource<bool>();
+		using var cts = new CancellationTokenSource();
+
 		var job = new CrawlJob
 		{
 			Id = 1,
@@ -109,15 +117,16 @@ public class TplCrawlJobDispatcherTests
 		};
 
 		_mockUseCase.Setup(u => u.Execute(It.IsAny<CrawlJob>()))
-			.ReturnsAsync(CreateResult());
-
-		using var cts = new CancellationTokenSource();
+			.ReturnsAsync(CreateResult())
+			.Callback(() => tcs.SetResult(true)
+		);
 
 		// Act
 		var startTask = _sut.Start(cts.Token);
 		await _sut.Enqueue(job);
 
-		await Task.Delay(300);
+		var completedTask = await Task.WhenAny(tcs.Task, Task.Delay(2000));
+
 		cts.Cancel();
 		await startTask;
 
@@ -235,8 +244,11 @@ public class TplCrawlJobDispatcherTests
 	[Fact]
 	public async Task HandleFailedJob_MaxRetryNotReached_IsRetriedWithCorrectTimeDelayAdded()
 	{
-		DateTime nextAttemptExpected = DateTime.UtcNow + _crawlerSettings.RetryIntervals[0];
-		DateTime nextAttemptToLong = DateTime.UtcNow + _crawlerSettings.RetryIntervals[1];
+		DateTime nextAttemptExpected = 
+			DateTime.UtcNow + _mockCrawlerSettingsLoader.Object.Load().RetryIntervals[0];
+		
+		DateTime nextAttemptToLong 
+			= DateTime.UtcNow +  _mockCrawlerSettingsLoader.Object.Load().RetryIntervals[1];
 
 		var job = new CrawlJob
 		{
@@ -401,7 +413,7 @@ public class TplCrawlJobDispatcherTests
 
 		await Task.Delay(2000);
 
-		Assert.Equal(_crawlerSettings.MaxConcurrencyPerDomain, maxObserved);
+		Assert.Equal( _mockCrawlerSettingsLoader.Object.Load().MaxConcurrencyPerDomain, maxObserved);
 
 		cts.Cancel();
 		await taskStart;

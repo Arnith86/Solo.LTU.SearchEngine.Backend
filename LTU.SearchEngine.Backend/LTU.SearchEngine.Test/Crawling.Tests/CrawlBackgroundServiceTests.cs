@@ -7,6 +7,7 @@ using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 using LTU.SearchEngine.BackgroundServices;
 using LTU.SearchEngine.Infrastructure;
+using LTU.SearchEngine.Infrastructure.Configuration;
 using LTU.SearchEngine.Infrastructure.Crawling;
 using LTU.SearchEngine.Infrastructure.Indexing;
 using LTU.SearchEngine.Infrastructure.Repositories;
@@ -58,9 +59,13 @@ namespace LTU.SearchEngine.Test.Crawling.Tests
                 whiteList: new List<string>() { "ltu.se" }
             );
 
+            var mockCrawlerSettingsLoader = new Mock<ICrawlerSettingsLoader>();
+            mockCrawlerSettingsLoader.Setup(csl => csl.Load()).Returns(settings);
+
+
             var services = new ServiceCollection();
             services.AddSingleton(mockCrawler.Object);
-            services.AddSingleton(settings);
+            services.AddSingleton<ICrawlerSettingsLoader>(mockCrawlerSettingsLoader.Object);
             services.AddSingleton<SemaphoreProvider>();
             services.AddLogging();
 
@@ -79,7 +84,7 @@ namespace LTU.SearchEngine.Test.Crawling.Tests
 
             services.AddSingleton(mockPipeline.Object);
 
-            services.AddTransient<IDomainValidator>(sp => new DomainValidator(settings));
+            services.AddTransient<IDomainValidator>(sp => new DomainValidator(mockCrawlerSettingsLoader.Object));
 
             var fakeRepository = new InMemoryIndexRepository();
             services.AddSingleton<IIndexRepository>(fakeRepository);

@@ -1,6 +1,7 @@
 ﻿using LTU.SearchEngine.Backend.Core.Model.DTOs;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace LTU.SearchEngine.Infrastructure.Configuration;
 
@@ -9,26 +10,27 @@ namespace LTU.SearchEngine.Infrastructure.Configuration;
 /// Implements the <see cref="ICrawlerSettingsLoader"/> interface.
 /// </summary>
 /// <remarks>
-/// Expects a configuration section named "CrawlerSettings" that can be mapped <br />
-/// to a <see cref="CrawlerSettingsDTO"/>. Throws an <see cref="InvalidOperationException"/> <br />
-/// if the section is missing.
+/// This implementation utilizes <see cref="IOptionsMonitor{TOptions}"/> to support  <br />
+/// **hot-swapping**, allowing configuration changes in the underlying JSON file <br />
+/// to be reflected in real-time without restarting the application.
 /// </remarks>
+
 public class JsonCrawlerSettingsLoader : ICrawlerSettingsLoader
 {
-	private IConfiguration _configuration;
+	private readonly IOptionsMonitor<CrawlerSettingsDTO> _monitor;
 
-	public JsonCrawlerSettingsLoader(IConfiguration configuration)
+	public JsonCrawlerSettingsLoader(IOptionsMonitor<CrawlerSettingsDTO> monitor)
 	{
-		_configuration = configuration;
+		_monitor = monitor;
 	}
 
 	/// <inheritdoc/>
 	public CrawlerSettings Load() 
 	{
-		var dto = _configuration
-			.GetSection("CrawlerSettings")
-			.Get<CrawlerSettingsDTO>() 
-			?? throw new InvalidOperationException("CrawlerSettings section is missing from the configuration.");
+		var dto = _monitor.CurrentValue;
+
+		if (dto is null) 
+			throw new InvalidOperationException("CrawlerSettings section is missing from the configuration.");
 
 		return new CrawlerSettings(
 			userAgent: dto.UserAgent!,
