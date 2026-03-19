@@ -1,5 +1,7 @@
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure;
+using LTU.SearchEngine.Infrastructure.Configuration;
+using Moq;
 
 namespace LTU.SearchEngine.Test.Crawling;
 
@@ -9,6 +11,8 @@ public class DomainValidatorTests
 
     public DomainValidatorTests()
     {
+        var mockCrawlerSettingsLoader = new Mock<ICrawlerSettingsLoader>();
+
         CrawlerSettings crawlerSettings = new CrawlerSettings
         (
             userAgent: "TestAgent",
@@ -19,7 +23,9 @@ public class DomainValidatorTests
             retryIntervals: new List<TimeSpan> { TimeSpan.FromSeconds(3600)} 
         );
 
-        _sut = new DomainValidator(crawlerSettings);
+        mockCrawlerSettingsLoader.Setup(csl => csl.Load()).Returns(crawlerSettings);
+
+        _sut = new DomainValidator(mockCrawlerSettingsLoader.Object);
     }
 
     [Theory]

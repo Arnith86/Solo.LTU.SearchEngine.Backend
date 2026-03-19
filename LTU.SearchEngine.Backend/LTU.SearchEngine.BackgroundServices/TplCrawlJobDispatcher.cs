@@ -3,6 +3,7 @@ using LTU.SearchEngine.Backend.Core;
 using LTU.SearchEngine.Backend.Core.Exceptions;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using LTU.SearchEngine.Infrastructure.Configuration;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
@@ -13,6 +14,8 @@ namespace LTU.SearchEngine.BackgroundServices;
 /// scheduling, prioritizing, retrying, and executing crawl jobs asynchronously.
 /// </summary>
 /// <remarks>
+/// This dispatcher supports **hot-swappable configuration** by utilizing an <br />
+/// <see cref="ICrawlerSettingsLoader"/> to fetch the latest settings during runtime.
 /// This dispatcher provides:
 /// <list type="bullet">
 ///   <item><description>Priority-based scheduling using <see cref="PriorityQueue{TElement,TPriority}"/></description></item>
@@ -28,7 +31,7 @@ namespace LTU.SearchEngine.BackgroundServices;
 public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 {
 	private readonly IProcessCrawlJobUseCase _processCrawlJobUseCase;
-	private readonly CrawlerSettings _crawlerSettings;
+	private readonly ICrawlerSettingsLoader _crawlerSettingsLoader;
 	private readonly SemaphoreProvider _semaphoreProvider;
 	private PriorityQueue<CrawlJob, DateTime> _jobPriorityQueue;
 	private BufferBlock<CrawlJob> _buffer;
@@ -37,28 +40,22 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 	/// <summary>
 	/// Initializes a new instance of the <see cref="TplCrawlJobDispatcher"/> class.
 	/// </summary>
-	/// <param name="processCrawlJobUseCase">
-	/// Use case responsible for executing individual crawl jobs.
-	/// </param>
-	/// <param name="crawlerSettings">
-	/// Configuration settings controlling retry behavior, concurrency, and scheduling delays.
-	/// </param>
-	/// <param name="semaphoreProvider">
-	/// Provider responsible for managing per-domain concurrency semaphores.
-	/// </param>
+	/// <param name="processCrawlJobUseCase">Use case responsible for executing individual crawl jobs.</param>
+	/// <param name="crawlerSettingsLoader">Loader used to retrieve hot-swappable crawler settings.</param>
+   	/// <param name="semaphoreProvider">Provider responsible for managing per-domain concurrency semaphores.</param>
 	/// <exception cref="ArgumentNullException">
 	/// Thrown when any dependency is <c>null</c>.
 	/// </exception>
 	public TplCrawlJobDispatcher(
 		IProcessCrawlJobUseCase processCrawlJobUseCase,
-		CrawlerSettings crawlerSettings,
-		SemaphoreProvider semaphoreProvider
+		SemaphoreProvider semaphoreProvider,
+		ICrawlerSettingsLoader crawlerSettingsLoader
 		)
 	{
 		_processCrawlJobUseCase = processCrawlJobUseCase
 			?? throw new ArgumentNullException(nameof(processCrawlJobUseCase));
-		_crawlerSettings = crawlerSettings
-			?? throw new ArgumentNullException(nameof(crawlerSettings));
+		_crawlerSettingsLoader = crawlerSettingsLoader
+			?? throw new ArgumentNullException(nameof(crawlerSettingsLoader));
 		_semaphoreProvider = semaphoreProvider 
 			?? throw new ArgumentNullException(nameof(semaphoreProvider)); 
 
@@ -74,7 +71,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 			string domain = new Uri(job.Url).Host.ToLowerInvariant();
 			var semaphore = _semaphoreProvider.GetOrAddSemaphore(
 				domain, 
-				_crawlerSettings.MaxConcurrencyPerDomain
+				_crawlerSettingsLoader.Load().MaxConcurrencyPerDomain
 			);
 
 			// This will limit concurrent processing of jobs from the same domain to the configured maximum.
@@ -126,7 +123,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 
 	private async Task HandleFailedJob(CrawlJob job)
 	{
-		if (job.RetryCount >= _crawlerSettings.RetryIntervals.Count)
+		if (job.RetryCount >= _crawlerSettingsLoader.Load().RetryIntervals.Count)
 		{
 			Debug.WriteLine($"Job {job.Id} reached max retry count. Discarding job.");
 			return;
@@ -135,7 +132,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 		int index = (job.RetryCount - 1) >= 0 ? job.RetryCount - 1 : 0;
 
 		job.NextAttempt = 
-			DateTime.UtcNow + _crawlerSettings.RetryIntervals[index];
+			DateTime.UtcNow + _crawlerSettingsLoader.Load().RetryIntervals[index];
 
 		job.RetryCount++;
 		
@@ -197,7 +194,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 
             foreach (CrawlJob job in ready) await _buffer.SendAsync(job, ct);
 
-            await Task.Delay(_crawlerSettings.MinDelayMs);
+            await Task.Delay(_crawlerSettingsLoader.Load().MinDelayMs);
         }
     }
 }

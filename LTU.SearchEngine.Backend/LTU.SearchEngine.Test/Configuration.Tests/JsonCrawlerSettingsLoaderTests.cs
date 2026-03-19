@@ -1,8 +1,11 @@
 ﻿
+using LTU.SearchEngine.Backend.Core.Model.DTOs;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure.Configuration;
 using LTU.SearchEngine.Test.HelperClasses;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
+using Moq;
 
 namespace LTU.SearchEngine.Test.Configuration.Tests;
 
@@ -35,13 +38,21 @@ public class JsonCrawlerSettingsLoaderTests
 		""";
 	}
 
+
+
 	[Fact]
 	public void Load_ValidConfiguration_ShouldReturnCrawlerSettings()
 	{
 		// Arrange
 		IConfiguration configuration = InMemoryJSONBuildConfiguration.BuildConfiguration(_validJsonConfig);
-		ICrawlerSettingsLoader sut = new JsonCrawlerSettingsLoader(configuration);
+		var dto = configuration.GetSection("CrawlerSettings").Get<CrawlerSettingsDTO>();
+		var monitor = Options.Create(dto!);
 
+		var mockMonitor = new Mock<IOptionsMonitor<CrawlerSettingsDTO>>();
+		mockMonitor.Setup(m => m.CurrentValue).Returns(dto!);
+
+		ICrawlerSettingsLoader sut = new JsonCrawlerSettingsLoader(mockMonitor.Object);
+	
 		// Act
 		CrawlerSettings crawlerSettings = sut.Load();
 
@@ -73,7 +84,15 @@ public class JsonCrawlerSettingsLoaderTests
 			""";
 
 		IConfiguration configuration = InMemoryJSONBuildConfiguration.BuildConfiguration(invalidJsonConfig);
-		ICrawlerSettingsLoader sut = new JsonCrawlerSettingsLoader(configuration);
+
+		var dto = configuration.GetSection("CrawlerSettings").Get<CrawlerSettingsDTO>();
+		var monitor = Options.Create(dto!);
+
+		var mockMonitor = new Mock<IOptionsMonitor<CrawlerSettingsDTO>>();
+		mockMonitor.Setup(m => m.CurrentValue).Returns(dto!);
+
+		ICrawlerSettingsLoader sut = new JsonCrawlerSettingsLoader(mockMonitor.Object);
+
 
 		// Act & Assert
 		Assert.Throws<InvalidOperationException>(() => sut.Load());

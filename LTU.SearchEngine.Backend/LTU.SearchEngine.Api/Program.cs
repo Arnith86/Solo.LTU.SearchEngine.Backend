@@ -5,6 +5,7 @@ using LTU.SearchEngine.Application.QueryParsing.Helpers;
 using LTU.SearchEngine.Backend.Core;
 using LTU.SearchEngine.Backend.Core.Enums;
 using LTU.SearchEngine.Backend.Core.Model;
+using LTU.SearchEngine.Backend.Core.Model.DTOs;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
 using LTU.SearchEngine.Backend.Core.TextNormalization;
@@ -28,14 +29,9 @@ public partial class Program
         // ========================================================================
         // 1. Configuration & Settings
         // ========================================================================
-        // Loads crawler configuration (seed URLs, delays, concurrency limits) from JSON.
-        builder.Services.AddSingleton<ICrawlerSettingsLoader, JsonCrawlerSettingsLoader>();
-        // builder.Services.AddSingleton(serviceProvider =>
-        // {
-        //     var loader = serviceProvider.GetRequiredService<ICrawlerSettingsLoader>();
-        //     return loader.Load(); // Returns the immutable CrawlerSettings object
-        // });
-        builder.Services.AddSingleton(sp => sp.GetRequiredService<ICrawlerSettingsLoader>().Load());
+        // Loads "hotswappable" crawler configuration (seed URLs, delays, concurrency limits) from JSON.
+        builder.Services.AddTransient<ICrawlerSettingsLoader, JsonCrawlerSettingsLoader>();
+        builder.Services.Configure<CrawlerSettingsDTO>(builder.Configuration.GetSection("CrawlerSettings"));
 
         // ========================================================================
         // 2. Database & Persistence
