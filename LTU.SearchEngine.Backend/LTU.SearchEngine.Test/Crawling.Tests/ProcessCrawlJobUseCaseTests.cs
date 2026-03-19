@@ -112,11 +112,13 @@ public class ProcessCrawlJobUseCaseTests
 	[Theory]
 	[InlineData("")]
 	[InlineData(" ")]
-	[InlineData(null)]
-	public async Task Execute_ShouldThrowArgumentException_WhenUrlIsEmpty(string url)
+	[InlineData("NULL_TEST")]
+	public async Task Execute_ShouldThrowArgumentException_WhenUrlIsEmpty(string input)
 	{
+		string? url = input.Equals("NULL_TEST") ? null : input;
+
 		// Arrange
-		_crawlJob.Url = url;
+		_crawlJob.Url = url!;
 
 		// Act & Assert
 		await Assert.ThrowsAsync<ArgumentException>(() => _sut.Execute(_crawlJob));

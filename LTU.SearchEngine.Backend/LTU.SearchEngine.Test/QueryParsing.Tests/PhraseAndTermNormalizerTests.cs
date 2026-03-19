@@ -67,7 +67,7 @@ namespace LTU.SearchEngine.Test.QueryParsing.Tests
         public void Normalize_ShouldHandleNullGracefully()
         {
             // Act
-            var result = _normalizer.Normalize(null);
+            var result = _normalizer.Normalize(null!);
 
             // Assert
             Assert.Equal(string.Empty, result);
