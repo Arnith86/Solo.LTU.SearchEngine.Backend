@@ -89,6 +89,66 @@ public class CrawlerSettingsTests
 		);
 	}
 
+
+    [Fact]
+    public void CrawlerSettings_Constructor_WhiteList_Null_ThrowsArgumentException()
+    {
+        // Arrange
+        string userAgent = "LTUSearchCrawler/1.0 (Academic project; contact: some.mail@student.ltu.se)";
+        int maxConcurrencyPerDomain = 5;
+        int minDelayMs = 100;
+       
+        var validSeedUrls = new List<string> { "ltu.se" };
+        
+        List<TimeSpan> intervals = new List<TimeSpan>
+        {
+            TimeSpan.FromSeconds(3600),    // 1 hour
+            TimeSpan.FromSeconds(86400),   // 1 day
+            TimeSpan.FromSeconds(604800)   // 1 week
+        };
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => new CrawlerSettings(
+            userAgent,
+            maxConcurrencyPerDomain,
+            minDelayMs,
+            intervals,      
+            validSeedUrls, 
+            null!
+        ));
+    }
+
+   
+    [Fact]
+    public void CrawlerSettings_Constructor_WhiteList_NoUrl_ThrowsArgumentException()
+    {
+        // Arrange
+        string userAgent = "LTUSearchCrawler/1.0 (Academic project; contact: some.mail@student.ltu.se)";
+        int maxConcurrencyPerDomain = 5;
+        int minDelayMs = 100;
+       
+        var validSeedUrls = new List<string> { "ltu.se" };
+        var whiteList = new List<string>();
+
+        List<TimeSpan> intervals = new List<TimeSpan>
+        {
+            TimeSpan.FromSeconds(3600),    // 1 hour
+            TimeSpan.FromSeconds(86400),   // 1 day
+            TimeSpan.FromSeconds(604800)   // 1 week
+        };
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => new CrawlerSettings(
+            userAgent,
+            maxConcurrencyPerDomain,
+            minDelayMs,
+            intervals,      
+            validSeedUrls, 
+            whiteList
+        ));
+    }
+   
+
     [Fact]
     public void CrawlerSettings_Constructor_RetryIntervals_Null_ThrowsArgumentException()
     {
@@ -110,6 +170,7 @@ public class CrawlerSettingsTests
             whiteList
         ));
     }
+
 
 
     // Tests each index of the retryIntervals list by giving it a zero TimeSpan value.
