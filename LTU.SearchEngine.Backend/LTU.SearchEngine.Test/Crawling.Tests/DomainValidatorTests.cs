@@ -45,4 +45,17 @@ public class DomainValidatorTests
         // Assert
         Assert.Equal(expectedResult, result);
     }
+
+    [Fact]
+    public void IsWhitelisted_ShouldReturnFalse_WhenUrlIsMalformed()
+    {
+        // Arrange 
+        string url = "http://";
+
+        // Act 
+        bool result = _sut.IsWhitelisted(url);
+
+        // Assert
+        Assert.False(result);
+    }
 }
