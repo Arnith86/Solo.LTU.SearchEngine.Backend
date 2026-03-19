@@ -75,7 +75,7 @@ namespace LTU.SearchEngine.Test.Crawling.Tests
 
 
             mockPipeline.Setup(p => p.Transform(It.IsAny<CrawlResult>()))
-                .Returns((CrawlResult r) => new IndexDocument(Guid.NewGuid().ToString(), r.Url, r.Title));
+                .Returns((CrawlResult r) => new IndexDocument(Guid.NewGuid().ToString(), r.Url, r.Title!));
 
             services.AddSingleton(mockPipeline.Object);
 

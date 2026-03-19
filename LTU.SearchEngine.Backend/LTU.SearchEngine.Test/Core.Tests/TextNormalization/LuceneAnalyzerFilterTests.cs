@@ -54,7 +54,7 @@ namespace LTU.SearchEngine.Test.Core.Tests.TextNormalization
         [Fact]
         public void Apply_GivenNull_ShouldReturnNull()
         {
-            Assert.Null(_filter.Apply(null));
+            Assert.Null(_filter.Apply(null!));
         }
 
         [Fact]

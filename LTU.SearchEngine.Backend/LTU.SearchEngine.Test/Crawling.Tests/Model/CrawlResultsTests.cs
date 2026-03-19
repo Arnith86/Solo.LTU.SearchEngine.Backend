@@ -38,13 +38,15 @@ public class CrawlResultsTests
 		}
 
 		[Theory]
-		[InlineData(null)]
+		[InlineData("NULL_TEST")]
 		[InlineData("")]
 		[InlineData(" ")]
-		public void Constructor_InvalidUrl_ThrowsArgumentException(string invalidUrl)
+		public void Constructor_InvalidUrl_ThrowsArgumentException(string input)
 		{
+			string? invalidUrl = input.Equals("NULL_TEST") ? null : input;
+
 			var ex = Assert.Throws<ArgumentException>(() => new CrawlResult(
-				invalidUrl, 
+				invalidUrl!, 
 				"title", 
 				"en",
 				new List<IndexedTerm>(), 
@@ -78,15 +80,18 @@ public class CrawlResultsTests
 
 
 		[Theory]
-		[InlineData(null)]
+		[InlineData("NULL_TEST")]
 		[InlineData("")]
 		[InlineData(" ")]
-		public void Constructor_InvalidLanguage_ThrowsArgumentException(string invalidLanguage)
+		public void Constructor_InvalidLanguage_ThrowsArgumentException(string input)
 		{
+
+			string? invalidLanguage = input.Equals("NULL_TEST") ? null : input;
+
 			var ex = Assert.Throws<ArgumentException>(() => new CrawlResult(
 				"https://example.com",
 				"title",
-				invalidLanguage,
+				invalidLanguage!,
 				new List<IndexedTerm>(),
 				"text/html",
 				new byte[0],
@@ -116,17 +121,20 @@ public class CrawlResultsTests
 		}
 
 		[Theory]
-		[InlineData(null)]
+		[InlineData("NULL_TEST")]
 		[InlineData("")]
 		[InlineData(" ")]
-		public void Constructor_InvalidType_ThrowsArgumentException(string invalidType)
+		public void Constructor_InvalidType_ThrowsArgumentException(string input)
 		{
+
+			string? invalidType = input.Equals(input) ? null : input;
+
 			var ex = Assert.Throws<ArgumentException>(() => new CrawlResult(
 				"https://example.com",
 				"title",
 				"en",
 				new List<IndexedTerm>(),
-				invalidType,
+				invalidType!,
 				new byte[0],
 				new List<string>(),
 				HttpStatusCode.OK,

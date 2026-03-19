@@ -2,220 +2,217 @@
 using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure.Crawling;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
-namespace LTU.SearchEngine.Infrastructure
+namespace LTU.SearchEngine.Infrastructure;
+
+public class HapHtmlParser : IHtmlParser
 {
-    public class HapHtmlParser : IHtmlParser
+    /// <inheritdoc/>
+    public List<string> ExtractInternalLinks(string html, string baseUrl)
     {
-        /// <inheritdoc/>
-        public List<string> ExtractInternalLinks(string html, string baseUrl)
+        var doc = new HtmlDocument();
+        doc.LoadHtml(html);
+        var internalLinks = new List<string>();
+
+        // Try to create a Uri object from the baseUrl.
+        // If the baseUrl is invalid, we cannot determine internal links, so we return an empty list.
+        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out Uri? baseUri))
         {
-            var doc = new HtmlDocument();
-            doc.LoadHtml(html);
-            var internalLinks = new List<string>();
-
-            // Try to create a Uri object from the baseUrl.
-            // If the baseUrl is invalid, we cannot determine internal links, so we return an empty list.
-            if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out Uri baseUri))
-            {
-                return internalLinks; 
-            }
-
-            // Select all <a> tags that have an 'href' attribute.
-            var nodes = doc.DocumentNode.SelectNodes("//a[@href]");
-
-            // If no links are found, return the empty list immediately. 
-            if (nodes == null) return internalLinks;
-
-            foreach (var node in nodes)
-            {
-                // Extract the value of the href attribute.
-                string href = node.GetAttributeValue("href", string.Empty);
-
-                // Try to create a valid absolute Uri.
-                // This handles combining the base URL with relative links (e.g., "/contact").
-                if (Uri.TryCreate(baseUri, href, out Uri resultUri))
-                {
-                    // Filter criteria:
-                    // 1. The scheme must be http or https (excludes mailto:, javascript:, etc).
-                    // 2. The host (domain) must match the base URL's host to be considered "internal".
-                    bool isHttp = resultUri.Scheme == Uri.UriSchemeHttp || resultUri.Scheme == Uri.UriSchemeHttps;
-                   // bool isSameDomain = resultUri.Host.Equals(baseUri.Host, StringComparison.OrdinalIgnoreCase);
-
-                    if (isHttp)
-                    {
-                        internalLinks.Add(resultUri.AbsoluteUri);
-                    }
-
-                }
-            }
-            // Return distinct links to avoid processing the same URL multiple times.
-            return internalLinks.Distinct().ToList();
+            return internalLinks; 
         }
 
-        /// <inheritdoc/>
-        public IEnumerable<IndexedTerm> ExtractTerms(string html)
+        // Select all <a> tags that have an 'href' attribute.
+        var nodes = doc.DocumentNode.SelectNodes("//a[@href]");
+
+        // If no links are found, return the empty list immediately. 
+        if (nodes == null) return internalLinks;
+
+        foreach (var node in nodes)
         {
-            var terms = new List<IndexedTerm>();
-            var doc = new HtmlDocument();
-            doc.LoadHtml(html);
+            // Extract the value of the href attribute.
+            string href = node.GetAttributeValue("href", string.Empty);
 
-            // --- 1. CLEANUP
-            // Remove non-content nodes (scripts, styles, metadata, navigation) 
-            // to prevent indexing code or irrelevant UI elements.
-            var garbageNodes = doc.DocumentNode.SelectNodes("//script|//style|//noscript|//nav");
-
-            if (garbageNodes != null)
+            // Try to create a valid absolute Uri.
+            // This handles combining the base URL with relative links (e.g., "/contact").
+            if (Uri.TryCreate(baseUri, href, out Uri? resultUri))
             {
-                foreach (var node in garbageNodes)  node.Remove();
-                
-            }
+                // Filter criteria:
+                // 1. The scheme must be http or https (excludes mailto:, javascript:, etc).
+                // 2. The host (domain) must match the base URL's host to be considered "internal".
+                bool isHttp = resultUri.Scheme == Uri.UriSchemeHttp || resultUri.Scheme == Uri.UriSchemeHttps;
+                // bool isSameDomain = resultUri.Host.Equals(baseUri.Host, StringComparison.OrdinalIgnoreCase);
 
-            // --- 2. EXTRACT TITLE (High Ranking Priority) ---
-            // The <title> tag contains the most relevant keywords for the page
-            // We use SelectSingleNode since a valid HTML document only has one title.
-            var titleNode = doc.DocumentNode.SelectSingleNode("//title");
-            if (titleNode != null)
-            {
-                AddTerms(terms, titleNode.InnerText, TermSource.Title);
-                titleNode.Remove(); 
-            }
-
-            // --- 3. EXTRACT HEADERS (Medium Ranking Priority) ---
-            // H1-H6 tags represent section headers and are weighted higher than body text.
-            var headerNodes = doc.DocumentNode.SelectNodes("//h1|//h2|//h3|//h4|//h5|//h6");
-            if (headerNodes != null)
-            {
-                foreach (var node in headerNodes)
+                if (isHttp)
                 {
-                    AddTerms(terms, node.InnerText, TermSource.Header);
-
-                    node.Remove();
+                    internalLinks.Add(resultUri.AbsoluteUri);
                 }
+
             }
+        }
+        // Return distinct links to avoid processing the same URL multiple times.
+        return internalLinks.Distinct().ToList();
+    }
 
-            // --- 3. EXTRACT META DATA (Fix för UTF-8 testet) ---
-            var metaNodes = doc.DocumentNode.SelectNodes("//meta");
-            if (metaNodes != null)
-            {
-                foreach (var node in metaNodes)
-                {
-                    // Meta-taggar har sällan InnerText. Vi kollar attribut som 'charset' eller 'content'
-                    var content = node.GetAttributeValue("content", "");
-                    var charset = node.GetAttributeValue("charset", "");
+    /// <inheritdoc/>
+    public IEnumerable<IndexedTerm> ExtractTerms(string html)
+    {
+        var terms = new List<IndexedTerm>();
+        var doc = new HtmlDocument();
+        doc.LoadHtml(html);
 
-                    if (!string.IsNullOrEmpty(content)) AddTerms(terms, content, TermSource.Header);
-                    if (!string.IsNullOrEmpty(charset)) AddTerms(terms, charset, TermSource.Header);
+        // --- 1. CLEANUP
+        // Remove non-content nodes (scripts, styles, metadata, navigation) 
+        // to prevent indexing code or irrelevant UI elements.
+        var garbageNodes = doc.DocumentNode.SelectNodes("//script|//style|//noscript|//nav");
 
-                    node.Remove();
-                }
-            }
-
-            var footerNodes = doc.DocumentNode.SelectNodes("//footer");
-            if (footerNodes != null)
-            {
-                foreach (var node in footerNodes)
-                {
-                    AddTerms(terms, node.InnerText, TermSource.Body);
-
-                    node.Remove();
-                }
-            }
-
-            // --- EXTRAHERA BILD-TEXT (Alt-taggar) ---
-            // Vi letar efter alla <img> taggar som har ett alt-attribut
-            var imageNodes = doc.DocumentNode.SelectNodes("//img[@alt]");
-            if (imageNodes != null)
-            {
-                foreach (var node in imageNodes)
-                {
-                    var altText = node.GetAttributeValue("alt", "");
-                    if (!string.IsNullOrWhiteSpace(altText))
-                    {
-                        // Vi ger ofta alt-text samma vikt som Body eller Header 
-                        // beroende på hur "viktig" man anser bilden vara.
-                        AddTerms(terms, altText, TermSource.Body);
-                    }
-                    // Vi tar inte bort hela image-noden än om vi vill behålla strukturen, 
-                    // men det skadar inte att göra det om vi bara vill ha texten.
-                    node.Remove();
-                }
-            }
-
-            // --- 4. EXTRACT BODY TEXT (Low/Standard Ranking Priority) ---
-            // At this stage, scripts, titles, and headers have been removed.
-            // InnerText now contains only the remaining "Body" content (paragraphs, lists, divs).
-
-            var bodyText = doc.DocumentNode.InnerText;
-            AddTerms(terms, bodyText, TermSource.Body);
-
-            return terms;
+        if (garbageNodes != null)
+        {
+            foreach (var node in garbageNodes)  node.Remove();
+            
         }
 
-        // Helper method for Tokenization and Object Creation
-        private void AddTerms(List<IndexedTerm> terms, string text, TermSource source)
+        // --- 2. EXTRACT TITLE (High Ranking Priority) ---
+        // The <title> tag contains the most relevant keywords for the page
+        // We use SelectSingleNode since a valid HTML document only has one title.
+        var titleNode = doc.DocumentNode.SelectSingleNode("//title");
+        if (titleNode != null)
         {
-            if (string.IsNullOrWhiteSpace(text)) return;
+            AddTerms(terms, titleNode.InnerText, TermSource.Title);
+            titleNode.Remove(); 
+        }
 
-            var decodedText = System.Net.WebUtility.HtmlDecode(text);
-
-            var words = decodedText.Split(
-                new[] { ' ', '\r', '\n', '\t' },
-                StringSplitOptions.RemoveEmptyEntries
-            );
-
-            foreach (var word in words)
+        // --- 3. EXTRACT HEADERS (Medium Ranking Priority) ---
+        // H1-H6 tags represent section headers and are weighted higher than body text.
+        var headerNodes = doc.DocumentNode.SelectNodes("//h1|//h2|//h3|//h4|//h5|//h6");
+        if (headerNodes != null)
+        {
+            foreach (var node in headerNodes)
             {
-                terms.Add(new IndexedTerm(word.Trim(), source));
+                AddTerms(terms, node.InnerText, TermSource.Header);
+
+                node.Remove();
             }
         }
 
-        public string ExtractRawText(string html)
+        // --- 3. EXTRACT META DATA (Fix för UTF-8 testet) ---
+        var metaNodes = doc.DocumentNode.SelectNodes("//meta");
+        if (metaNodes != null)
         {
-            if (string.IsNullOrWhiteSpace(html)) return string.Empty;
-
-            var doc = new HtmlDocument();
-            doc.LoadHtml(html);
-
-            //Remove garbage
-            var garbageNodes = doc.DocumentNode.SelectNodes("//script|//style|//noscript|//nav|//footer");
-            if(garbageNodes != null)
+            foreach (var node in metaNodes)
             {
-                foreach (var node in garbageNodes) node.Remove();
-            }
+                // Meta-taggar har sällan InnerText. Vi kollar attribut som 'charset' eller 'content'
+                var content = node.GetAttributeValue("content", "");
+                var charset = node.GetAttributeValue("charset", "");
 
-            //return all text as a single string
-            string plainText = doc.DocumentNode.InnerText;
-            return HtmlEntity.DeEntitize(plainText).Trim();
+                if (!string.IsNullOrEmpty(content)) AddTerms(terms, content, TermSource.Header);
+                if (!string.IsNullOrEmpty(charset)) AddTerms(terms, charset, TermSource.Header);
+
+                node.Remove();
+            }
         }
 
-        public string ExtractTitle(string html)
+        var footerNodes = doc.DocumentNode.SelectNodes("//footer");
+        if (footerNodes != null)
         {
-            if(string.IsNullOrWhiteSpace(html))
+            foreach (var node in footerNodes)
             {
-                return string.Empty;
+                AddTerms(terms, node.InnerText, TermSource.Body);
+
+                node.Remove();
             }
+        }
 
-            //Load HTML in HtmlAgilityPack
-            var doc = new HtmlDocument();
-            doc.LoadHtml(html);
-
-            //Find <title> 
-            var titleNode = doc.DocumentNode.SelectSingleNode("//title");
-
-            //handle if tag is missing
-            if(titleNode == null)
+        // --- EXTRAHERA BILD-TEXT (Alt-taggar) ---
+        // Vi letar efter alla <img> taggar som har ett alt-attribut
+        var imageNodes = doc.DocumentNode.SelectNodes("//img[@alt]");
+        if (imageNodes != null)
+        {
+            foreach (var node in imageNodes)
             {
-                return string.Empty;
+                var altText = node.GetAttributeValue("alt", "");
+                if (!string.IsNullOrWhiteSpace(altText))
+                {
+                    // Vi ger ofta alt-text samma vikt som Body eller Header 
+                    // beroende på hur "viktig" man anser bilden vara.
+                    AddTerms(terms, altText, TermSource.Body);
+                }
+                // Vi tar inte bort hela image-noden än om vi vill behålla strukturen, 
+                // men det skadar inte att göra det om vi bara vill ha texten.
+                node.Remove();
             }
+        }
 
-            //Get text, decode HTML entities and trim whitespace
-            string titleText = titleNode.InnerText;
+        // --- 4. EXTRACT BODY TEXT (Low/Standard Ranking Priority) ---
+        // At this stage, scripts, titles, and headers have been removed.
+        // InnerText now contains only the remaining "Body" content (paragraphs, lists, divs).
 
-            return HtmlEntity.DeEntitize(titleText).Trim();
+        var bodyText = doc.DocumentNode.InnerText;
+        AddTerms(terms, bodyText, TermSource.Body);
+
+        return terms;
+    }
+
+    // Helper method for Tokenization and Object Creation
+    private void AddTerms(List<IndexedTerm> terms, string text, TermSource source)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return;
+
+        var decodedText = System.Net.WebUtility.HtmlDecode(text);
+
+        var words = decodedText.Split(
+            new[] { ' ', '\r', '\n', '\t' },
+            StringSplitOptions.RemoveEmptyEntries
+        );
+
+        foreach (var word in words)
+        {
+            terms.Add(new IndexedTerm(word.Trim(), source));
         }
     }
+
+    public string ExtractRawText(string html)
+    {
+        if (string.IsNullOrWhiteSpace(html)) return string.Empty;
+
+        var doc = new HtmlDocument();
+        doc.LoadHtml(html);
+
+        //Remove garbage
+        var garbageNodes = doc.DocumentNode.SelectNodes("//script|//style|//noscript|//nav|//footer");
+        if(garbageNodes != null)
+        {
+            foreach (var node in garbageNodes) node.Remove();
+        }
+
+        //return all text as a single string
+        string plainText = doc.DocumentNode.InnerText;
+        return HtmlEntity.DeEntitize(plainText).Trim();
+    }
+
+    public string ExtractTitle(string html)
+    {
+        if(string.IsNullOrWhiteSpace(html))
+        {
+            return string.Empty;
+        }
+
+        //Load HTML in HtmlAgilityPack
+        var doc = new HtmlDocument();
+        doc.LoadHtml(html);
+
+        //Find <title> 
+        var titleNode = doc.DocumentNode.SelectSingleNode("//title");
+
+        //handle if tag is missing
+        if(titleNode == null)
+        {
+            return string.Empty;
+        }
+
+        //Get text, decode HTML entities and trim whitespace
+        string titleText = titleNode.InnerText;
+
+        return HtmlEntity.DeEntitize(titleText).Trim();
+    }
 }
+

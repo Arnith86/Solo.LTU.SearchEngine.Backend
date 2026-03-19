@@ -94,7 +94,7 @@ namespace LTU.SearchEngine.Test.Configuration.Tests
             _httpMessageHandlerMock.Protected().Verify(
             "SendAsync",
             Times.Once(),
-            ItExpr.Is<HttpRequestMessage>(req => req.RequestUri.AbsoluteUri == "https://www.ltu.se/robots.txt"),
+            ItExpr.Is<HttpRequestMessage>(req => req.RequestUri!.AbsoluteUri == "https://www.ltu.se/robots.txt"),
             ItExpr.IsAny<CancellationToken>()
         );
         }
@@ -102,13 +102,13 @@ namespace LTU.SearchEngine.Test.Configuration.Tests
         [Fact]
         public void Constructor_WhenHttpClientIsNull_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new RobotsHandler(null, _settings));
+            Assert.Throws<ArgumentNullException>(() => new RobotsHandler(null!, _settings));
         }
 
         [Fact]
         public void Constructor_WhenSettingsIsNull_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new RobotsHandler(_httpClient, null));
+            Assert.Throws<ArgumentNullException>(() => new RobotsHandler(_httpClient, null!));
         }
 
         [Fact]

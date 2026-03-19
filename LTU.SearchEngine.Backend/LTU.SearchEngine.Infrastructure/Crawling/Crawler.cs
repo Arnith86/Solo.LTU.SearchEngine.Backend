@@ -37,7 +37,7 @@ public class Crawler : ICrawler
 
             var terms = Enumerable.Empty<IndexedTerm>();
             var links = Enumerable.Empty<string>();
-            string title = null;
+            string title = null!;
 
             if (contentType.Contains("text/html"))
             {
@@ -63,12 +63,12 @@ public class Crawler : ICrawler
         catch (HttpRequestException ex) 
         {
             stopwatch.Stop();
-            return CreateErrorResult(url, System.Net.HttpStatusCode.ServiceUnavailable, stopwatch.ElapsedMilliseconds, "Error");
+            return CreateErrorResult(url, System.Net.HttpStatusCode.ServiceUnavailable, stopwatch.ElapsedMilliseconds, $"Error: {ex}");
         }
         catch (Exception) 
         {
             stopwatch.Stop();
-            return null; 
+            return null!; 
         }
     }
 
