@@ -85,16 +85,18 @@ public class ParserTests
 	}
 
 	[Theory]
-    [InlineData(null)]
+    [InlineData("NULL_TEST")]
     [InlineData("")]
     [InlineData("   ")]
-    public void ExtractTitle_ShouldReturnEmpty_WhenInputIsInvalid(string badHtml)
+    public void ExtractTitle_ShouldReturnEmpty_WhenInputIsInvalid(string input)
 	{
+        string? badHtml = input.Equals("NULL_TEST") ? null : input;
+
         //Arrange
         var parser = new HapHtmlParser();
 
         // Act
-        string result = parser.ExtractTitle(badHtml);
+        string result = parser.ExtractTitle(badHtml!);
 
         // Assert
         Assert.Equal(string.Empty, result);
@@ -187,16 +189,18 @@ public class ParserTests
     }
 
     [Theory]
-    [InlineData(null)]
+    [InlineData("NULL_TEST")]
     [InlineData("")]
     [InlineData("   ")]
-    public void ExtractRawText_ShouldReturnEmpty_WhenInputIsInvalid(string badHtml)
+    public void ExtractRawText_ShouldReturnEmpty_WhenInputIsInvalid(string input)
     {
+        string? badHtml = input.Equals("NULL_TEST") ? null : input;
+
         // ARRANGE
         var parser = new HapHtmlParser();
 
         // ACT
-        var result = parser.ExtractRawText(badHtml);
+        var result = parser.ExtractRawText(badHtml!);
 
         // ASSERT
         Assert.Equal(string.Empty, result);

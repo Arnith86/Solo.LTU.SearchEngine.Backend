@@ -42,7 +42,7 @@ namespace LTU.SearchEngine.Infrastructure.Indexing
             if (crawlResult == null) throw new ArgumentNullException(nameof(crawlResult));
 
             var id = Guid.NewGuid().ToString();
-            var document = new IndexDocument(id,crawlResult.Url, crawlResult.Title);
+            var document = new IndexDocument(id,crawlResult.Url, crawlResult.Title!);
 
 
             foreach (var indexedTerm in crawlResult.IndexedTerms)

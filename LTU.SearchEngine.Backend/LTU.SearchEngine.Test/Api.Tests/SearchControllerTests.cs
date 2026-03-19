@@ -96,11 +96,13 @@ namespace LTU.SearchEngine.Test.Api.Tests
         [Theory]
         [InlineData("")]
         [InlineData("    ")]
-        [InlineData(null)]
-        public async Task GetSearchResponses_ShouldReturnBadRequest_WhenQueryIsInvalid(string invalidQuery)
+        [InlineData("NULL_TEST")]
+        public async Task GetSearchResponses_ShouldReturnBadRequest_WhenQueryIsInvalid(string input)
         {
+            string? invalidQuery = input.Equals("NULL_TEST") ? null : input;
+
             // Act
-            var result = await _controller.GetSearchResponses(invalidQuery);
+            var result = await _controller.GetSearchResponses(invalidQuery!);
 
             // Assert
             Assert.IsType<BadRequestObjectResult>(result.Result);

@@ -52,7 +52,7 @@ public class CrawlBackgroundService : BackgroundService
         }
         catch (OperationCanceledException ex)
         {
-            _logger.LogInformation("CrawlerBackgroundService is shutting down.");
+            _logger.LogInformation(ex, "CrawlerBackgroundService is shutting down.");
         }
         catch (Exception ex)
         {

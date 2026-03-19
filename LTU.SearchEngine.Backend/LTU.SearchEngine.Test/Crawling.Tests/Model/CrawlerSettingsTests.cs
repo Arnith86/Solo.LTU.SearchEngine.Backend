@@ -20,8 +20,8 @@ public class CrawlerSettingsTests
         string userAgent = "LTUSearchCrawler/1.0 (Academic project; contact: some.mail@student.ltu.se)",
         int maxConcurrencyPerDomain = 5,
         int minDelayMs = 100,
-        List<TimeSpan> retryIntervals = null, 
-        List<string> seedUrls = null        
+        List<TimeSpan> retryIntervals = null!, 
+        List<string> seedUrls = null!        
     )
     {
       
