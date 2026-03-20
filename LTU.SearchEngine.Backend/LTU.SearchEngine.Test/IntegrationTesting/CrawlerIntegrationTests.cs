@@ -1,6 +1,8 @@
 using LTU.SearchEngine.Backend.Api;
+using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
-using LTU.SearchEngine.Infrastructure.Crawling;
+using LTU.SearchEngine.BackgroundServices;
+using LTU.SearchEngine.Test.HelperClasses;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,21 +10,28 @@ using Moq;
 
 namespace LTU.SearchEngine.Test.IntegrationTesting;
 
-public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+
+public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
 {
     private readonly WebApplicationFactory<Program> _factory; 
+    private readonly WebHostBuilder _webHostBuilder;
+    private string _tempSettingsPath; 
      
     public CrawlerIntegrationTests(WebApplicationFactory<Program> factory)
     {
         _factory = factory;
+        _webHostBuilder = new WebHostBuilder();
+         _tempSettingsPath = 
+            Path.Combine(Path.GetTempPath(), $"Settings_{Guid.NewGuid()}.ToJsonSchemaType");
     } 
 
     private WebApplicationFactory<Program> CreateTestFactory(
-        string seedURL,
-        string whiteListDomain,
+        string initialJson,
         Mock<IIndexer> indexerMock,
         HttpClient httpClientForCrawler)
     {
+        File.WriteAllText(_tempSettingsPath, initialJson);
+
         // Creates a version of the application, but with a mock index instead.
         var testFactory = _factory.WithWebHostBuilder(builder =>
         {
@@ -35,18 +44,13 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             // Replaces the preconfigured seed url with the test version. 
             builder.ConfigureAppConfiguration((context, config) =>
             {
-                var testConfig = new Dictionary<string, string?>
-                {
-                    ["CrawlerSettings:SeedUrls:0"] = seedURL,
-                    ["CrawlerSettings:SeedUrls:1"] = null,
-                    ["CrawlerSettings:WhiteList:0"] = whiteListDomain
-                };
-
-                config.AddInMemoryCollection(testConfig);
-            });
+                config.AddJsonFile(_tempSettingsPath, optional: false, reloadOnChange: true);
+            });   
         });
+
         return testFactory;
     }
+
 
     [Fact]
     [Trait("TestCase", "TC-FRQ-1001")]
@@ -57,7 +61,20 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         string page1 = "http://localhost/page1.html";
         string page2 = "http://localhost/page2.html";
         string final = "http://localhost/final.html";
-        
+
+        string fakeAppSettings = $$$"""
+        {
+            "CrawlerSettings": {
+                "UserAgent": "TestBot",
+                "MaxConcurrencyPerDomain": 2,
+                "MinDelayMs": 10,
+                "RetryIntervals": ["00:00:01"],
+                "SeedUrls": ["{{{seedURL}}}"],
+                "WhiteList": ["localhost"]
+            }
+        }
+        """;
+    
         var visitedList = new List<CrawlResult>();
         var indexerMock = new Mock<IIndexer>();
 
@@ -70,8 +87,7 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         using var httpClientForCrawler = webHelper.BuildHttpClient();
         
         using WebApplicationFactory<Program> testFactory = CreateTestFactory(
-            seedURL, 
-            whiteListDomain: "localhost", 
+            fakeAppSettings,
             indexerMock, 
             httpClientForCrawler
         );
@@ -79,12 +95,8 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
         // Retrieve the actuall implementation of the crawler. 
         using var scope = testFactory.Services.CreateScope();
-        var crawler = scope.ServiceProvider.GetRequiredService<ICrawler>();
-
-
+       
         // Act
-        await crawler.FetchAsync(seedURL);
-
         int timeoutMs = 5000;
         int elapsedTime = 0;
 
@@ -110,6 +122,20 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange 
         string externalURL = "http://forbidden-domain.com";
+
+        string fakeAppSettings = $$$"""
+        {
+            "CrawlerSettings": {
+                "UserAgent": "TestBot",
+                "MaxConcurrencyPerDomain": 2,
+                "MinDelayMs": 10,
+                "RetryIntervals": ["00:00:01"],
+                "SeedUrls": ["{{{externalURL}}}"],
+                "WhiteList": ["localhost"]
+            }
+        }
+        """;
+       
         
         var visitedList = new List<CrawlResult>();
         var indexerMock = new Mock<IIndexer>();
@@ -123,21 +149,16 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         using var httpClientForCrawler = webHelper.BuildHttpClient();
         
         using WebApplicationFactory<Program> testFactory = CreateTestFactory(
-            externalURL, 
-            whiteListDomain: "localhost", 
-            indexerMock, 
+            fakeAppSettings,
+            indexerMock,
             httpClientForCrawler
         );
 
 
         // Retrieve the actuall implementation of the crawler. 
         using var scope = testFactory.Services.CreateScope();
-        var crawler = scope.ServiceProvider.GetRequiredService<ICrawler>();
-
-
+     
         // Act
-        await crawler.FetchAsync(externalURL);
-
         int timeoutMs = 500;
         int elapsedTime = 0;
 
@@ -161,11 +182,24 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     public async Task Crawler_WhitelistEnforcement_IgnoresNonWhiteListedDomains()
     {
         // Arrange 
-        string seedURL = "http://localhost/SeedIncludingExternalUrl.html"; // includes http://forbidden-domain.com
+        // includes domain external-domain.com
+        string seedURL = "http://localhost/SeedIncludingExternalUrl.html"; 
         string page1 = "http://localhost/page1.html";
         string page2 = "http://localhost/page2.html";
         string final = "http://localhost/final.html";
         
+        string fakeAppSettings = $$$"""
+        {
+            "CrawlerSettings": {
+                "UserAgent": "TestBot",
+                "MaxConcurrencyPerDomain": 2,
+                "MinDelayMs": 10,
+                "RetryIntervals": ["00:00:01"],
+                "SeedUrls": ["{{{seedURL}}}"],
+                "WhiteList": ["localhost"]
+            }
+        }
+        """;
 
         var visitedList = new List<CrawlResult>();
         var indexerMock = new Mock<IIndexer>();
@@ -175,12 +209,10 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             .Callback<CrawlResult>(result => visitedList.Add(result))
             .Returns(Task.CompletedTask);
 
-        var webHelper = new HelperClasses.WebHostBuilder();
-        using var httpClientForCrawler = webHelper.BuildHttpClient();
+        using var httpClientForCrawler = _webHostBuilder.CreateFakeInternetClient();
         
         using WebApplicationFactory<Program> testFactory = CreateTestFactory(
-            seedURL, 
-            whiteListDomain: "localhost", 
+            fakeAppSettings,
             indexerMock, 
             httpClientForCrawler
         );
@@ -188,12 +220,9 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
         // Retrieve the actuall implementation of the crawler. 
         using var scope = testFactory.Services.CreateScope();
-        var crawler = scope.ServiceProvider.GetRequiredService<ICrawler>();
-
+      
 
         // Act
-        await crawler.FetchAsync(seedURL);
-
         int timeoutMs = 4000;
         int elapsedTime = 0;
 
@@ -210,7 +239,103 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         Assert.Equal(page1, visitedList[1].Url);
         Assert.Equal(page2, visitedList[2].Url);
         Assert.Equal(final, visitedList[3].Url);
+    }
 
-        testFactory.Dispose();
+    
+    [Fact]
+    [Trait("TestCase", "TC-FRQ-1008")]
+    public async Task Crawler_ConfigurableWhitelistUpdate()
+    {
+        // Arrange 
+        // includes domain external-domain.com
+        string seedURL = "http://localhost/SeedIncludingExternalUrl.html"; 
+
+        string fakeAppSettings = $$$"""
+        {
+            "CrawlerSettings": {
+                "UserAgent": "TestBot",
+                "MaxConcurrencyPerDomain": 2,
+                "MinDelayMs": 10,
+                "RetryIntervals": ["00:00:01"],
+                "SeedUrls": ["{{{seedURL}}}"],
+                "WhiteList": ["localhost"]
+            }
+        }
+        """;
+        
+        var visitedList = new List<CrawlResult>();
+        var indexerMock = new Mock<IIndexer>();
+
+        indexerMock
+            .Setup(im => im.IndexAsync(It.IsAny<CrawlResult>()))
+            .Callback<CrawlResult>(result => visitedList.Add(result))
+            .Returns(Task.CompletedTask);
+
+
+        using var httpClientForCrawler = _webHostBuilder.CreateFakeInternetClient();
+        
+        using WebApplicationFactory<Program> testFactory = CreateTestFactory(
+            fakeAppSettings,
+            indexerMock, 
+            httpClientForCrawler
+        );
+
+
+        // Retrieve the actuall implementation of the crawler. 
+        using var scope = testFactory.Services.CreateScope();
+        var dispatcher = scope.ServiceProvider.GetService<ICrawlJobDispatcher>();
+        
+
+        // Act 1 -- Verify that none whitelisted domain is blocked
+        int timeoutMs = 4000;
+        int elapsedTime = 0;
+
+        // Wait up to 4 sec to fill list 
+        while (visitedList.Count < 4 && elapsedTime < timeoutMs)
+        {
+            await Task.Delay(100); // wait with 100 ms intervalls
+            elapsedTime += 100;
+        }
+
+        Assert.DoesNotContain(visitedList, im => im.Url.Contains("external-domain.com"));
+        visitedList.Clear();
+
+        // Act 2 -- Verify that updated whitelist domain is now allowed 
+        string updatedFakeAppSettings = $$$"""
+        {
+            "CrawlerSettings": {
+                "UserAgent": "TestBot",
+                "MaxConcurrencyPerDomain": 2,
+                "MinDelayMs": 10,
+                "RetryIntervals": ["00:00:01"],
+                "SeedUrls": ["{{{seedURL}}}"],
+                "WhiteList": ["external-domain.com", "localhost"]
+            }
+        }
+        """;
+
+        CrawlJob crawlJob = new CrawlJob{Url = seedURL, NextAttempt = DateTime.UtcNow};
+
+        File.WriteAllText(_tempSettingsPath, updatedFakeAppSettings);
+        
+        elapsedTime = 0;
+        await Task.Delay(1000);
+        await dispatcher!.Enqueue(crawlJob);
+
+        // Wait up to 4 sec to fill list 
+        while (visitedList.Count < 5 && elapsedTime < timeoutMs)
+        {
+            await Task.Delay(100); // wait with 100 ms intervalls
+            elapsedTime += 100;
+        }
+
+        // Assert 
+        Assert.Contains(visitedList, im => im.Url.Contains("external-domain.com"));
+    }
+
+
+    public void Dispose()
+    {
+        if (File.Exists(_tempSettingsPath)) File.Delete(_tempSettingsPath);
     }
 }
