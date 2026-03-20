@@ -9,6 +9,112 @@ namespace LTU.SearchEngine.Test.HelperClasses;
 
 public class WebHostBuilder
 {
+public HttpClient CreateFakeInternetClient()
+	{
+		var host = Host.CreateDefaultBuilder().ConfigureWebHostDefaults(webBuilder =>
+		{
+			webBuilder.UseTestServer();
+			webBuilder.Configure(app =>
+			{
+				app.UseRouting();
+				app.UseEndpoints(endpoint =>
+				{
+					endpoint.MapGet("/seed.html", () =>
+					{
+						var html = $"""
+						<html>
+							<body>
+								<a href="http://localhost/page1.html">Page 1</a>
+							</body>
+						</html>
+						"""; 
+						
+						return Results.Content(html, "text/html");
+
+					});
+
+					endpoint.MapGet("/page1.html", () =>
+					{
+						var html = $"""
+						<html>
+							<body>
+								<a href="http://localhost/page2.html">Page 2</a>
+							</body>
+						</html>
+						"""; 
+						
+						return Results.Content(html, "text/html");
+
+					});
+
+					endpoint.MapGet("/page2.html", () =>
+					{
+						var html = $"""
+						<html>
+							<body>
+								<a href="http://localhost/final.html">Page 2</a>
+							</body>
+						</html>
+						"""; 
+						
+						return Results.Content(html, "text/html");
+
+					});
+
+					endpoint.MapGet("/final.html", () =>
+					{
+						var html = $"""
+						<html>
+							<body>
+								<h1>Final</h1>
+							</body>
+						</html>
+						"""; 
+						
+						return Results.Content(html, "text/html");
+
+					});
+
+					// Seed Url with external domain
+					endpoint.MapGet("/SeedIncludingExternalUrl.html", () =>
+					{
+						var html = $"""
+							<html>
+								<body>
+									<a href="http://localhost/page1.html">Page 1</a>
+									<a href="http://external-domain.com/external.html">external-domain</a>
+								</body>
+							</html>
+						""";
+						
+						return Results.Content(html, "text/html");
+					
+					});  
+					
+
+					// Seed Url with external domain
+					endpoint.MapGet("/external.html", () =>
+					{
+						var html = $"""
+							<html>
+								<body>
+									<h1>External</h1>
+								</body>
+							</html>
+						""";
+
+						return Results.Content(html, "text/html");
+
+					});
+				});
+			});
+		})
+		.Build();
+		
+		host.Start();
+		return host.GetTestClient();
+	}
+
 	public HttpClient BuildHttpClient()
 	{
 		// Arrange: create in-memory web app
