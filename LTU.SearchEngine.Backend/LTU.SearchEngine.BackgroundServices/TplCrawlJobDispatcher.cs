@@ -167,6 +167,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 				_jobPriorityQueue.Enqueue(job, job.NextAttempt ?? DateTime.UtcNow);
 		}
 
+	
 		return Task.CompletedTask;
 	}
 
@@ -177,24 +178,35 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 			_worker, 
 			new DataflowLinkOptions { PropagateCompletion = true }
 		);
-        while (!ct.IsCancellationRequested)
-        {
-            DateTime now = DateTime.UtcNow;
-	
-            List<CrawlJob> ready = new List<CrawlJob>();
 
-            lock (_jobPriorityQueue)
-            {
-                while (_jobPriorityQueue.Count > 0 &&
-                    _jobPriorityQueue.Peek().NextAttempt <= now)
-                {
-                    ready.Add(_jobPriorityQueue.Dequeue());
-                }
-            }
+		try
+		{
+			while (!ct.IsCancellationRequested)
+			{
+				DateTime now = DateTime.UtcNow;
+				CrawlJob? crawlJob = null;
 
-            foreach (CrawlJob job in ready) await _buffer.SendAsync(job, ct);
+				lock (_jobPriorityQueue)
+				{
+					if (_jobPriorityQueue.Count > 0 &&
+						_jobPriorityQueue.Peek().NextAttempt <= now)
+					{
+						crawlJob =  _jobPriorityQueue.Dequeue();	
+					}
+				}
 
-            await Task.Delay(_crawlerSettingsLoader.Load().MinDelayMs);
-        }
+				if (crawlJob is not null)
+				{
+					await _buffer.SendAsync(crawlJob, ct);
+					await Task.Delay(_crawlerSettingsLoader.Load().MinDelayMs, ct);
+				}
+				else await Task.Delay(50, ct); // Processor friendly wait
+			}		
+		}
+		catch (OperationCanceledException)
+		{
+			Debug.WriteLine("Dispatcher has been stopped"); // ToDo: should be properly logged
+		}
+      
     }
 }
