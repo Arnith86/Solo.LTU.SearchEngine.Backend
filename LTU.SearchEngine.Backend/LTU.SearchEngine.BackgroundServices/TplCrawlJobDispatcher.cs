@@ -4,7 +4,7 @@ using LTU.SearchEngine.Backend.Core.Exceptions;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure.Configuration;
-using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 using System.Threading.Tasks.Dataflow;
 
 namespace LTU.SearchEngine.BackgroundServices;
@@ -36,6 +36,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 	private PriorityQueue<CrawlJob, DateTime> _jobPriorityQueue;
 	private BufferBlock<CrawlJob> _buffer;
 	private ActionBlock<CrawlJob> _worker;
+	private readonly ILogger<TplCrawlJobDispatcher> _logger;
 	
 	/// <summary>
 	/// Initializes a new instance of the <see cref="TplCrawlJobDispatcher"/> class.
@@ -49,7 +50,8 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 	public TplCrawlJobDispatcher(
 		IProcessCrawlJobUseCase processCrawlJobUseCase,
 		SemaphoreProvider semaphoreProvider,
-		ICrawlerSettingsLoader crawlerSettingsLoader
+		ICrawlerSettingsLoader crawlerSettingsLoader,
+		ILogger<TplCrawlJobDispatcher> logger
 		)
 	{
 		_processCrawlJobUseCase = processCrawlJobUseCase
@@ -58,6 +60,8 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 			?? throw new ArgumentNullException(nameof(crawlerSettingsLoader));
 		_semaphoreProvider = semaphoreProvider 
 			?? throw new ArgumentNullException(nameof(semaphoreProvider)); 
+		_logger = logger 
+			?? throw new ArgumentNullException(nameof(logger));
 
 		_jobPriorityQueue = new PriorityQueue<CrawlJob, DateTime>();
 		_buffer = new BufferBlock<CrawlJob>();
@@ -93,7 +97,6 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 		});
 	}
 
-	// These catches should later be logged properly and not simply written to debug output!
 	private async Task HandleUseCaseAsync(CrawlJob job)
 	{
 		try
@@ -103,20 +106,20 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 		}
 		catch (DomainNotWhitelistedException ex)
 		{
-			Debug.WriteLine($"Job {job.Id} skipped: domain not whitelisted ({ex.Message})");
+			_logger.LogWarning($"Job {job.Id} skipped: domain not whitelisted ({ex.Message})");
 		}
 		catch (ArgumentException ex)
 		{
-			Debug.WriteLine($"Job {job.Id} skipped: invalid job ({ex.Message})");
+			_logger.LogWarning($"Job {job.Id} skipped: invalid job ({ex.Message})");
 		}
 		catch (InvalidOperationException ex)
 		{
-			Debug.WriteLine($"Job {job.Id} failed: fetch error ({ex.Message})");
+			_logger.LogError($"Job {job.Id} failed: fetch error ({ex.Message})");
 			await HandleFailedJob(job);
 		}
 		catch (Exception ex)
 		{
-			Debug.WriteLine($"Job {job.Id} failed with unexpected error: {ex.Message}");
+			_logger.LogError($"Job {job.Id} failed with unexpected error: {ex.Message}");
 			await HandleFailedJob(job);
 		}
 	}
@@ -125,7 +128,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 	{
 		if (job.RetryCount >= _crawlerSettingsLoader.Load().RetryIntervals.Count)
 		{
-			Debug.WriteLine($"Job {job.Id} reached max retry count. Discarding job.");
+			_logger.LogWarning($"Job {job.Id} reached max retry count. Discarding job.");
 			return;
 		}
 
@@ -174,6 +177,20 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 	/// <inheritdoc />
 	public async Task Start(CancellationToken ct)
 	{
+		var initialSetting = _crawlerSettingsLoader.Load();
+
+		_logger.LogInformation(
+			"Crawler Dispatcher started. Effective configuration: " +
+			"UserAgent={UserAgent}, SeedURLs={SeedUrl}, MaxConcurrencyPerDomain={MaxConcurrency}, " +
+			"MinDelayMs={MinDelay}ms, RetryIntervals={RetryIntervals}, WhiteList={WhiteList}",
+			initialSetting.UserAgent,
+			initialSetting.SeedUrls,
+			initialSetting.MaxConcurrencyPerDomain,
+			initialSetting.MinDelayMs,
+			initialSetting.RetryIntervals,
+			initialSetting.WhiteList
+		);
+		
 		_buffer.LinkTo(
 			_worker, 
 			new DataflowLinkOptions { PropagateCompletion = true }
@@ -205,7 +222,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 		}
 		catch (OperationCanceledException)
 		{
-			Debug.WriteLine("Dispatcher has been stopped"); // ToDo: should be properly logged
+			_logger.LogInformation("Dispatcher has been stopped"); 
 		}
       
     }
