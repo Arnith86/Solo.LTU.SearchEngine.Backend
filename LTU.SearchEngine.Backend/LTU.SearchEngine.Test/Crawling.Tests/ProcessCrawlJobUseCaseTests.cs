@@ -4,6 +4,7 @@ using LTU.SearchEngine.Backend.Core.Exceptions;
 using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using LTU.SearchEngine.Infrastructure.Configurations;
 using LTU.SearchEngine.Infrastructure.Crawling;
 using Moq;
 using System.Net;
@@ -16,6 +17,7 @@ public class ProcessCrawlJobUseCaseTests
 	private readonly Mock<ICrawler> _crawlerMock;
 	private readonly Mock<IDomainValidator> _domainValidatorMock;
 	private readonly Mock<IIndexer> _indexerMock;
+	private readonly Mock<IRobotsHandler> _robotsHandlerMock;
 	private readonly CrawlJob _crawlJob; 
 
 	private readonly ProcessCrawlJobUseCase _sut;
@@ -26,6 +28,7 @@ public class ProcessCrawlJobUseCaseTests
 		_domainValidatorMock
 			 = new Mock<IDomainValidator>();
 		_indexerMock = new Mock<IIndexer>();
+		_robotsHandlerMock = new Mock<IRobotsHandler>();
 		
 		_crawlJob = new CrawlJob
 		{
@@ -37,7 +40,9 @@ public class ProcessCrawlJobUseCaseTests
 		_sut = new ProcessCrawlJobUseCase(
 			crawler: _crawlerMock.Object,
 			domainValidator: _domainValidatorMock.Object,
-			indexer: _indexerMock.Object);
+			indexer: _indexerMock.Object,
+			robotsHandler: _robotsHandlerMock.Object
+		);
 	}
 
 
@@ -88,11 +93,14 @@ public class ProcessCrawlJobUseCaseTests
 			.Setup(c => c.FetchAsync(_crawlJob.Url))
 			.ReturnsAsync(expectedResult);
 
-		_domainValidatorMock.
-			Setup(dv => dv.IsWhitelisted(_crawlJob.Url)).
-			Returns(true);
+		_domainValidatorMock
+			.Setup(dv => dv.IsWhitelisted(_crawlJob.Url))
+			.Returns(true);
 
-
+		_robotsHandlerMock
+			.Setup(rh => rh.IsAllowed(_crawlJob.Url))
+			.Returns(true);
+		
 		// Act 
 		CrawlResult result = await _sut.Execute(_crawlJob);
 
@@ -152,11 +160,35 @@ public class ProcessCrawlJobUseCaseTests
 			.Setup(c => c.FetchAsync(_crawlJob.Url))!
 			.ReturnsAsync((CrawlResult?)null);
 
+		_robotsHandlerMock
+			.Setup(rh => rh.IsAllowed(_crawlJob.Url))
+			.Returns(true);
+
 		// Act & Assert
 		var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.Execute(_crawlJob));
 		Assert.Contains("Failed to fetch URL", ex.Message);
 		Assert.Contains(_crawlJob.Url, ex.Message);
 	}
+
+
+	[Fact]
+	public async Task Execute_ShouldThrowBlockedByRobotsTxtException_WhenBlockedByRobotsTxt()
+	{
+		// Arrange
+		_domainValidatorMock
+			.Setup(v => v.IsWhitelisted(_crawlJob.Url))
+			.Returns(true);
+
+		_robotsHandlerMock
+			.Setup(rh => rh.IsAllowed(_crawlJob.Url))
+			.Returns(false);
+
+		// Act & Assert
+		var ex = await Assert.ThrowsAsync<BlockedByRobotsTxtException>(() => _sut.Execute(_crawlJob));
+		Assert.Contains(_crawlJob.Url, ex.Message);
+	}
+
+	
 
 	[Fact]
 	public void Constructor_ShouldThrow_WhenCrawlerIsNull()
@@ -166,6 +198,7 @@ public class ProcessCrawlJobUseCaseTests
 			new ProcessCrawlJobUseCase(
 				null!, 
 				_domainValidatorMock.Object, 
+				_robotsHandlerMock.Object,
 				_indexerMock.Object
 			)
 		);
@@ -179,6 +212,21 @@ public class ProcessCrawlJobUseCaseTests
 			new ProcessCrawlJobUseCase(
 				_crawlerMock.Object, 
 				null!, 
+				_robotsHandlerMock.Object,
+				_indexerMock.Object
+			)
+		);
+	}
+
+	[Fact]
+	public void Constructor_ShouldThrow_WhenRobotsHandlerIsNull()
+	{
+		// Assert
+		Assert.Throws<ArgumentNullException>(() =>
+			new ProcessCrawlJobUseCase(
+				_crawlerMock.Object, 
+				_domainValidatorMock.Object, 
+				null!,
 				_indexerMock.Object
 			)
 		);
@@ -192,8 +240,10 @@ public class ProcessCrawlJobUseCaseTests
 			new ProcessCrawlJobUseCase(
 				_crawlerMock.Object, 
 				_domainValidatorMock.Object, 
+				_robotsHandlerMock.Object,
 				null!
 			)
 		);
 	}
+
 }
