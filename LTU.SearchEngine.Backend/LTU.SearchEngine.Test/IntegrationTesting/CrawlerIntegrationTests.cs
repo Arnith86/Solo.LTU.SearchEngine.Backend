@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using LTU.SearchEngine.Infrastructure.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace LTU.SearchEngine.Test.IntegrationTesting;
 
@@ -30,13 +31,14 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             Path.Combine(Path.GetTempPath(), $"Settings_{Guid.NewGuid()}.ToJsonSchemaType");
     } 
 
-    private WebApplicationFactory<Program> CreateTestFactory(
+    private WebApplicationFactory<Program> CreateTestFactory<T>(
         Mock<IIndexer> indexerMock,
         HttpClient httpClientForCrawler,
+        Mock<ILogger<T>>? logger = null,
         string seedUrl = "http://localhost/page1.html",
         int maxConcurrencyPerDomain = 2,
         int minDelayMs = 10
-    )
+    ) where T : class
     {
         string fakeAppSettings = $$$"""
         {
@@ -71,19 +73,20 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
                 if (descriptor is not null) services.Remove(descriptor);
 
-                services.AddSingleton(httpClientForCrawler); // Replace the HttpClient the client uses to the inmemory webHostBuilder
+                services.AddSingleton(httpClientForCrawler); // Replace the HttpClient the client uses to the in-memory webHostBuilder
                 services.AddSingleton(indexerMock.Object);
+                if (logger is not null) services.AddSingleton(logger.Object);
             });
 
         });
 
         return testFactory;
-    }
+    } 
 
 
     [Fact]
     [Trait("TestCase", "TC-FRQ-1001")]
-    public async Task Crawler_ShouldVisitAllLinkedPagesRecursivly()
+    public async Task Crawler_ShouldVisitAllLinkedPagesRecursively()
     {
         // Arrange 
         string seedURL = "http://localhost/seed.html";
@@ -104,13 +107,13 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         var webHelper = new HelperClasses.WebHostBuilder();
         using var httpClientForCrawler = webHelper.BuildHttpClient();
         
-        using WebApplicationFactory<Program> testFactory = CreateTestFactory(
-            indexerMock, 
-            httpClientForCrawler
+        using WebApplicationFactory<Program> testFactory = CreateTestFactory<TplCrawlJobDispatcher>(
+            indexerMock: indexerMock, 
+            httpClientForCrawler : httpClientForCrawler
         );
 
 
-        // Retrieve the actuall implementation of the crawler. 
+        // Retrieve the actual implementation of the crawler. 
         using var scope = testFactory.Services.CreateScope();
         var dispatcher = scope.ServiceProvider.GetRequiredService<ICrawlJobDispatcher>();
        
@@ -129,7 +132,7 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             // Wait up to 5 sec to fill list 
             while (visitedList.Count < 4 && elapsedTime < timeoutMs)
             {
-                await Task.Delay(100); // wait with 100 ms intervalls
+                await Task.Delay(100); // wait with 100 ms intervals
                 elapsedTime += 100;
             }
         }
@@ -166,14 +169,15 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         var webHelper = new HelperClasses.WebHostBuilder();
         using var httpClientForCrawler = webHelper.BuildHttpClient();
         
-        using WebApplicationFactory<Program> testFactory = CreateTestFactory(
-            indexerMock,
-            httpClientForCrawler,
-            externalURL
+        
+        using WebApplicationFactory<Program> testFactory = CreateTestFactory<TplCrawlJobDispatcher>(
+            indexerMock: indexerMock, 
+            httpClientForCrawler : httpClientForCrawler,
+            seedUrl: externalURL
         );
+        
 
-
-        // Retrieve the actuall implementation of the crawler. 
+        // Retrieve the actually implementation of the crawler. 
         using var scope = testFactory.Services.CreateScope();
         var dispatcher = scope.ServiceProvider.GetRequiredService<ICrawlJobDispatcher>();
 
@@ -192,7 +196,7 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             // Wait up to 5 sec to fill list 
             while (elapsedTime < timeoutMs)
             {
-                await Task.Delay(100); // wait with 100 ms intervalls
+                await Task.Delay(100); // wait with 100 ms intervals
                 elapsedTime += 100;
             }
 
@@ -234,13 +238,14 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
         using var httpClientForCrawler = _webHostBuilder.CreateFakeInternetClient();
         
-        using WebApplicationFactory<Program> testFactory = CreateTestFactory(
-            indexerMock, 
-            httpClientForCrawler,
-            seedURL
+        
+        using WebApplicationFactory<Program> testFactory = CreateTestFactory<TplCrawlJobDispatcher>(
+            indexerMock: indexerMock, 
+            httpClientForCrawler : httpClientForCrawler,
+            seedUrl: seedURL
         );
-
-        // Retrieve the actuall implementation of the CrawlJobDispatcher. 
+        
+        // Retrieve the actually implementation of the CrawlJobDispatcher. 
         using var scope = testFactory.Services.CreateScope();
         var dispatcher = scope.ServiceProvider.GetRequiredService<ICrawlJobDispatcher>();
 
@@ -259,7 +264,7 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             // Wait up to 4 sec to fill list 
             while (visitedList.Count < 4 && elapsedTime < timeoutMs)
             {
-                await Task.Delay(100); // wait with 100 ms intervalls
+                await Task.Delay(100); // wait with 100 ms intervals
                 elapsedTime += 100;
             }
         }
@@ -301,12 +306,13 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
         using var httpClientForCrawler = _webHostBuilder.CreateFakeInternetClient();
         
-        using WebApplicationFactory<Program> testFactory = CreateTestFactory(
-            indexerMock, 
-            httpClientForCrawler,
-            seedURL
+        
+        using WebApplicationFactory<Program> testFactory = CreateTestFactory<TplCrawlJobDispatcher>(
+            indexerMock: indexerMock, 
+            httpClientForCrawler : httpClientForCrawler,
+            seedUrl: seedURL
         );
-
+        
 
         // Retrieve the actually implementation of the crawler. 
         using var scope = testFactory.Services.CreateScope();
@@ -324,11 +330,11 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
            // Wait up to 4 sec to fill list 
             while (visitedList.Count < 4 && elapsedTime < timeoutMs)
             {
-                await Task.Delay(100); // wait with 100 ms intervalls
+                await Task.Delay(100); // wait with 100 ms intervals
                 elapsedTime += 100;
             }
 
-             Assert.DoesNotContain(visitedList, im => im.Url.Contains("external-domain.com"));
+            Assert.DoesNotContain(visitedList, im => im.Url.Contains("external-domain.com"));
         
             // Reset measuring variables
             visitedList.Clear();
@@ -358,7 +364,7 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             // Wait up to 4 sec to fill list 
             while (visitedList.Count < 5 && elapsedTime < timeoutMs)
             {
-                await Task.Delay(100); // wait with 100 ms intervalls
+                await Task.Delay(100); // wait with 100 ms intervals
                 elapsedTime += 100;
             }
 
@@ -417,14 +423,14 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
 
 
-        using WebApplicationFactory<Program> testFactory = CreateTestFactory(
+        using WebApplicationFactory<Program> testFactory = CreateTestFactory<TplCrawlJobDispatcher>(
             indexerMock: new Mock<IIndexer>(), 
             httpClientForCrawler: host.GetTestClient(),
-            seedURL,
-            maxConcurrencyPerDomain,
-            minDelayMs
+            seedUrl: seedURL,
+            maxConcurrencyPerDomain: maxConcurrencyPerDomain,
+            minDelayMs: minDelayMs
         );
-
+        
         using var scope = testFactory.Services.CreateScope();
         var dispatcher = scope.ServiceProvider.GetRequiredService<ICrawlJobDispatcher>();
         var settingsLoader = scope.ServiceProvider.GetRequiredService<ICrawlerSettingsLoader>();       
@@ -469,6 +475,59 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         }
     }
 
+
+    [Fact]
+    [Trait("TestCase", "TC-FRQ-1004")]
+    public async Task Crawler_LoggingMaxConcurrencyPerDomainAndMinDelayMsAtStartup()
+    {
+        var cts = new CancellationTokenSource();    
+        // Arrange 
+        string ExpectedUserAgent = "TestBot";
+        string ExpectedSeedURL = "http://localhost/page1.html"; 
+        int ExpectedMaxConcurrencyPerDomain = 2;
+        int ExpectedMinDelayMs = 10;
+        string expectedRetryInterval = "00:00:01, 1.00:00:00, 7.00:00:00";
+        string ExpectedWhiteList = "localhost";
+
+        var indexerMock = new Mock<IIndexer>();
+        var loggerMock = new Mock<ILogger<TplCrawlJobDispatcher>>();
+
+        using var httpClientForCrawler = _webHostBuilder.CreateFakeInternetClient();
+        
+        using WebApplicationFactory<Program> testFactory = CreateTestFactory<TplCrawlJobDispatcher>(
+            logger: loggerMock,
+            indexerMock: indexerMock, 
+            httpClientForCrawler: httpClientForCrawler
+        );
+
+        // Retrieve the actually implementation of the crawler. 
+        using var scope = testFactory.Services.CreateScope();
+        var dispatcher = scope.ServiceProvider.GetRequiredService<ICrawlJobDispatcher>();
+        var settingsLoader = scope.ServiceProvider.GetRequiredService<ICrawlerSettingsLoader>();
+
+        // Act  
+        _ = dispatcher.Start(cts.Token);
+        await Task.Delay(100);
+
+        // Assert
+        loggerMock.Verify(l => l.Log(
+            logLevel: LogLevel.Information,
+            eventId: It.IsAny<EventId>(),
+            state: It.Is<It.IsAnyType>((v, t) => 
+                v.ToString()!.Contains($"UserAgent={ExpectedUserAgent}") && 
+                v.ToString()!.Contains($"SeedURLs={ExpectedSeedURL}") && 
+                v.ToString()!.Contains($"MaxConcurrencyPerDomain={ExpectedMaxConcurrencyPerDomain}") && 
+                v.ToString()!.Contains($"MinDelayMs={ExpectedMinDelayMs}ms") && 
+                v.ToString()!.Contains($"RetryIntervals={expectedRetryInterval}") && 
+                v.ToString()!.Contains($"WhiteList={ExpectedWhiteList}")  
+                ),  
+                
+            exception: null,
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+        Times.Once); 
+    }    
+
+
     [Fact]
     [Trait("TestCase", "TC-NFRQ-6006")]
     public async Task Crawler_HotSwapCrawlerConfigurations()
@@ -485,9 +544,10 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         var indexerMock = new Mock<IIndexer>();
         using var httpClientForCrawler = _webHostBuilder.CreateFakeInternetClient();
         
-        using WebApplicationFactory<Program> testFactory = CreateTestFactory(
-            indexerMock, 
-            httpClientForCrawler
+        
+        using WebApplicationFactory<Program> testFactory = CreateTestFactory<TplCrawlJobDispatcher>(
+            indexerMock: indexerMock, 
+            httpClientForCrawler: httpClientForCrawler
         );
 
         // Retrieve the actually implementation of the crawler. 

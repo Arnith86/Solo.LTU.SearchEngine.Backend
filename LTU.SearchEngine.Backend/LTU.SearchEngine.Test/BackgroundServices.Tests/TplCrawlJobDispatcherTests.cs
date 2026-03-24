@@ -5,6 +5,7 @@ using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.BackgroundServices;
 using LTU.SearchEngine.Infrastructure.Configuration;
+using Microsoft.Extensions.Logging;
 using Moq;
 using System.Net;
 using System.Text;
@@ -63,7 +64,8 @@ public class TplCrawlJobDispatcherTests
         _sut = new TplCrawlJobDispatcher(
 		  _mockUseCase.Object,
 		  _semaphoreProvider,
-		  _mockCrawlerSettingsLoader!.Object
+		  _mockCrawlerSettingsLoader!.Object,
+		  new Mock<ILogger<TplCrawlJobDispatcher>>().Object
 		);
     }
 
@@ -74,7 +76,8 @@ public class TplCrawlJobDispatcherTests
 		Assert.Throws<ArgumentNullException>(() => new TplCrawlJobDispatcher(
 			processCrawlJobUseCase: null!,
 			crawlerSettingsLoader: _mockCrawlerSettingsLoader.Object,
-			semaphoreProvider: _semaphoreProvider)
+			semaphoreProvider: _semaphoreProvider,
+			logger: new Mock<ILogger<TplCrawlJobDispatcher>>().Object)
 		);
 	}
 
@@ -85,7 +88,8 @@ public class TplCrawlJobDispatcherTests
 		Assert.Throws<ArgumentNullException>(() => new TplCrawlJobDispatcher(
 			processCrawlJobUseCase: _mockUseCase.Object,
 			crawlerSettingsLoader: null!,
-			semaphoreProvider: _semaphoreProvider
+			semaphoreProvider: _semaphoreProvider,
+			logger: new Mock<ILogger<TplCrawlJobDispatcher>>().Object
             )
 		);
 	}
@@ -97,7 +101,8 @@ public class TplCrawlJobDispatcherTests
 		Assert.Throws<ArgumentNullException>(() => new TplCrawlJobDispatcher(
 			processCrawlJobUseCase: _mockUseCase.Object,
 			crawlerSettingsLoader: _mockCrawlerSettingsLoader.Object,
-			semaphoreProvider: null!
+			semaphoreProvider: null!,
+			logger: new Mock<ILogger<TplCrawlJobDispatcher>>().Object
 			)
 		);
 	}
@@ -393,7 +398,7 @@ public class TplCrawlJobDispatcherTests
 				var current = Interlocked.Increment(ref active);
 				maxObserved = Math.Max(maxObserved, current);
 				
-				await Task.Delay(100); // simulate work
+				await Task.Delay(200); // simulate work
 				Interlocked.Decrement(ref active);
 
 				return CreateResult();
