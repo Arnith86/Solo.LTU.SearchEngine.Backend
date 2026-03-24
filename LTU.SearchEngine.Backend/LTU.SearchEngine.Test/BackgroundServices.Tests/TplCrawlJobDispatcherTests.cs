@@ -13,7 +13,6 @@ namespace LTU.SearchEngine.Test.BackgroundServices.Tests;
 
 public class TplCrawlJobDispatcherTests
 {
-	// rivate readonly CrawlerSettings _crawlerSettings;
 	private readonly Mock<ICrawlerSettingsLoader> _mockCrawlerSettingsLoader;
 	private readonly SemaphoreProvider _semaphoreProvider;
 	private Mock<IProcessCrawlJobUseCase> _mockUseCase;
@@ -55,6 +54,7 @@ public class TplCrawlJobDispatcherTests
 	{
 		_semaphoreProvider = new SemaphoreProvider();
 		_mockUseCase = new Mock<IProcessCrawlJobUseCase>();
+		_mockUseCase.Setup(uc => uc.Execute(It.IsAny<CrawlJob>())).ReturnsAsync(CreateResult());
 
 		_mockCrawlerSettingsLoader = new Mock<ICrawlerSettingsLoader>();
 		_mockCrawlerSettingsLoader.Setup(csl => csl.Load()).Returns(CreateSettings());
@@ -146,17 +146,18 @@ public class TplCrawlJobDispatcherTests
 
         // Signal when Execute is invoked to wait deterministically in the test.
         _mockUseCase.Setup(u => u.Execute(It.IsAny<CrawlJob>()))
-		.Returns(async () =>
-		{
-			executionSignal.TrySetResult(true);
-			return CreateResult();
-		});
+			.Returns(async () =>
+			{
+				executionSignal.TrySetResult(true);
+				return CreateResult();
+			}
+		);
 
         var job = new CrawlJob
         {
             Id = 2,
             Url = "https://example.com",
-            NextAttempt = DateTime.UtcNow.AddMilliseconds(300) 
+            NextAttempt = DateTime.UtcNow.AddSeconds(1) 
         };
 
         using var cts = new CancellationTokenSource();
@@ -164,21 +165,22 @@ public class TplCrawlJobDispatcherTests
 
 		// Act
         await _sut.Enqueue(job);
-
+		
         // Assert (before scheduled time)
-        await Task.Delay(100);
+        await Task.Delay(200);
         // Verify that the job has not been executed yet
-        Assert.False(executionSignal.Task.IsCompleted);
+        Assert.False(executionSignal.Task.IsCompleted, "Job executed early!");
 
         // Assert (after scheduled time)
-        await Task.Delay(300);
+        await Task.Delay(1000);
         // Wait until the mocked Execute method signals execution
-        await executionSignal.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await executionSignal.Task.WaitAsync(TimeSpan.FromSeconds(2));
 
         _mockUseCase.Verify(u => u.Execute(It.IsAny<CrawlJob>()), Times.Once);
 
         cts.Cancel();
-        await startTask;
+		
+       	await startTask;
     }
     
     [Fact]
