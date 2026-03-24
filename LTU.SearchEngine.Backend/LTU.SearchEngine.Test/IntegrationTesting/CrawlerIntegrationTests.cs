@@ -308,7 +308,7 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         );
 
 
-        // Retrieve the actuall implementation of the crawler. 
+        // Retrieve the actually implementation of the crawler. 
         using var scope = testFactory.Services.CreateScope();
         var dispatcher = scope.ServiceProvider.GetService<ICrawlJobDispatcher>();
 
@@ -369,8 +369,6 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         {
             cts.Cancel();
         }
-        
-       
     }
 
     [Fact]
@@ -469,6 +467,62 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
                 );     
             }
         }
+    }
+
+    [Fact]
+    [Trait("TestCase", "TC-NFRQ-6006")]
+    public async Task Crawler_HotSwapCrawlerConfigurations()
+    {
+        // Arrange 
+        // includes domain external-domain.com
+        string ExpectedUserAgent = "UpdatedTestBot";
+        string ExpectedSeedURL = "http://localhost/SeedIncludingExternalUrl.html"; 
+        int ExpectedMaxConcurrencyPerDomain = 4;
+        int ExpectedMinDelayMs = 200;
+        string ExpectedWhiteList1 = "external-domain.com";
+        string ExpectedWhiteList2 = "localhost";
+
+        var indexerMock = new Mock<IIndexer>();
+        using var httpClientForCrawler = _webHostBuilder.CreateFakeInternetClient();
+        
+        using WebApplicationFactory<Program> testFactory = CreateTestFactory(
+            indexerMock, 
+            httpClientForCrawler
+        );
+
+        // Retrieve the actually implementation of the crawler. 
+        using var scope = testFactory.Services.CreateScope();
+        var settingsLoader = scope.ServiceProvider.GetRequiredService<ICrawlerSettingsLoader>();
+
+
+        var cts = new CancellationTokenSource();    
+        
+        // Act  
+        string updatedFakeAppSettings = $$$"""
+        {
+            "CrawlerSettings": {
+                "UserAgent": "{{{ExpectedUserAgent}}}",
+                "MaxConcurrencyPerDomain": {{{ExpectedMaxConcurrencyPerDomain}}},
+                "MinDelayMs": {{{ExpectedMinDelayMs}}},
+                "RetryIntervals": ["00:00:02"],
+                "SeedUrls": ["{{{ExpectedSeedURL}}}"],
+                "WhiteList": ["{{{ExpectedWhiteList1}}}", "{{{ExpectedWhiteList2}}}"]
+            }
+        }
+        """;
+
+        
+        File.WriteAllText(_tempSettingsPath, updatedFakeAppSettings);
+        
+        await Task.Delay(1000);
+
+        // Assert 
+        Assert.Equal(ExpectedUserAgent, settingsLoader.Load().UserAgent);           
+        Assert.Equal(ExpectedMaxConcurrencyPerDomain, settingsLoader.Load().MaxConcurrencyPerDomain);           
+        Assert.Equal(ExpectedMinDelayMs, settingsLoader.Load().MinDelayMs);           
+        Assert.Equal(ExpectedSeedURL, settingsLoader.Load().SeedUrls[0]);           
+        Assert.Equal(ExpectedWhiteList1, settingsLoader.Load().WhiteList[0]);           
+        Assert.Equal(ExpectedWhiteList2, settingsLoader.Load().WhiteList[1]);           
     }
 
     public void Dispose()
