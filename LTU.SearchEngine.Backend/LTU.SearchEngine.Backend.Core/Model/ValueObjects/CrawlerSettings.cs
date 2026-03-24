@@ -56,7 +56,7 @@ public class CrawlerSettings
 		if (retryIntervals.Any(x => x <= TimeSpan.Zero))
 			throw new ArgumentOutOfRangeException(nameof(retryIntervals), " cannot not contain negative values!");
 
-        // Validera att listan finns (FRQ-1003 kräver whitelist)
+        // Validate that the list exists (FRQ-1003 whitelist)
         if (seedUrls is null || seedUrls.Count == 0)
             throw new ArgumentException("Must provide at least one seed URL/Domain.", nameof(seedUrls));
 
