@@ -159,7 +159,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 		if (job == null) throw new ArgumentNullException(nameof(job));
 
 		// If job is due for immediate processing, send to buffer; otherwise, enqueue with scheduled time.
-		if (job.NextAttempt is null || job.NextAttempt <= DateTime.UtcNow)
+		if (job.NextAttempt is null)
 			return _buffer.SendAsync(job);
 		else
 		{

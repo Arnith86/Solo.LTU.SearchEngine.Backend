@@ -31,12 +31,11 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     } 
 
     private WebApplicationFactory<Program> CreateTestFactory(
-        // string initialJson,
         Mock<IIndexer> indexerMock,
         HttpClient httpClientForCrawler,
         string seedUrl = "http://localhost/page1.html",
-        string maxConcurrencyPerDomain = "2",
-        string minDelayMs = "10"
+        int maxConcurrencyPerDomain = 2,
+        int minDelayMs = 10
     )
     {
         string fakeAppSettings = $$$"""
@@ -58,6 +57,12 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         var testFactory = _factory.WithWebHostBuilder(builder =>
         {
             
+            // Replaces the preconfigured seed url with the test version. 
+            builder.ConfigureAppConfiguration((context, config) =>
+            {
+                config.AddJsonFile(_tempSettingsPath, optional: false, reloadOnChange: true);
+            }); 
+
             builder.ConfigureServices(services =>
             {
                 // This finds the service that we want to remove from the application startup
@@ -70,11 +75,6 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
                 services.AddSingleton(indexerMock.Object);
             });
 
-            // Replaces the preconfigured seed url with the test version. 
-            builder.ConfigureAppConfiguration((context, config) =>
-            {
-                config.AddJsonFile(_tempSettingsPath, optional: false, reloadOnChange: true);
-            });   
         });
 
         return testFactory;
@@ -379,13 +379,17 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange 
         // Setting up timing instruments
-        string maxConcurrencyPerDomain = "2";
+        string seedURL = "http://localhost/seed.html";
+        int maxConcurrencyPerDomain = 2;
+        int minDelayMs = 200;
 
         var timesStamps = new List<DateTime>();
         int activeRequests = 0;
         int maxObservedConcurrency = 0;
         var lockObject = new Object();
 
+
+     
         using var host = Host.CreateDefaultBuilder()
             .ConfigureWebHostDefaults( webBuilder =>
             {
@@ -399,8 +403,8 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
                        var current = Interlocked.Increment(ref activeRequests);
                        lock (lockObject)
                        {
-                           maxObservedConcurrency = Math.Max(maxObservedConcurrency, current);
-                           timesStamps.Add(DateTime.UtcNow);
+                           maxObservedConcurrency = Math.Max(maxObservedConcurrency, current); // Used to map concurrency.
+                           timesStamps.Add(DateTime.UtcNow); // Used to map delay.
                        }
 
                        // we force the connection to stay open to measure concurrency 
@@ -413,16 +417,19 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         
         await host.StartAsync();
 
+
+
         using WebApplicationFactory<Program> testFactory = CreateTestFactory(
-            new Mock<IIndexer>(), 
-            host.GetTestClient(),
-            maxConcurrencyPerDomain
+            indexerMock: new Mock<IIndexer>(), 
+            httpClientForCrawler: host.GetTestClient(),
+            seedURL,
+            maxConcurrencyPerDomain,
+            minDelayMs
         );
 
         using var scope = testFactory.Services.CreateScope();
         var dispatcher = scope.ServiceProvider.GetRequiredService<ICrawlJobDispatcher>();
         var settingsLoader = scope.ServiceProvider.GetRequiredService<ICrawlerSettingsLoader>();       
-        
         
         // Act
         using var cts = new CancellationTokenSource();
@@ -441,8 +448,27 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         await Task.Delay(3000); 
         cts.Cancel();
 
-        // Assert
-        Assert.True(maxObservedConcurrency <= settingsLoader.Load().MaxConcurrencyPerDomain);
+        // Assert - Concurrency
+        Assert.True(
+            maxObservedConcurrency <= settingsLoader.Load().MaxConcurrencyPerDomain, 
+            $"observed: {maxObservedConcurrency}, expected: {settingsLoader.Load().MaxConcurrencyPerDomain}"
+        );
+
+        // Assert - Delay
+        // Makes sure that execution times are in sequential order.
+        var orderedStamps = timesStamps.OrderBy(ts => ts); 
+
+        for (int i = 0; i < timesStamps.Count - 1; i++)
+        {   
+            if (i + 1 <= timesStamps.Count)
+            {
+                var actualDelay = timesStamps[i + 1] - timesStamps[i];
+                Assert.True(
+                    actualDelay.TotalMilliseconds >= minDelayMs - 20, // Added small margin 
+                    $"Delay between call {i} and {i+1} was to short: expected: {minDelayMs}ms actual: {actualDelay.TotalMilliseconds}ms"
+                );     
+            }
+        }
     }
 
     public void Dispose()
