@@ -72,7 +72,7 @@ public class Crawler : ICrawler
         }
     }
 
-    // Helpmethod for creating a "failed" result
+    // Help method for creating a "failed" result
     private CrawlResult CreateErrorResult(string url, System.Net.HttpStatusCode statusCode, long timeTaken, string type)
     {
         return new CrawlResult(

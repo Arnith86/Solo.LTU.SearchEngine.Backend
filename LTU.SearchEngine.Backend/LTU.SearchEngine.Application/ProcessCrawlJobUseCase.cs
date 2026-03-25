@@ -2,6 +2,7 @@
 using LTU.SearchEngine.Backend.Core.Exceptions;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using LTU.SearchEngine.Infrastructure.Configurations;
 using LTU.SearchEngine.Infrastructure.Crawling;
 
 namespace LTU.SearchEngine.Application;
@@ -24,23 +25,26 @@ public class ProcessCrawlJobUseCase : IProcessCrawlJobUseCase
 {
 	private ICrawler _crawler;
 	private IDomainValidator _domainValidator;
+	private readonly IRobotsHandler _robotsHandler;
 	private IIndexer _indexer;
 
 	public ProcessCrawlJobUseCase(
 		ICrawler crawler, 
-		IDomainValidator domainValidator, 
+		IDomainValidator domainValidator,
+		IRobotsHandler robotsHandler, 
 		IIndexer indexer
 		)
 	{
 		_crawler = crawler ?? throw new ArgumentNullException(nameof(crawler));
 		_domainValidator = domainValidator ?? throw new ArgumentNullException(nameof(domainValidator));
+		_robotsHandler = robotsHandler ?? throw new ArgumentNullException(nameof(robotsHandler));
 		_indexer = indexer ?? throw new ArgumentNullException(nameof(indexer));
 	}
 
 	/// <inheritdoc/>
 	public async Task<CrawlResult> Execute(CrawlJob job)
 	{
-		ValidateJob(job);
+		await ValidateJob(job);
 
 		CrawlResult result = await _crawler.FetchAsync(job.Url);
 
@@ -52,7 +56,7 @@ public class ProcessCrawlJobUseCase : IProcessCrawlJobUseCase
 		return result;
 	}
 
-	private void ValidateJob(CrawlJob job)
+	private async Task ValidateJob(CrawlJob job)
 	{
 		if (job is null)
 			throw new ArgumentNullException(nameof(job));
@@ -62,5 +66,8 @@ public class ProcessCrawlJobUseCase : IProcessCrawlJobUseCase
 		
 		if (!_domainValidator.IsWhitelisted(job.Url))
 			throw new DomainNotWhitelistedException(job.Url);
+
+		if (!await _robotsHandler.IsAllowedAsync(job.Url))
+			throw new BlockedByRobotsTxtException(job.Url);
 	}
 }

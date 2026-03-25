@@ -8,4 +8,5 @@ public class CrawlerSettingsDTO
 	public List<TimeSpan>? RetryIntervals { get; set; }
     public List<string>? SeedUrls { get; set; }
 	public List<string>? WhiteList { get; set; }
+	public Dictionary<string, List<string>>? RobotsExceptionRules { get; set; }
 }

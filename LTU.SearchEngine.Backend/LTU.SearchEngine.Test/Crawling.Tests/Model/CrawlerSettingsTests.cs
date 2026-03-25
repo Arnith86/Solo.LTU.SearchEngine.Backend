@@ -28,6 +28,10 @@ public class CrawlerSettingsTests
         var effectiveRetryIntervals = retryIntervals ?? new List<TimeSpan> { TimeSpan.FromSeconds(1) };
         var effectiveSeedUrls = seedUrls ?? new List<string> { "ltu.se" };
         var whiteList = new List<string>{ "ltu.se" };
+        var robotsExceptionRules = new Dictionary<string, List<string>>{
+            { "example.com", new List<string> { "Disallow: /private/" } },
+            { "anotherDomain.com", new List<string> { "Disallow: /secret/" } }
+        };
 
         return new CrawlerSettings(
             userAgent,
@@ -35,7 +39,8 @@ public class CrawlerSettingsTests
             minDelayMs,
             effectiveRetryIntervals, 
             effectiveSeedUrls,
-            whiteList       
+            whiteList,
+            robotsExceptionRules       
         );
     }
 
@@ -51,7 +56,11 @@ public class CrawlerSettingsTests
         //Arrange
         var expectedRetryIntervals = new List<TimeSpan> { TimeSpan.FromSeconds(1) };
         var expectedSeedUrls = new List<string> { "ltu.se" };
-        
+        var ExpectedRobotsExceptionRules = new Dictionary<string, List<string>>{
+            { "example.com", new List<string> { "Disallow: /private/" } },
+            { "anotherDomain.com", new List<string> { "Disallow: /secret/" } }
+        };
+
         // Act
         CrawlerSettings sut = CreateSut(
             userAgent: userAgent, 
@@ -65,6 +74,34 @@ public class CrawlerSettingsTests
 		Assert.Equal(minDelayMs, sut.MinDelayMs);
 		Assert.Equal(expectedRetryIntervals, sut.RetryIntervals);
         Assert.Equal(expectedSeedUrls, sut.SeedUrls);
+        Assert.Equal(ExpectedRobotsExceptionRules, sut.RobotsExceptionRules);
+    }
+
+    
+    [Fact]
+    public void CrawlerSettings_Constructor_RobotsExceptionRules_Null_ReturnsCrawlerSettingsWithEmptyDictionary()
+    {
+        // Arrange
+        string userAgent = "LTUSearchCrawler/1.0 (Academic project; contact: some.mail@student.ltu.se)";
+        int maxConcurrencyPerDomain = 5;
+        int minDelayMs = 100;
+       
+        var validSeedUrls = new List<string> { "ltu.se" };
+        var whiteList = new List<string> { "ltu.se" };
+        
+        // Act 
+        CrawlerSettings sut = new CrawlerSettings(
+            userAgent,
+            maxConcurrencyPerDomain,
+            minDelayMs,
+            retryIntervals,       
+            validSeedUrls, 
+            whiteList,
+            null!
+        );
+
+        // Assert
+        Assert.Empty(sut.RobotsExceptionRules!);
     }
 
 	[Fact]
@@ -172,7 +209,6 @@ public class CrawlerSettingsTests
     }
 
 
-
     // Tests each index of the retryIntervals list by giving it a zero TimeSpan value.
     [Theory]
     [InlineData(0)]
@@ -230,7 +266,6 @@ public class CrawlerSettingsTests
         int minDelayMs = 100;
         var whiteList = new List<string> { "ltu.se" };
 
-        // Vi skapar en giltig lista för seedUrls så att valideringen för domäner går igenom
         var validSeedUrls = new List<string> { "ltu.se" };
 
         // Act & Assert
@@ -286,12 +321,12 @@ public class CrawlerSettingsTests
     public void GetRetryDelayInterval_MoreThanAllowed_ShouldReturnLastInterval(int attemptNr)
     {
         // Arrange
-        // Vi skapar en lista med t.ex. 3 intervaller
+        // we create a list with e.g. 3 intervals 
         var intervals = new List<TimeSpan>
     {
         TimeSpan.FromSeconds(1),
         TimeSpan.FromSeconds(2),
-        TimeSpan.FromSeconds(3) // Detta är index 2 (sista elementet)
+        TimeSpan.FromSeconds(3) // this is index 2 (the last element)
     };
 
         CrawlerSettings sut = CreateSut(retryIntervals: intervals);
@@ -300,7 +335,7 @@ public class CrawlerSettingsTests
         TimeSpan delay = sut.GetRetryDelayInterval(attemptNr);
 
         // Assert
-        // Eftersom attemptNr är högre än 3, ska den alltid returnera det sista värdet (3 sekunder)
+        // Because attemptNr is higher than 3, it should always return the last value (3 seconds)
         Assert.Equal(intervals[2], delay);
     }
 }

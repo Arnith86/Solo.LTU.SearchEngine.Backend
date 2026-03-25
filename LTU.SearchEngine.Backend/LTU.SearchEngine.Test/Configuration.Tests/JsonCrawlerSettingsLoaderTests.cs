@@ -1,5 +1,4 @@
-﻿
-using LTU.SearchEngine.Backend.Core.Model.DTOs;
+﻿using LTU.SearchEngine.Backend.Core.Model.DTOs;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure.Configuration;
 using LTU.SearchEngine.Test.HelperClasses;
@@ -16,6 +15,7 @@ public class JsonCrawlerSettingsLoaderTests
 	private const int _c_maxConcurrencyPerDomain = 2;
 	private const int _c_minDelayMs = 500;
 	private const string _c_retryIntervals = "[\"01:00:00\", \"1.00:00:00\", \"7.00:00:00\"]";
+	private const string _c_robotsExceptionRules = """ "example.com": ["/private/"], "anotherDomain.com": ["/secret/"] """;
 
 	public JsonCrawlerSettingsLoaderTests()
 	{
@@ -32,7 +32,8 @@ public class JsonCrawlerSettingsLoaderTests
 		    	],
 				"WhiteList":[
 				"ltu.se"
-				]
+				],
+				"RobotsExceptionRules": {{{_c_robotsExceptionRules}}}
 			}
 		}
 		""";
@@ -51,17 +52,24 @@ public class JsonCrawlerSettingsLoaderTests
 		var mockMonitor = new Mock<IOptionsMonitor<CrawlerSettingsDTO>>();
 		mockMonitor.Setup(m => m.CurrentValue).Returns(dto!);
 
-		ICrawlerSettingsLoader sut = new JsonCrawlerSettingsLoader(mockMonitor.Object);
-	
-		// Act
-		CrawlerSettings crawlerSettings = sut.Load();
+		var expectedRobotsExceptionRules = new Dictionary<string, List<string>>{
+            { "anotherDomain.com", new List<string> { "/secret/" } },
+			{ "example.com", new List<string> { "/private/" } }
+        };
 
-		IReadOnlyList<TimeSpan> retryIntervalsList = new List<TimeSpan>
+		IReadOnlyList<TimeSpan> expectedRetryIntervalsList = new List<TimeSpan>
 		{
 			TimeSpan.FromSeconds(3600),    // 01:00:00		// 1 hour
 			TimeSpan.FromSeconds(86400),   // 1.00:00:00	// 1 day
 			TimeSpan.FromSeconds(604800)   // 7.00:00:00	// 1 week
 		};
+		
+		ICrawlerSettingsLoader sut = new JsonCrawlerSettingsLoader(mockMonitor.Object);
+	
+
+		// Act
+		CrawlerSettings crawlerSettings = sut.Load();
+
 
         var expectedSeedUrls = new List<string> { "ltu.se", "www.ltu.se" };
 
@@ -69,8 +77,9 @@ public class JsonCrawlerSettingsLoaderTests
         Assert.Equal(_c_userAgent, crawlerSettings.UserAgent);
 		Assert.Equal(_c_maxConcurrencyPerDomain, crawlerSettings.MaxConcurrencyPerDomain);
 		Assert.Equal(_c_minDelayMs, crawlerSettings.MinDelayMs);
-		Assert.Equal(retryIntervalsList, crawlerSettings.RetryIntervals);
+		Assert.Equal(expectedRetryIntervalsList, crawlerSettings.RetryIntervals);
         Assert.Equal(expectedSeedUrls, crawlerSettings.SeedUrls);
+        Assert.Equal(expectedRobotsExceptionRules, crawlerSettings.RobotsExceptionRules);
     }
 	
 	
@@ -90,7 +99,11 @@ public class JsonCrawlerSettingsLoaderTests
 
  		var expectedSeedUrls1 = new List<string> { "ltu.se", "www.ltu.se" };
  		var expectedWhiteListDomains1 = new List<string> { "ltu.se" };
-		
+		var expectedRobotsExceptionRules1 = new Dictionary<string, List<string>>{
+            { "anotherDomain.com", new List<string> { "/secret/" } },
+			{ "example.com", new List<string> { "/private/" } }
+        };
+
 		IConfiguration configuration = InMemoryJSONBuildConfiguration.BuildConfiguration(_validJsonConfig);
 		var dto = configuration.GetSection("CrawlerSettings").Get<CrawlerSettingsDTO>();
 
@@ -100,7 +113,7 @@ public class JsonCrawlerSettingsLoaderTests
 		int second_maxConcurrencyPerDomain = 1;
 		int second_minDelayMs = 3000;
 		string second_retryIntervals = "[\"02:00:00\", \"2.00:00:00\", \"17.00:00:00\"]";
-		
+		string second_robotsExceptionRules = """ "anotherDomain.com": ["/secret/"] """;
 		var secondConfig = $$"""
 		{
 			"CrawlerSettings": {
@@ -114,22 +127,25 @@ public class JsonCrawlerSettingsLoaderTests
 		    	],
 				"WhiteList":[
 				"umu.se"
-				]
+				],
+				"RobotsExceptionRules": {{{second_robotsExceptionRules}}}
 			}
 		}
 		""";
 
 		IReadOnlyList<TimeSpan> expectedRetryIntervalsList2 = new List<TimeSpan>
 		{
-			TimeSpan.FromHours(2),          // 02:00:00 (2 timmar)
-			TimeSpan.FromDays(2),           // 2.00:00:00 (2 dagar)
-			TimeSpan.FromDays(17)           // 17.00:00:00 (17 dagar)
+			TimeSpan.FromHours(2),          // 02:00:00 (2 h)
+			TimeSpan.FromDays(2),           // 2.00:00:00 (2 d)
+			TimeSpan.FromDays(17)           // 17.00:00:00 (17 d)
 		};
 
 		var expectedSeedUrls2 = new List<string> { "umu.se", "www.umu.se" };
 		var expectedWhiteListDomains2 = new List<string> { "umu.se" };
-
-
+		var expectedRobotsExceptionRules2 = new Dictionary<string, List<string>>{
+            { "anotherDomain.com", new List<string> { "/secret/" } }
+		};
+		
 		IConfiguration configuration2 = InMemoryJSONBuildConfiguration.BuildConfiguration(secondConfig);
 		var dto2 = configuration2.GetSection("CrawlerSettings").Get<CrawlerSettingsDTO>();
 
@@ -139,7 +155,6 @@ public class JsonCrawlerSettingsLoaderTests
 			.Returns(dto!)
 			.Returns(dto2!);
 
-		// var monitor = Options.Create(dto!);
 		
 		ICrawlerSettingsLoader sut = new JsonCrawlerSettingsLoader(mockMonitor.Object);
 				
@@ -156,6 +171,7 @@ public class JsonCrawlerSettingsLoaderTests
 		Assert.Equal(expectedRetryIntervalsList, crawlerSettings1.RetryIntervals);
         Assert.Equal(expectedSeedUrls1, crawlerSettings1.SeedUrls);
 		Assert.Equal(expectedWhiteListDomains1, crawlerSettings1.WhiteList);
+		Assert.Equal(expectedRobotsExceptionRules1, crawlerSettings1.RobotsExceptionRules);
 
 		// Second
 		Assert.Equal(secondAgent, crawlerSettings2.UserAgent);
@@ -164,7 +180,7 @@ public class JsonCrawlerSettingsLoaderTests
 		Assert.Equal(expectedRetryIntervalsList2, crawlerSettings2.RetryIntervals);
         Assert.Equal(expectedSeedUrls2, crawlerSettings2.SeedUrls);
 		Assert.Equal(expectedWhiteListDomains2, crawlerSettings2.WhiteList);
-
+		Assert.Equal(expectedRobotsExceptionRules2, crawlerSettings2.RobotsExceptionRules);
     }
 
 	
