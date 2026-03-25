@@ -1,6 +1,8 @@
-﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+﻿using Castle.Core.Logging;
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure.Configuration;
 using LTU.SearchEngine.Infrastructure.Configurations;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
 using System.Net;
@@ -60,7 +62,7 @@ public class RobotsHandlerTests
         // Setting up a lturobots.txt with rules we can test again and adding a wildcard in the end (*.pdf) to test our wildcard-logic
         string ltuRobots = "User-agent: TestCrawler\nDisallow: /student/\nDisallow: /*.pdf$";
         SetupRobotsTxtResponse(ltuRobots);
-        var handler = new RobotsHandler(_httpClient, _settingsLoaderMock.Object);
+        var handler = new RobotsHandler(_httpClient, _settingsLoaderMock.Object, new Mock<ILogger<RobotsHandler>>().Object);
 
         // Act
         bool result = await handler.IsAllowedAsync(("https://www.ltu.se/student/schema"));
@@ -76,7 +78,7 @@ public class RobotsHandlerTests
         //Arrange
         string ltuRobots = "User-agent: TestCrawler\nDisallow: /student/";
         SetupRobotsTxtResponse(ltuRobots);
-        var handler = new RobotsHandler(_httpClient, _settingsLoaderMock.Object);
+        var handler = new RobotsHandler(_httpClient, _settingsLoaderMock.Object, new Mock<ILogger<RobotsHandler>>().Object);
 
         //Act
         bool result = await handler.IsAllowedAsync("https://www.ltu.se/utbildning/program");
@@ -92,7 +94,7 @@ public class RobotsHandlerTests
         // Arrange
         string ltuRobots = "User-agent: *\nDisallow: /admin/";
         SetupRobotsTxtResponse(ltuRobots);
-        var handler = new RobotsHandler(_httpClient, _settingsLoaderMock.Object);
+        var handler = new RobotsHandler(_httpClient, _settingsLoaderMock.Object, new Mock<ILogger<RobotsHandler>>().Object);
 
         // Act: We asks the crawler to evaluate 3 different urls on LTU
         await handler.IsAllowedAsync("https://www.ltu.se/forskning");
@@ -113,14 +115,14 @@ public class RobotsHandlerTests
     [Fact]
     public void Constructor_WhenHttpClientIsNull_ThrowsArgumentNullException()
     {
-        Assert.Throws<ArgumentNullException>(() => new RobotsHandler(null!, _settingsLoaderMock.Object));
+        Assert.Throws<ArgumentNullException>(() => new RobotsHandler(null!, _settingsLoaderMock.Object, new Mock<ILogger<RobotsHandler>>().Object));
     }
 
 
     [Fact]
     public void Constructor_WhenSettingsIsNull_ThrowsArgumentNullException()
     {
-        Assert.Throws<ArgumentNullException>(() => new RobotsHandler(_httpClient, null!));
+        Assert.Throws<ArgumentNullException>(() => new RobotsHandler(_httpClient, null!, new Mock<ILogger<RobotsHandler>>().Object));
     }
 
 
@@ -139,7 +141,7 @@ public class RobotsHandlerTests
                 StatusCode = HttpStatusCode.NotFound
             });
 
-        var handler = new RobotsHandler(_httpClient, _settingsLoaderMock.Object);
+        var handler = new RobotsHandler(_httpClient, _settingsLoaderMock.Object, new Mock<ILogger<RobotsHandler>>().Object);
 
         // Act
         var result = await handler.IsAllowedAsync("https://example.com/some-page");
@@ -153,7 +155,7 @@ public class RobotsHandlerTests
     {
         // Arrange
 
-        var sut = new RobotsHandler(_httpClient, _settingsLoaderMock.Object);
+        var sut = new RobotsHandler(_httpClient, _settingsLoaderMock.Object, new Mock<ILogger<RobotsHandler>>().Object);
 
         // Act
         var result = await sut.IsAllowedAsync("https://ltu.se/private/");
