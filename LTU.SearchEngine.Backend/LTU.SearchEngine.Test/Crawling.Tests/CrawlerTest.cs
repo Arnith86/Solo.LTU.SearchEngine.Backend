@@ -154,7 +154,7 @@ namespace LTU.SearchEngine.Test.Crawling.Tests
             Assert.Empty(result.IndexedTerms);
         }
 
-        // --- Helpmethod for moq HttpClient ---
+        // --- Help method for moq HttpClient ---
         private void SetupHttpResponse(HttpStatusCode code, string content)
         {
             _handlerMock
