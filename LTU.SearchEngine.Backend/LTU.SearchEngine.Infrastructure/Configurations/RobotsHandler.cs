@@ -21,28 +21,32 @@ public class RobotsHandler : IRobotsHandler
     {
         if (string.IsNullOrWhiteSpace(url)) return false;
 
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
-            return false;
-
-        if (_settings.DisallowedDomains != null &&
-            _settings.DisallowedDomains.Any(d => d.Equals(uri.Host, StringComparison.OrdinalIgnoreCase))
-        )
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return false;
+       
+        // Check if a rule for the domain is to be ignored
+        var domain = uri.Host;
+        var settings = _settingsLoader.Load();
+        
+        if (settings.RobotsExceptionRules != null && 
+            settings.RobotsExceptionRules.TryGetValue(domain, out var exceptions))
         {
-            return false;
+            foreach (var pattern in exceptions)
+            {
+                if (Regex.IsMatch(uri.PathAndQuery, pattern, RegexOptions.IgnoreCase))
+                    return true; // URL is explicitly allowed by an exception rule.
+            }
         }
 
         // Get rules for the domain
-        var disallowedRules = GetRobotsRulesForDomain(uri);
+        var disallowedRules = await GetRobotsRulesForDomain(uri);
         var pathAndQuery = uri.PathAndQuery;
 
-        //controls if our URL is matching any of the Regex rules from robots.txt
+        // Controls if our URL matches any of the Regex rules from robots.txt
         foreach (var rule in disallowedRules)
         {
-            if (rule.IsMatch(pathAndQuery))
-            {
-                return false; //blocked! LTU robots.txt say no!
-            }
+            if (rule.IsMatch(pathAndQuery)) return false; //blocked! LTU robots.txt say no!
         }
+
         return true;
     }
 
@@ -55,13 +59,11 @@ public class RobotsHandler : IRobotsHandler
     {
         var domain = uri.Host;
 
-        if (_disallowedRulesCache.TryGetValue(domain, out var cachedRules))
-        {
-            return cachedRules;
-        }
+        if (_disallowedRulesCache.TryGetValue(domain, out var cachedRules)) return cachedRules;
 
-        var rules = FetchAndParseRobotsTxt(uri).GetAwaiter().GetResult();
+        var rules = await FetchAndParseRobotsTxt(uri);
         _disallowedRulesCache[domain] = rules;
+
         return rules;
     }
 
@@ -73,48 +75,69 @@ public class RobotsHandler : IRobotsHandler
     /// <returns>A task representing the asynchronous operation, containing the list of disallowed Regex rules.</returns>
     private async Task<List<Regex>> FetchAndParseRobotsTxt(Uri uri)
     {
-        var disallowedRules = new List<Regex>();
         try
         {
             var robotsUrl = $"{uri.Scheme}://{uri.Host}/robots.txt";
             var content = await _httpClient.GetStringAsync(robotsUrl);
-
-            var lines = content.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-            bool isRelevantAgent = true;
-
-            foreach (var line in lines)
-            {
-                var cleanLine = line.Trim();
-
-                if (cleanLine.StartsWith("#") || string.IsNullOrWhiteSpace(cleanLine)) continue;
-
-                if (cleanLine.StartsWith("User-agent:", StringComparison.OrdinalIgnoreCase))
-                {
-                    var agent = cleanLine.Substring(11).Trim();
-                    isRelevantAgent = (agent == "*" || agent.Equals(_settings.UserAgent, StringComparison.OrdinalIgnoreCase));
-                }
-                else if (isRelevantAgent && cleanLine.StartsWith("Disallow:", StringComparison.OrdinalIgnoreCase))
-                {
-                    var path = cleanLine.Substring(9).Trim();
-                    if (!string.IsNullOrEmpty(path))
-                    {
-                        // Converts the robots.txt path into a valid regex pattern:
-                        // 1. "^" ensures the match starts exactly at the beginning of the URL path.
-                        // 2. Regex.Escape() treats special characters (like '.') as literal text.
-                        // 3. Replace() changes robots.txt wildcards ("*") into regex wildcards (".*").
-                        string regexPattern = "^" + Regex.Escape(path).Replace("\\*", ".*");
-
-                        disallowedRules.Add(new Regex(regexPattern, RegexOptions.IgnoreCase));
-                    }
-                }
-            }
+            
+            return ParseRobotsTxt(content);
         }
         catch
         {
-            // If file not exist, return empty list (allow all)
+            return new List<Regex>(); // If file not exist, return empty list (allow all)
         }
+    }
 
-        return disallowedRules;
+    /// <summary>
+    /// If specific rules for current userAgent exist use them, otherwise use wildcard rules. 
+    /// </summary>
+    private List<Regex> ParseRobotsTxt(string content)
+    {
+        var specificRules = new List<Regex>();
+        var wildcardRules = new List<Regex>();
+
+        var lines = content.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+        string currentAgent = "";
+
+        foreach (var line in lines)
+        {
+            var cleanLine = line.Trim();
+
+            // Removes comments and empty rows
+            if (cleanLine.StartsWith("#") || string.IsNullOrWhiteSpace(cleanLine)) continue;
+
+
+            if (cleanLine.StartsWith("User-agent:", StringComparison.OrdinalIgnoreCase))
+            {
+                currentAgent = cleanLine.Substring(11).Trim();
+                continue;
+            }
+            
+            if (cleanLine.StartsWith("Disallow:", StringComparison.OrdinalIgnoreCase))
+            {
+                var path = cleanLine.Substring(9).Trim();
+
+                if (string.IsNullOrEmpty(path)) continue;
+                var regex = PathToRegex(path);
+
+                if (currentAgent.Equals("*")) 
+                    wildcardRules.Add(regex);
+                else if (currentAgent.Equals(_settingsLoader.Load().UserAgent, StringComparison.OrdinalIgnoreCase))
+                    specificRules.Add(regex);
+
+            }
+        }
+        
+        return specificRules.Any() ? specificRules : wildcardRules;
+    }
+
+    private Regex PathToRegex(string path)
+    {
+        // Converts the robots.txt path into a valid regex pattern:
+        // 1. "^" ensures the match starts exactly at the beginning of the URL path.
+        // 2. Regex.Escape() treats special characters (like '.') as literal text.
+        // 3. Replace() changes robots.txt wildcards ("*") into regex wildcards (".*").
+        return new Regex("^" + Regex.Escape(path).Replace("\\*", ".*"), RegexOptions.IgnoreCase);
     }
 }
 
