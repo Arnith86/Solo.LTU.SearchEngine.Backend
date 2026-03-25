@@ -17,6 +17,7 @@ public class RobotsHandler : IRobotsHandler
         _settingsLoader = settingsLoader ?? throw new ArgumentNullException(nameof(settingsLoader));
     }
 
+    /// <inheritdoc/>
     public async Task<bool> IsAllowedAsync(string url)
     {
         if (string.IsNullOrWhiteSpace(url)) return false;
