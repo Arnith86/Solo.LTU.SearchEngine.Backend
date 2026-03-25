@@ -455,14 +455,15 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         string seedURL = "http://localhost/robots-test-start.html"; 
         
         var indexerMock = new Mock<IIndexer>();
-        
+        var loggerMock = new Mock<ILogger<RobotsHandler>>();
         CallTracker callTracker = new CallTracker();
 
         using var httpClientForCrawler = _webHostBuilder.CreateFakeInternetClient(callTracker);
         
-        using WebApplicationFactory<Program> testFactory = CreateTestFactory<TplCrawlJobDispatcher>(
+        using WebApplicationFactory<Program> testFactory = CreateTestFactory<RobotsHandler>(
             indexerMock: indexerMock, 
-            httpClientForCrawler: httpClientForCrawler
+            httpClientForCrawler: httpClientForCrawler,
+            loggerMock
         );
 
         // Retrieve the actually implementation of the crawler. 
@@ -481,6 +482,31 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         Assert.Contains(callTracker.VisitedUrls, url => url.Equals("/public.html"));
         Assert.Contains(callTracker.VisitedUrls, url => url.Contains("/ignoreThisRule/"));
         Assert.DoesNotContain(callTracker.VisitedUrls, url => url.Equals("/private/"));
+
+        // Assert ignore rule log registered
+        loggerMock.Verify(l => l.Log(
+            logLevel: LogLevel.Information,
+            eventId: It.IsAny<EventId>(),
+            state: It.Is<It.IsAnyType>((v, t) => 
+                v.ToString()!.Contains("http://localhost/ignoreThisRule/ignored.html") &&
+                v.ToString()!.Contains("localhost") 
+            ),  
+            exception: null,
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+        Times.Once); 
+
+        
+        // Assert blocked rule log registered
+        loggerMock.Verify(l => l.Log(
+            logLevel: LogLevel.Information,
+            eventId: It.IsAny<EventId>(),
+            state: It.Is<It.IsAnyType>((v, t) => 
+                v.ToString()!.Contains("http://localhost/private/secret.html") &&
+                v.ToString()!.Contains("localhost")  
+            ),  
+            exception: null,
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+        Times.Once); 
     }    
 
     [Fact]
