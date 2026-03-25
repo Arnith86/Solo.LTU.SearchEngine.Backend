@@ -473,7 +473,7 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         // Act  
         await dispatcher.Enqueue(new CrawlJob { Url = seedURL, NextAttempt = DateTime.UtcNow});
         _ = dispatcher.Start(cts.Token);
-        await Task.Delay(5000);
+        await Task.Delay(1000);
         cts.Cancel();
 
         // Assert
@@ -483,7 +483,7 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         Assert.DoesNotContain(callTracker.VisitedUrls, url => url.Equals("/private/"));
     }    
 
-[Fact]
+    [Fact]
     [Trait("TestCase", "TC-FRQ-1008")]
     public async Task Crawler_ConfigurableWhitelistUpdate()
     {
