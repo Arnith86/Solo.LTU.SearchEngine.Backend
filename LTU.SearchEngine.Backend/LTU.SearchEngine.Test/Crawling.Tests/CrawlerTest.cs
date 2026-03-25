@@ -1,4 +1,5 @@
-﻿using LTU.SearchEngine.Backend.Core.Model;
+﻿using LTU.SearchEngine.Backend.Core.HelperClasses;
+using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure.Crawling;
 using Moq;
@@ -12,6 +13,7 @@ namespace LTU.SearchEngine.Test.Crawling.Tests
     {
         private readonly Mock<IHtmlParser> _parserMock;
         private readonly Mock<HttpMessageHandler> _handlerMock;
+        private readonly Mock<IContentHasher> _contentHasherMock;
         private readonly HttpClient _httpClient;
         private readonly Crawler _sut;
         private readonly ITestOutputHelper _output;
@@ -20,11 +22,13 @@ namespace LTU.SearchEngine.Test.Crawling.Tests
         {
             _parserMock = new Mock<IHtmlParser>();
             _handlerMock = new Mock<HttpMessageHandler>();
+            _contentHasherMock = new Mock<IContentHasher>();
+            _contentHasherMock.Setup(ch => ch.CalculateHash(It.IsAny<byte[]>())).Returns("FakeHash");
 
             // We create a HttpClient that uses our mocked handler
             _httpClient = new HttpClient(_handlerMock.Object);
 
-            _sut = new Crawler(_httpClient, _parserMock.Object);
+            _sut = new Crawler(_httpClient, _parserMock.Object, _contentHasherMock.Object);
             _output = output;
         }
 
@@ -38,13 +42,13 @@ namespace LTU.SearchEngine.Test.Crawling.Tests
             <html>
                 <head>
                   <title>Test Page Title</title>
-          </head>
-          <body>
-        <h1>Welcome to LTU</h1>
-        <p>This is a test page with search terms.</p>
-        <a href='/contact'>Contact Us</a>
-    </body>
-        </html>";
+                </head>
+                <body>
+                    <h1>Welcome to LTU</h1>
+                    <p>This is a test page with search terms.</p>
+                    <a href='/contact'>Contact Us</a>
+                </body>
+            </html>";
 
             var expectedContent = System.Text.Encoding.UTF8.GetBytes(fakeHtml);
 

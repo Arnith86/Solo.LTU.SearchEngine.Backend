@@ -44,7 +44,8 @@ namespace LTU.SearchEngine.Test.Indexing.IndexerTests
                 content: new byte[0],
                 extractedLinks: new List<string>(),
                 statusCode: HttpStatusCode.OK,
-                timeTakenMs: 10
+                timeTakenMs: 10,
+                "FakeHash"
             );
         }
 

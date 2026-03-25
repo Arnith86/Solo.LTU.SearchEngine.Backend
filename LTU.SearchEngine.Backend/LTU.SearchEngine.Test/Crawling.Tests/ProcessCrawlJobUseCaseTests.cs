@@ -6,6 +6,7 @@ using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure.Configurations;
 using LTU.SearchEngine.Infrastructure.Crawling;
+using LTU.SearchEngine.Test.HelperClasses;
 using Moq;
 using System.Net;
 using System.Text;
@@ -70,25 +71,24 @@ public class ProcessCrawlJobUseCaseTests
 			</html>
 		""";
 
-		var contentBytes = Encoding.UTF8.GetBytes(html);
-
 		var extractedLinks = new List<string>
 		{
 			"https://example.com/about",
 		};
 
-		var expectedResult = new CrawlResult(
+		var expectedResult = CrawlResultBuilder.BuildCrawlResult(
 			url: _crawlJob.Url,
 			title: "title",
 			language: "sv",
 			indexedTerms: indexedTerms,
 			type: "text/html",
-			content: contentBytes,
+			content: html,
 			extractedLinks: extractedLinks,
 			statusCode: HttpStatusCode.OK,
 			timeTakenMs: 342
 		);
 
+		
 		_crawlerMock
 			.Setup(c => c.FetchAsync(_crawlJob.Url))
 			.ReturnsAsync(expectedResult);
