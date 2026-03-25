@@ -38,7 +38,8 @@ public class JsonCrawlerSettingsLoader : ICrawlerSettingsLoader
 			minDelayMs: dto.MinDelayMs,
 			retryIntervals: dto.RetryIntervals!,
             seedUrls: dto.SeedUrls ?? new List<string>(),
-			whiteList: dto.WhiteList ?? new List<string>() 
+			whiteList: dto.WhiteList ?? new List<string>(),
+			robotsExceptionRules: dto.RobotsExceptionRules ?? new Dictionary<string, List<string>>()
         );
 	}
 }
