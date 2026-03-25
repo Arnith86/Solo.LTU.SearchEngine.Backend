@@ -18,6 +18,6 @@ namespace LTU.SearchEngine.Infrastructure.Configurations
         /// <returns>
         /// <c>true</c> if the URL is allowed to be crawled; otherwise, <c>false</c>.
         /// </returns>
-        bool IsAllowed(string url);
+        Task<bool> IsAllowedAsync(string url);
     }
 }

@@ -2,6 +2,7 @@ using LTU.SearchEngine.Backend.Api;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.BackgroundServices;
+using LTU.SearchEngine.Infrastructure.Configurations;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -37,7 +38,8 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         Mock<ILogger<T>>? logger = null,
         string seedUrl = "http://localhost/page1.html",
         int maxConcurrencyPerDomain = 2,
-        int minDelayMs = 10
+        int minDelayMs = 10,
+        Mock<IRobotsHandler>? robotsHandlerMock = null
     ) where T : class
     {
         string fakeAppSettings = $$$"""
@@ -76,6 +78,7 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
                 services.AddSingleton(httpClientForCrawler); // Replace the HttpClient the client uses to the in-memory webHostBuilder
                 services.AddSingleton(indexerMock.Object);
                 if (logger is not null) services.AddSingleton(logger.Object);
+                if (robotsHandlerMock is not null) services.AddSingleton(robotsHandlerMock.Object);
             });
 
         });
@@ -392,6 +395,9 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         int maxObservedConcurrency = 0;
         var lockObject = new Object();
 
+        var robotsHandlerMock = new Mock<IRobotsHandler>();
+        robotsHandlerMock.Setup(rh => rh.IsAllowedAsync(It.IsAny<string>())).ReturnsAsync(true);
+
 
      
         using var host = Host.CreateDefaultBuilder()
@@ -428,7 +434,8 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             httpClientForCrawler: host.GetTestClient(),
             seedUrl: seedURL,
             maxConcurrencyPerDomain: maxConcurrencyPerDomain,
-            minDelayMs: minDelayMs
+            minDelayMs: minDelayMs,
+            robotsHandlerMock: robotsHandlerMock
         );
         
         using var scope = testFactory.Services.CreateScope();
@@ -537,7 +544,7 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         string ExpectedUserAgent = "UpdatedTestBot";
         string ExpectedSeedURL = "http://localhost/SeedIncludingExternalUrl.html"; 
         int ExpectedMaxConcurrencyPerDomain = 4;
-        int ExpectedMinDelayMs = 200;
+        int ExpectedMinDelayMs = 100;
         string ExpectedWhiteList1 = "external-domain.com";
         string ExpectedWhiteList2 = "localhost";
 

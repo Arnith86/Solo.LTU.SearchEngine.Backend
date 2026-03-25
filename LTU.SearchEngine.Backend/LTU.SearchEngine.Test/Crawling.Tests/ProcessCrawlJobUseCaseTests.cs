@@ -98,8 +98,8 @@ public class ProcessCrawlJobUseCaseTests
 			.Returns(true);
 
 		_robotsHandlerMock
-			.Setup(rh => rh.IsAllowed(_crawlJob.Url))
-			.Returns(true);
+			.Setup(rh => rh.IsAllowedAsync(_crawlJob.Url))
+			.ReturnsAsync(true);
 		
 		// Act 
 		CrawlResult result = await _sut.Execute(_crawlJob);
@@ -161,8 +161,8 @@ public class ProcessCrawlJobUseCaseTests
 			.ReturnsAsync((CrawlResult?)null);
 
 		_robotsHandlerMock
-			.Setup(rh => rh.IsAllowed(_crawlJob.Url))
-			.Returns(true);
+			.Setup(rh => rh.IsAllowedAsync(_crawlJob.Url))
+			.ReturnsAsync(true);
 
 		// Act & Assert
 		var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.Execute(_crawlJob));
@@ -180,8 +180,8 @@ public class ProcessCrawlJobUseCaseTests
 			.Returns(true);
 
 		_robotsHandlerMock
-			.Setup(rh => rh.IsAllowed(_crawlJob.Url))
-			.Returns(false);
+			.Setup(rh => rh.IsAllowedAsync(_crawlJob.Url))
+			.ReturnsAsync(false);
 
 		// Act & Assert
 		var ex = await Assert.ThrowsAsync<BlockedByRobotsTxtException>(() => _sut.Execute(_crawlJob));

@@ -8,6 +8,7 @@ using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 using LTU.SearchEngine.BackgroundServices;
 using LTU.SearchEngine.Infrastructure;
 using LTU.SearchEngine.Infrastructure.Configuration;
+using LTU.SearchEngine.Infrastructure.Configurations;
 using LTU.SearchEngine.Infrastructure.Crawling;
 using LTU.SearchEngine.Infrastructure.Indexing;
 using LTU.SearchEngine.Infrastructure.Repositories;
@@ -32,8 +33,8 @@ namespace LTU.SearchEngine.Test.Crawling.Tests
 
             var mockCrawler = new Mock<ICrawler>();
 
-            // VIKTIGT: Här mappar vi specifika URL:er till specifika svar. 
-            // Nu vet Moq skillnad på startsidan och undersidorna.
+            // NOTE: We map specific URL's to specific responses here. 
+            // now Moq knows the difference between start pages and sub pages..
             mockCrawler.Setup(c => c.FetchAsync(seedUrl)).ReturnsAsync(new CrawlResult(
                 seedUrl, "Home", "Welcome", dummyTerms, "text/html", Array.Empty<byte>(),
                 new List<string> { page1Url }, HttpStatusCode.OK, 100));
@@ -53,7 +54,7 @@ namespace LTU.SearchEngine.Test.Crawling.Tests
             var settings = new CrawlerSettings(
                 userAgent: "TestBot",
                 maxConcurrencyPerDomain: 5,
-                minDelayMs: 10, // Ge trådarna tid att andas
+                minDelayMs: 10, 
                 retryIntervals: new[] { TimeSpan.FromMilliseconds(10) },
                 seedUrls: new[] { "www.ltu.se", "ltu.se" },
                 whiteList: new List<string>() { "ltu.se" }
@@ -83,8 +84,10 @@ namespace LTU.SearchEngine.Test.Crawling.Tests
                 .Returns((CrawlResult r) => new IndexDocument(Guid.NewGuid().ToString(), r.Url, r.Title!));
 
             services.AddSingleton(mockPipeline.Object);
-
+            
             services.AddTransient<IDomainValidator>(sp => new DomainValidator(mockCrawlerSettingsLoader.Object));
+            services.AddHttpClient();
+            services.AddSingleton<IRobotsHandler, RobotsHandler>();
 
             var fakeRepository = new InMemoryIndexRepository();
             services.AddSingleton<IIndexRepository>(fakeRepository);
@@ -96,13 +99,12 @@ namespace LTU.SearchEngine.Test.Crawling.Tests
             using var cts = new CancellationTokenSource();
             var dispatcherTask = dispatcher.Start(cts.Token);
 
-            // Ge pipelinen en chans att koppla ihop sig
             await Task.Delay(100);
 
             var seedJob = new CrawlJob { Url = seedUrl, Status = CrawlJobStatus.Pending };
             await dispatcher.Enqueue(seedJob);
 
-            // Polling: Vänta tills alla 4 är hittade eller vi når timeout
+            // Polling: wait until all connect or timeout
             int timeoutMs = 5000;
             int elapsed = 0;
             while (fakeRepository.Documents.Count < 4 && elapsed < timeoutMs)

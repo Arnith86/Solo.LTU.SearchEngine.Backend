@@ -1,4 +1,4 @@
-﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+﻿using LTU.SearchEngine.Infrastructure.Configuration;
 using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 
@@ -8,16 +8,16 @@ namespace LTU.SearchEngine.Infrastructure.Configurations;
 public class RobotsHandler : IRobotsHandler
 {
     private readonly HttpClient _httpClient;
-    private readonly CrawlerSettings _settings;
+    private readonly ICrawlerSettingsLoader _settingsLoader;
     private readonly ConcurrentDictionary<string, List<Regex>> _disallowedRulesCache = new();
 
-    public RobotsHandler(HttpClient httpClient, CrawlerSettings settings)
+    public RobotsHandler(HttpClient httpClient, ICrawlerSettingsLoader settingsLoader)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-        _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        _settingsLoader = settingsLoader ?? throw new ArgumentNullException(nameof(settingsLoader));
     }
 
-    public bool IsAllowed(string url)
+    public async Task<bool> IsAllowedAsync(string url)
     {
         if (string.IsNullOrWhiteSpace(url)) return false;
 
@@ -51,7 +51,7 @@ public class RobotsHandler : IRobotsHandler
     /// </summary>
     /// <param name="uri">The URI of the page being evaluated.</param>
     /// <returns>A list of compiled regular expressions representing disallowed paths.</returns>
-    private List<Regex> GetRobotsRulesForDomain(Uri uri)
+    private async Task<List<Regex>> GetRobotsRulesForDomain(Uri uri)
     {
         var domain = uri.Host;
 

@@ -44,7 +44,7 @@ public class ProcessCrawlJobUseCase : IProcessCrawlJobUseCase
 	/// <inheritdoc/>
 	public async Task<CrawlResult> Execute(CrawlJob job)
 	{
-		ValidateJob(job);
+		await ValidateJob(job);
 
 		CrawlResult result = await _crawler.FetchAsync(job.Url);
 
@@ -56,7 +56,7 @@ public class ProcessCrawlJobUseCase : IProcessCrawlJobUseCase
 		return result;
 	}
 
-	private void ValidateJob(CrawlJob job)
+	private async Task ValidateJob(CrawlJob job)
 	{
 		if (job is null)
 			throw new ArgumentNullException(nameof(job));
@@ -67,7 +67,7 @@ public class ProcessCrawlJobUseCase : IProcessCrawlJobUseCase
 		if (!_domainValidator.IsWhitelisted(job.Url))
 			throw new DomainNotWhitelistedException(job.Url);
 
-		if (!_robotsHandler.IsAllowed(job.Url))
+		if (!await _robotsHandler.IsAllowedAsync(job.Url))
 			throw new BlockedByRobotsTxtException(job.Url);
 	}
 }
