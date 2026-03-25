@@ -1,4 +1,5 @@
 ﻿using LTU.SearchEngine.Infrastructure.Configuration;
+using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 
@@ -9,12 +10,18 @@ public class RobotsHandler : IRobotsHandler
 {
     private readonly HttpClient _httpClient;
     private readonly ICrawlerSettingsLoader _settingsLoader;
+    private readonly ILogger<RobotsHandler> _logger;
     private readonly ConcurrentDictionary<string, List<Regex>> _disallowedRulesCache = new();
 
-    public RobotsHandler(HttpClient httpClient, ICrawlerSettingsLoader settingsLoader)
+    public RobotsHandler(
+        HttpClient httpClient,
+        ICrawlerSettingsLoader settingsLoader,
+        ILogger<RobotsHandler> logger
+        )
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _settingsLoader = settingsLoader ?? throw new ArgumentNullException(nameof(settingsLoader));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <inheritdoc/>
@@ -34,7 +41,14 @@ public class RobotsHandler : IRobotsHandler
             foreach (var pattern in exceptions)
             {
                 if (Regex.IsMatch(uri.PathAndQuery, pattern, RegexOptions.IgnoreCase))
-                    return true; // URL is explicitly allowed by an exception rule.
+                {
+                    _logger.LogInformation(
+                        "URL '{Url}' is allowed by an exception rule for domain '{Domain}'.", 
+                        url, 
+                        domain
+                    );
+                    return true; 
+                }
             }
         }
 
@@ -45,7 +59,15 @@ public class RobotsHandler : IRobotsHandler
         // Controls if our URL matches any of the Regex rules from robots.txt
         foreach (var rule in disallowedRules)
         {
-            if (rule.IsMatch(pathAndQuery)) return false; //blocked! LTU robots.txt say no!
+            if (rule.IsMatch(pathAndQuery)) 
+            {
+                _logger.LogInformation(
+                    "URL '{Url}' is disallowed by robots.txt rules for domain '{Domain}'.", 
+                    url, 
+                    domain
+                );
+                return false; 
+            }
         }
 
         return true;
