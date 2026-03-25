@@ -4,29 +4,76 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Hosting;
+using HtmlAgilityPack;
 
 namespace LTU.SearchEngine.Test.HelperClasses;
 
 public class WebHostBuilder
 {
-public HttpClient CreateFakeInternetClient()
+	public HttpClient CreateFakeInternetClient(CallTracker? callTracker = null)
 	{
 		var host = Host.CreateDefaultBuilder().ConfigureWebHostDefaults(webBuilder =>
 		{
 			webBuilder.UseTestServer();
+			webBuilder.ConfigureServices(service => service.AddSingleton(callTracker ?? new CallTracker()));
 			webBuilder.Configure(app =>
 			{
 				app.UseRouting();
 				app.UseEndpoints(endpoint =>
 				{
-					endpoint.MapGet("/seed.html", () =>
+					endpoint.MapGet("/robots.txt", (CallTracker tracker) =>
 					{
+						tracker.VisitedUrls.Add("/robots.txt");
+
+						var html = $"""
+							User-agent: TestBot
+							Disallow: /private/
+							Disallow: /ignoreThisRule/
+						"""; 
+						
+						return Results.Content(html, "text/html");
+					});
+
+					endpoint.MapGet("/robots-test-start.html", (CallTracker tracker) =>
+					{
+						tracker.VisitedUrls.Add("/robots-test-start.html");
+
 						var html = $"""
 						<html>
 							<body>
-								<a href="http://localhost/page1.html">Page 1</a>
+								<a href="http://localhost/public.html">Allowed Page</a>
+								<a href="http://localhost/private/secret.html">Disallowed Page</a>
+								<a href="http://localhost/ignoreThisRule/ignored.html">Ignored Page</a>
 							</body>
 						</html>
+						"""; 
+						
+						return Results.Content(html, "text/html");
+
+					});
+
+					endpoint.MapGet("/public.html", (CallTracker tracker) => 
+					{ 
+						tracker.VisitedUrls.Add("/public.html");
+						return Results.Content("<h1>Public</h1>", "text/html");
+					});
+
+					endpoint.MapGet("/private/secret.html", (CallTracker tracker) =>  
+					{
+						tracker.VisitedUrls.Add("/private/secret.html");
+						return Results.Content("<h1>Private</h1>", "text/html");
+					});
+						
+					endpoint.MapGet("/ignoreThisRule/ignored.html", (CallTracker tracker) =>  
+					{
+						tracker.VisitedUrls.Add("/ignoreThisRule/ignored.html");
+						return Results.Content("<h1>Ignored</h1>", "text/html");
+					});
+					
+					endpoint.MapGet("/seed.html", () =>
+					{
+						var html = $"""
+							<html><body><a href="http://localhost/page1.html">Page 1</a></body></html>
 						"""; 
 						
 						return Results.Content(html, "text/html");
@@ -36,11 +83,7 @@ public HttpClient CreateFakeInternetClient()
 					endpoint.MapGet("/page1.html", () =>
 					{
 						var html = $"""
-						<html>
-							<body>
-								<a href="http://localhost/page2.html">Page 2</a>
-							</body>
-						</html>
+							<html><body><a href="http://localhost/page2.html">Page 2</a></body></html>
 						"""; 
 						
 						return Results.Content(html, "text/html");
@@ -50,11 +93,7 @@ public HttpClient CreateFakeInternetClient()
 					endpoint.MapGet("/page2.html", () =>
 					{
 						var html = $"""
-						<html>
-							<body>
-								<a href="http://localhost/final.html">Page 2</a>
-							</body>
-						</html>
+							<html><body><a href="http://localhost/final.html">Page 2</a></body></html>
 						"""; 
 						
 						return Results.Content(html, "text/html");
@@ -64,11 +103,7 @@ public HttpClient CreateFakeInternetClient()
 					endpoint.MapGet("/final.html", () =>
 					{
 						var html = $"""
-						<html>
-							<body>
-								<h1>Final</h1>
-							</body>
-						</html>
+							<html><body><h1>Final</h1></body></html>
 						"""; 
 						
 						return Results.Content(html, "text/html");
@@ -96,11 +131,7 @@ public HttpClient CreateFakeInternetClient()
 					endpoint.MapGet("/external.html", () =>
 					{
 						var html = $"""
-							<html>
-								<body>
-									<h1>External</h1>
-								</body>
-							</html>
+							<html><body><h1>External</h1></body></html>
 						""";
 
 						return Results.Content(html, "text/html");
