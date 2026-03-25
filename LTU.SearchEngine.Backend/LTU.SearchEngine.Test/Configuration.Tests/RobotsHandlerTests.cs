@@ -27,7 +27,10 @@ public class RobotsHandlerTests
             minDelayMs: 0,
             retryIntervals: new[] { TimeSpan.FromSeconds(1) },
             seedUrls: new[] { "https://ltu.se" },
-            whiteList: new List<string> { "ltu.se" }
+            whiteList: new List<string> { "ltu.se" },
+            robotsExceptionRules: new Dictionary<string, List<string>>{
+                { "ltu.se", new List<string> { "/private/" } }
+            }
         );
         
         _settingsLoaderMock.Setup(sl => sl.Load()).Returns(_settings);
@@ -66,6 +69,7 @@ public class RobotsHandlerTests
         Assert.False(result, "URLshould be blocked according to LTUs mocked robots.txt");
     }
 
+
     [Fact]
     public async Task IsAllowed_WhenUrlIsAllowed_ReturnsTrue()
     {
@@ -80,6 +84,7 @@ public class RobotsHandlerTests
         //Assert
         Assert.True(result, "URL should be allowed because it is not effected of disallow-rules");
     }
+
 
     [Fact]
     public async Task IsAllowed_FetchesRobotsTxt_ExactlyOncePerDomain()
@@ -97,12 +102,13 @@ public class RobotsHandlerTests
 
         // Assert: Controls that the HTTP-client ONLY did one call to LTUs domain
         _httpMessageHandlerMock.Protected().Verify(
-        "SendAsync",
-        Times.Once(),
-        ItExpr.Is<HttpRequestMessage>(req => req.RequestUri!.AbsoluteUri == "https://www.ltu.se/robots.txt"),
-        ItExpr.IsAny<CancellationToken>()
-    );
+            "SendAsync",
+            Times.Once(),
+            ItExpr.Is<HttpRequestMessage>(req => req.RequestUri!.AbsoluteUri == "https://www.ltu.se/robots.txt"),
+            ItExpr.IsAny<CancellationToken>()
+        );
     }
+
 
     [Fact]
     public void Constructor_WhenHttpClientIsNull_ThrowsArgumentNullException()
@@ -110,11 +116,13 @@ public class RobotsHandlerTests
         Assert.Throws<ArgumentNullException>(() => new RobotsHandler(null!, _settingsLoaderMock.Object));
     }
 
+
     [Fact]
     public void Constructor_WhenSettingsIsNull_ThrowsArgumentNullException()
     {
         Assert.Throws<ArgumentNullException>(() => new RobotsHandler(_httpClient, null!));
     }
+
 
     [Fact]
     public async Task IsAllowed_WhenRobotsTxtDoesNotExist_ReturnsTrue()
@@ -140,28 +148,18 @@ public class RobotsHandlerTests
         Assert.True(result, "Should allow crawling if robots.txt is missing");
     }
 
-    // [Fact]
-    // public async Task IsAllowed_WhenDomainIsConfiguredAsDisallowed_ReturnsFalse()
-    // {
-    //     // Arrange
-    //     var settingsWithBlacklist = new CrawlerSettings(
-    //         userAgent: "TestCrawler",
-    //         maxConcurrencyPerDomain: 5,
-    //         minDelayMs: 0,
-    //         retryIntervals: new[] { TimeSpan.FromSeconds(1) },
-    //         seedUrls: new[] { "https://ltu.se" },
-    //         whiteList: new List<string> { "https://ltu.se" }
-    //     );
+    [Fact]
+    public async Task IsAllowed_WhenRobotsTxtExceptionRuleIsFound_ReturnsFalse()
+    {
+        // Arrange
 
-    //     settingsWithBlacklist.DisallowedDomains = new List<string> { "blocked-site.com" };
+        var sut = new RobotsHandler(_httpClient, _settingsLoaderMock.Object);
 
-    //     var handler = new RobotsHandler(_httpClient, settingsWithBlacklist);
+        // Act
+        var result = await sut.IsAllowedAsync("https://ltu.se/private/");
 
-    //     // Act
-    //     var result = await handler.IsAllowedAsync("https://blocked-site.com/index.html");
-
-    //     // Assert
-    //     Assert.False(result, "Should be blocked because the domain is in the disallowed configuration");
-    // }
+        // Assert
+        Assert.True(result, "Should not be blocked because the domain is in the rule exception configuration");
+    }
 }
 
