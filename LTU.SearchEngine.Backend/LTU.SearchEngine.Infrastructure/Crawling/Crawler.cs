@@ -1,4 +1,5 @@
-﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+﻿using LTU.SearchEngine.Backend.Core.HelperClasses;
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using System.Diagnostics;
 
 namespace LTU.SearchEngine.Infrastructure.Crawling;
@@ -7,11 +8,13 @@ public class Crawler : ICrawler
 {
     private readonly HttpClient _httpClient;
     private readonly IHtmlParser _htmlParser;
+    private readonly IContentHasher _contentHasher;
 
-    public Crawler(HttpClient httpClient, IHtmlParser htmlParser)
+    public Crawler(HttpClient httpClient, IHtmlParser htmlParser, IContentHasher contentHasher)
     {
         _httpClient = httpClient;
         _htmlParser = htmlParser;
+        _contentHasher = contentHasher;
     }
 
     /// <inheritdoc/>
@@ -57,7 +60,8 @@ public class Crawler : ICrawler
                 content: content,
                 extractedLinks: links,
                 statusCode: response.StatusCode,
-                timeTakenMs: stopwatch.ElapsedMilliseconds
+                timeTakenMs: stopwatch.ElapsedMilliseconds,
+                contentHash: _contentHasher.CalculateHash(content)
             );
         }
         catch (HttpRequestException ex) 
@@ -84,7 +88,8 @@ public class Crawler : ICrawler
             content: Array.Empty<byte>(),
             extractedLinks: Enumerable.Empty<string>(),
             statusCode: statusCode,
-            timeTakenMs: timeTaken
+            timeTakenMs: timeTaken,
+            contentHash: _contentHasher.CalculateHash(Array.Empty<byte>())
         );
     }
 }

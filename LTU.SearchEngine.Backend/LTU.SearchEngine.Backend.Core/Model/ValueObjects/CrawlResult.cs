@@ -24,6 +24,7 @@ public sealed class CrawlResult
 	public IReadOnlyList<string> ExtractedLinks { get; }
 	public HttpStatusCode StatusCode { get; }
 	public long TimeTakenMs { get; }
+	public string ContentHash { get; }
 
 	public CrawlResult(
 		string url,
@@ -34,7 +35,8 @@ public sealed class CrawlResult
 		byte[] content,
 		IEnumerable<string> extractedLinks,
 		HttpStatusCode statusCode,
-		long timeTakenMs)
+		long timeTakenMs,
+		string contentHash)
 	{
 		Url = !string.IsNullOrWhiteSpace(url)
 			? url
@@ -49,6 +51,9 @@ public sealed class CrawlResult
 			: throw new ArgumentException("Type cannot be null or whitespace.", nameof(type));
 
 		Content = content ?? throw new ArgumentNullException(nameof(content));
+		ContentHash = !string.IsNullOrWhiteSpace(contentHash)
+			? contentHash
+			: throw new ArgumentException("ContentHash cannot be null or whitespace.", nameof(contentHash));
 
 		if (indexedTerms is null)
 			throw new ArgumentNullException(nameof(indexedTerms));
