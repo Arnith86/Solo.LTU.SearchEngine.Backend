@@ -478,6 +478,9 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         cts.Cancel();
 
         // Assert
+        int robotsTxtCalls = callTracker.VisitedUrls.Count(url => url.Equals("/robots.txt"));
+        Assert.Equal(1, robotsTxtCalls); // Assert that robots.txt was called exactly once
+
         Assert.Contains(callTracker.VisitedUrls, url => url.Equals("/robots.txt"));
         Assert.Contains(callTracker.VisitedUrls, url => url.Equals("/public.html"));
         Assert.Contains(callTracker.VisitedUrls, url => url.Contains("/ignoreThisRule/"));
