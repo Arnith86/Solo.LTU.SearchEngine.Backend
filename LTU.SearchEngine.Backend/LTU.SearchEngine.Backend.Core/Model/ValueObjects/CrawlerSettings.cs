@@ -13,7 +13,7 @@ public class CrawlerSettings
 	public IReadOnlyList<TimeSpan> RetryIntervals { get; }
     public IReadOnlyList<string> SeedUrls { get; }
     public IReadOnlyList<string> WhiteList { get; } 
-    public List<string> DisallowedDomains { get; set; } = new();
+    public Dictionary<string, List<string>>? RobotsExceptionRules { get; set; } = new();
 
 
     /// <summary>Initializes a new instance of the <see cref="CrawlerSettings"/> class.</summary>
@@ -21,7 +21,8 @@ public class CrawlerSettings
     /// <param name="maxConcurrencyPerDomain">Maximum number of concurrent crawl requests allowed per domain. Must be greater than 0.</param>
     /// <param name="minDelayMs">Minimum delay (in milliseconds) between requests to the same domain. Must be 0 or greater.</param>
     /// <param name="retryIntervals">Retry delays used for transient failures. Must contain at least one positive <see cref="TimeSpan"/>.</param>
-    /// <exception cref="ArgumentException">
+    /// <param name="robotsExceptionRules">Optional. A dictionary of domains and their corresponding exception rules for robots.txt. Defaults to null.</param>
+	/// <exception cref="ArgumentException">
     /// Thrown when <paramref name="userAgent"/> is null/empty/whitespace, <br />
     /// or when <paramref name="retryIntervals"/> is null/empty,<br />
     /// or when <paramref name="retryIntervals"/> contains non-positive values.
@@ -36,7 +37,8 @@ public class CrawlerSettings
 		int minDelayMs,
 		IReadOnlyList<TimeSpan> retryIntervals,
         IReadOnlyList<string> seedUrls,
-		IReadOnlyList<string> whiteList
+		IReadOnlyList<string> whiteList,
+		Dictionary<string, List<string>>? robotsExceptionRules = null
        )
 	{
 		if (string.IsNullOrWhiteSpace(userAgent))
@@ -63,13 +65,14 @@ public class CrawlerSettings
 		if (whiteList is null || whiteList.Count == 0)
 			throw new ArgumentException("Must provide at least one URL/Domain.", nameof(whiteList));
 
+
         UserAgent = userAgent; 
 		MaxConcurrencyPerDomain = maxConcurrencyPerDomain;
 		MinDelayMs = minDelayMs;
 		RetryIntervals = retryIntervals;
         SeedUrls = seedUrls;
 		WhiteList = whiteList;
-
+		RobotsExceptionRules = robotsExceptionRules ?? new Dictionary<string, List<string>>();
     }
 
 	/// <summary>Returns the retry delay to use for a given attempt number.</summary>
