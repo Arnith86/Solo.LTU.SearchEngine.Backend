@@ -50,11 +50,12 @@ public sealed class CrawlResult
 			? type
 			: throw new ArgumentException("Type cannot be null or whitespace.", nameof(type));
 
-		Content = content ?? throw new ArgumentNullException(nameof(content));
 		ContentHash = !string.IsNullOrWhiteSpace(contentHash)
 			? contentHash
 			: throw new ArgumentException("ContentHash cannot be null or whitespace.", nameof(contentHash));
-
+		
+		Content = content ?? throw new ArgumentNullException(nameof(content));
+		
 		if (indexedTerms is null)
 			throw new ArgumentNullException(nameof(indexedTerms));
 

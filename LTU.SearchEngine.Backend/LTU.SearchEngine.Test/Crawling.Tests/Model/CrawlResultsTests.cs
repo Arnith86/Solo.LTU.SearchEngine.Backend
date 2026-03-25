@@ -125,6 +125,20 @@ public class CrawlResultsTests
 			);
 		}
 
+		[Theory]
+		[InlineData("NULL_TEST")]
+		[InlineData("")]
+		[InlineData(" ")]
+		public void Constructor_InvalidContentHash_ThrowsArgumentNullException(string input)
+		{
+			string? invalidContentHash = input.Equals("NULL_TEST") ? null : input;
+
+			Assert.Throws<ArgumentException>(() => 
+				CrawlResultBuilder.BuildCrawlResult(hashContent: invalidContentHash!)
+			);
+		}
+
+
 		[Fact]
 		public void Constructor_NegativeTimeTaken_ThrowsArgumentOutOfRangeException()
 		{
