@@ -54,7 +54,7 @@ public class SqlIndexRepository : IIndexRepository
         };
 
         context.Pages.Add(page);
-        //Save imediatly to generate a ID
+        //Save immediately to generate a ID
         await context.SaveChangesAsync(); 
 
         // 4. Iterate through all unique words and link them to the page

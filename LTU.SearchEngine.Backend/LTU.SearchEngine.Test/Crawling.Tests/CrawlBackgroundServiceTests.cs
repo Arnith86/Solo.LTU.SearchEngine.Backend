@@ -37,19 +37,19 @@ namespace LTU.SearchEngine.Test.Crawling.Tests
             // now Moq knows the difference between start pages and sub pages..
             mockCrawler.Setup(c => c.FetchAsync(seedUrl)).ReturnsAsync(new CrawlResult(
                 seedUrl, "Home", "Welcome", dummyTerms, "text/html", Array.Empty<byte>(),
-                new List<string> { page1Url }, HttpStatusCode.OK, 100));
+                new List<string> { page1Url }, HttpStatusCode.OK, 100, "FakeHash"));
 
             mockCrawler.Setup(c => c.FetchAsync(page1Url)).ReturnsAsync(new CrawlResult(
                 page1Url, "Page 1", "Content 1", dummyTerms, "text/html", Array.Empty<byte>(),
-                new List<string> { page2Url }, HttpStatusCode.OK, 100));
+                new List<string> { page2Url }, HttpStatusCode.OK, 100, "FakeHash"));
 
             mockCrawler.Setup(c => c.FetchAsync(page2Url)).ReturnsAsync(new CrawlResult(
                 page2Url, "Page 2", "Content 2", dummyTerms, "text/html", Array.Empty<byte>(),
-                new List<string> { finalPageUrl }, HttpStatusCode.OK, 100));
+                new List<string> { finalPageUrl }, HttpStatusCode.OK, 100, "FakeHash"));
 
             mockCrawler.Setup(c => c.FetchAsync(finalPageUrl)).ReturnsAsync(new CrawlResult(
                 finalPageUrl, "Final", "End", dummyTerms, "text/html", Array.Empty<byte>(),
-                new List<string>(), HttpStatusCode.OK, 100));
+                new List<string>(), HttpStatusCode.OK, 100, "FakeHash"));
 
             var settings = new CrawlerSettings(
                 userAgent: "TestBot",

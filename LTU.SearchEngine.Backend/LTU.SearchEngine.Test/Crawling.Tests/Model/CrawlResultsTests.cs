@@ -1,6 +1,8 @@
 ﻿using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using LTU.SearchEngine.Test.HelperClasses;
 using System.Net;
+using System.Text;
 
 namespace LTU.SearchEngine.Test.Crawling.Tests.Model;
 
@@ -17,13 +19,24 @@ public class CrawlResultsTests
 			var language = "en";
 			var terms = new List<IndexedTerm> { new IndexedTerm("test", TermSource.Title) };
 			var type = "text/html";
-			var content = new byte[] { 1, 2, 3 };
+			var content = Encoding.UTF8.GetBytes("x");
 			var links = new List<string> { "https://link.com" };
 			var statusCode = HttpStatusCode.OK;
 			var timeTakenMs = 123;
 
 			// Act
-			var sut = new CrawlResult(url, title, language, terms, type, content, links, statusCode, timeTakenMs);
+			var sut = CrawlResultBuilder.BuildCrawlResult(
+				url: url,
+				title: title,
+				language: language,
+				indexedTerms: terms,
+				type: type,
+				content: "x",
+				extractedLinks: links,
+				statusCode: statusCode,
+				timeTakenMs: timeTakenMs,
+				hashContent: "FakeHash"
+			);
 
 			// Assert
 			Assert.Equal(url, sut.Url);
@@ -45,17 +58,7 @@ public class CrawlResultsTests
 		{
 			string? invalidUrl = input.Equals("NULL_TEST") ? null : input;
 
-			var ex = Assert.Throws<ArgumentException>(() => new CrawlResult(
-				invalidUrl!, 
-				"title", 
-				"en",
-				new List<IndexedTerm>(), 
-				"text/html", 
-				new byte[0],
-				new List<string>(), 
-				HttpStatusCode.OK, 
-				10)
-			);
+			var ex = Assert.Throws<ArgumentException>(() => CrawlResultBuilder.BuildCrawlResult(url: invalidUrl!));
 
 			Assert.Contains("Url cannot be null or whitespace", ex.Message);
 		}
@@ -63,17 +66,7 @@ public class CrawlResultsTests
 		[Fact]
 		public void Constructor_TitleCanBeNull()
 		{
-			var result = new CrawlResult(
-				"https://example.com", 
-				null, 
-				"en",
-				new List<IndexedTerm>(), 
-				"text/html", 
-				new byte[0],
-				new List<string>(), 
-				HttpStatusCode.OK, 
-				10
-			);
+			var result = CrawlResultBuilder.BuildCrawlResult(title: null!);
 
 			Assert.Null(result.Title);
 		}
@@ -88,16 +81,8 @@ public class CrawlResultsTests
 
 			string? invalidLanguage = input.Equals("NULL_TEST") ? null : input;
 
-			var ex = Assert.Throws<ArgumentException>(() => new CrawlResult(
-				"https://example.com",
-				"title",
-				invalidLanguage!,
-				new List<IndexedTerm>(),
-				"text/html",
-				new byte[0],
-				new List<string>(),
-				HttpStatusCode.OK,
-				10)
+			var ex = Assert.Throws<ArgumentException>(() => 
+				CrawlResultBuilder.BuildCrawlResult(language: invalidLanguage!)
 			);
 
 			Assert.Contains("Language cannot be null or whitespace.", ex.Message);
@@ -107,16 +92,8 @@ public class CrawlResultsTests
 		[Fact]
 		public void Constructor_NullIndexedTerms_ThrowsArgumentNullException()
 		{
-			Assert.Throws<ArgumentNullException>(() => new CrawlResult(
-				"https://example.com", 
-				"title", 
-				"en",
-				null!,
-				"text/html", 
-				new byte[0],
-				new List<string>(), 
-				HttpStatusCode.OK, 
-				10)
+			Assert.Throws<ArgumentNullException>(() => 
+				CrawlResultBuilder.BuildCrawlResult(indexedTerms: null!, extractedLinks: new List<string>())
 			);
 		}
 
@@ -129,17 +106,7 @@ public class CrawlResultsTests
 
 			string? invalidType = input.Equals(input) ? null : input;
 
-			var ex = Assert.Throws<ArgumentException>(() => new CrawlResult(
-				"https://example.com",
-				"title",
-				"en",
-				new List<IndexedTerm>(),
-				invalidType!,
-				new byte[0],
-				new List<string>(),
-				HttpStatusCode.OK,
-				10)
-			);
+			var ex = Assert.Throws<ArgumentException>(() => CrawlResultBuilder.BuildCrawlResult(type: invalidType!));
 
 			Assert.Contains("Type cannot be null or whitespace.", ex.Message);
 		}
@@ -147,49 +114,37 @@ public class CrawlResultsTests
 		[Fact]
 		public void Constructor_ContentNull_ThrowsArgumentNullException()
 		{
-			Assert.Throws<ArgumentNullException>(() => new CrawlResult(
-				"https://example.com",
-				"title",
-				"en",
-				new List<IndexedTerm>(),
-				"text/html",
-				null!,
-				new List<string>(),
-				HttpStatusCode.OK,
-				10)
-			);
+			Assert.Throws<ArgumentNullException>(() => CrawlResultBuilder.BuildCrawlResult(content: null!));
 		}
 
 		[Fact]
 		public void Constructor_NullExtractedLinks_ThrowsArgumentNullException()
 		{
-			Assert.Throws<ArgumentNullException>(() => new CrawlResult(
-				"https://example.com", 
-				"title", 
-				"en",
-				new List<IndexedTerm>(), 
-				"text/html", 
-				new byte[0],
-				null!, 
-				HttpStatusCode.OK, 
-				10)
+			Assert.Throws<ArgumentNullException>(() => 
+				CrawlResultBuilder.BuildCrawlResult(extractedLinks: null!, indexedTerms: new List<IndexedTerm>())
 			);
 		}
+
+		[Theory]
+		[InlineData("NULL_TEST")]
+		[InlineData("")]
+		[InlineData(" ")]
+		public void Constructor_InvalidContentHash_ThrowsArgumentNullException(string input)
+		{
+			string? invalidContentHash = input.Equals("NULL_TEST") ? null : input;
+
+			Assert.Throws<ArgumentException>(() => 
+				CrawlResultBuilder.BuildCrawlResult(hashContent: invalidContentHash!)
+			);
+		}
+
 
 		[Fact]
 		public void Constructor_NegativeTimeTaken_ThrowsArgumentOutOfRangeException()
 		{
-			var ex = Assert.Throws<ArgumentOutOfRangeException>(() => new CrawlResult(
-				"https://example.com", 
-				"title",
-				"en",
-				new List<IndexedTerm>(), 
-				"text/html", 
-				new byte[0],
-				new List<string>(), 
-				HttpStatusCode.OK, 
-				-1)
-			);
+			var ex = Assert.Throws<ArgumentOutOfRangeException>(
+				() => CrawlResultBuilder.BuildCrawlResult(timeTakenMs: -1
+			));
 
 			Assert.Contains("TimeTakenMs cannot be negative.", ex.Message);
 		}
@@ -201,10 +156,17 @@ public class CrawlResultsTests
 			var terms = new List<IndexedTerm> { new IndexedTerm("term1", TermSource.Header) };
 			var links = new List<string> { "https://link.com" };
 
-			var result = new CrawlResult(
-				"https://example.com", "title", "en",
-				terms, "text/html", new byte[0],
-				links, HttpStatusCode.OK, 100);
+			var result = CrawlResultBuilder.BuildCrawlResult(
+				url: "https://example.com", 
+				title: "title", 
+				language: "en",
+				indexedTerms: terms, 
+				type: "text/html",
+				content: "x",
+				extractedLinks: links, 
+				statusCode: HttpStatusCode.OK, 
+				timeTakenMs:100
+			);
 
 			// Modify original lists
 			terms.Add(new IndexedTerm("term2", TermSource.Body));

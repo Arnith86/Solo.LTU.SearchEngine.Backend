@@ -4,6 +4,7 @@ using LTU.SearchEngine.Application.QueryParsing;
 using LTU.SearchEngine.Application.QueryParsing.Helpers;
 using LTU.SearchEngine.Backend.Core;
 using LTU.SearchEngine.Backend.Core.Enums;
+using LTU.SearchEngine.Backend.Core.HelperClasses;
 using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.DTOs;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
@@ -52,6 +53,7 @@ public partial class Program
         builder.Services.AddHttpClient();
 
         // Semaphore for handling global concurrency/throttling if needed.
+        builder.Services.AddSingleton<IContentHasher, ContentHasher>();
         builder.Services.AddSingleton<SemaphoreProvider>();
 
         // HTML Parsing strategy (e.g., using HtmlAgilityPack).

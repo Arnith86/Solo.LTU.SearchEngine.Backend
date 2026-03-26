@@ -5,10 +5,10 @@ using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.BackgroundServices;
 using LTU.SearchEngine.Infrastructure.Configuration;
+using LTU.SearchEngine.Test.HelperClasses;
 using Microsoft.Extensions.Logging;
 using Moq;
 using System.Net;
-using System.Text;
 
 namespace LTU.SearchEngine.Test.BackgroundServices.Tests;
 
@@ -21,17 +21,7 @@ public class TplCrawlJobDispatcherTests
 
     private CrawlResult CreateResult()
 	{
-		return new CrawlResult(
-			url: "https://example.com",
-			title: "x",
-			language: "en",
-			indexedTerms: new List<IndexedTerm>(),
-			type: "text/html",
-			content: Encoding.UTF8.GetBytes("x"),
-			extractedLinks: Array.Empty<string>(),
-			statusCode: HttpStatusCode.OK,
-			timeTakenMs: 1
-		);
+		return CrawlResultBuilder.BuildCrawlResult();
 	}
 	
 	private static CrawlerSettings CreateSettings()
@@ -352,17 +342,18 @@ public class TplCrawlJobDispatcherTests
 	[Fact]
 	public async Task ExtractedLinks_CreateNewJobs()
 	{
-		var result = new CrawlResult(
+		var result = CrawlResultBuilder.BuildCrawlResult(
 			url: "https://root.com",
 			title: "root",
 			language: "en",
-			indexedTerms: new List<IndexedTerm>(),
 			type: "text/html",
-			content: Encoding.UTF8.GetBytes("x"),
-			extractedLinks: new[] { "https://a.com", "https://b.com" },
+			indexedTerms: new List<IndexedTerm>(),
+			content: "x",
+			extractedLinks: new List<string> { "https://a.com", "https://b.com" },
 			statusCode: HttpStatusCode.OK,
 			timeTakenMs: 10
 		);
+		
 
 		_mockUseCase.Setup(u => u.Execute(It.IsAny<CrawlJob>()))
 			.ReturnsAsync(result);

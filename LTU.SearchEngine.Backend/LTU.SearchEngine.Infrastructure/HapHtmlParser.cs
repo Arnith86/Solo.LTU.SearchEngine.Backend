@@ -94,13 +94,13 @@ public class HapHtmlParser : IHtmlParser
             }
         }
 
-        // --- 3. EXTRACT META DATA (Fix för UTF-8 testet) ---
+        // --- 3. EXTRACT META DATA (Fix for UTF-8 test) ---
         var metaNodes = doc.DocumentNode.SelectNodes("//meta");
         if (metaNodes != null)
         {
             foreach (var node in metaNodes)
             {
-                // Meta-taggar har sällan InnerText. Vi kollar attribut som 'charset' eller 'content'
+                // Meta-tags seldomly have meaningful InnerText, so we check attributes like 'charset' or 'content'
                 var content = node.GetAttributeValue("content", "");
                 var charset = node.GetAttributeValue("charset", "");
 
@@ -122,8 +122,7 @@ public class HapHtmlParser : IHtmlParser
             }
         }
 
-        // --- EXTRAHERA BILD-TEXT (Alt-taggar) ---
-        // Vi letar efter alla <img> taggar som har ett alt-attribut
+        // --- EXTRACT IMAGE TEXT (Alt-tags) <img> with alt-attributes ---
         var imageNodes = doc.DocumentNode.SelectNodes("//img[@alt]");
         if (imageNodes != null)
         {
@@ -132,12 +131,9 @@ public class HapHtmlParser : IHtmlParser
                 var altText = node.GetAttributeValue("alt", "");
                 if (!string.IsNullOrWhiteSpace(altText))
                 {
-                    // Vi ger ofta alt-text samma vikt som Body eller Header 
-                    // beroende på hur "viktig" man anser bilden vara.
+                    // alt-text is often given the same importance as a body or header
                     AddTerms(terms, altText, TermSource.Body);
                 }
-                // Vi tar inte bort hela image-noden än om vi vill behålla strukturen, 
-                // men det skadar inte att göra det om vi bara vill ha texten.
                 node.Remove();
             }
         }
@@ -145,7 +141,6 @@ public class HapHtmlParser : IHtmlParser
         // --- 4. EXTRACT BODY TEXT (Low/Standard Ranking Priority) ---
         // At this stage, scripts, titles, and headers have been removed.
         // InnerText now contains only the remaining "Body" content (paragraphs, lists, divs).
-
         var bodyText = doc.DocumentNode.InnerText;
         AddTerms(terms, bodyText, TermSource.Body);
 
@@ -177,14 +172,14 @@ public class HapHtmlParser : IHtmlParser
         var doc = new HtmlDocument();
         doc.LoadHtml(html);
 
-        //Remove garbage
+        // Remove garbage
         var garbageNodes = doc.DocumentNode.SelectNodes("//script|//style|//noscript|//nav|//footer");
         if(garbageNodes != null)
         {
             foreach (var node in garbageNodes) node.Remove();
         }
 
-        //return all text as a single string
+        // Return all text as a single string
         string plainText = doc.DocumentNode.InnerText;
         return HtmlEntity.DeEntitize(plainText).Trim();
     }
