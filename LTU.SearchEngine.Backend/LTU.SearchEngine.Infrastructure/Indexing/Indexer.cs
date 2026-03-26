@@ -32,9 +32,9 @@ public class Indexer : IIndexer
     {
         if (crawlResult is null)
             throw new ArgumentNullException(nameof(crawlResult));
-
+        
         var document = _pipeline.Transform(crawlResult);
 
-        await _repository.SaveAsync(document);
+        await _repository.AddDocumentAsync(document);
     }
 }

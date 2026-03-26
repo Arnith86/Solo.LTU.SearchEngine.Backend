@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace LTU.SearchEngine.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class newMigration : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -75,7 +75,9 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                 {
                     PageId = table.Column<int>(type: "int", nullable: false),
                     TermId = table.Column<int>(type: "int", nullable: false),
-                    Frequency = table.Column<int>(type: "int", nullable: false),
+                    TitleFrequency = table.Column<int>(type: "int", nullable: false),
+                    HeaderFrequency = table.Column<int>(type: "int", nullable: false),
+                    BodyFrequency = table.Column<int>(type: "int", nullable: false),
                     TfWeight = table.Column<double>(type: "float", nullable: false)
                 },
                 constraints: table =>

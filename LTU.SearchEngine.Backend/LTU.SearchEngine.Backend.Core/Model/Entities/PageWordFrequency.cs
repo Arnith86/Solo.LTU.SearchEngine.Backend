@@ -6,12 +6,11 @@ public class PageWordFrequency
 {
         public int PageId { get; set; }
         public Page Page { get; set; } = null!;
-
         public int TermId { get; set; }
         public Term Term { get; set; } = null!;
-
-        public int Frequency { get; set; }
-
+        public int TitleFrequency { get; set; }
+        public int HeaderFrequency { get; set; }
+        public int BodyFrequency { get; set; }
         public double TfWeight { get; set; }
 }
 

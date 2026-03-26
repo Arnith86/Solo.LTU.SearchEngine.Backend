@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LTU.SearchEngine.Infrastructure.Migrations
 {
     [DbContext(typeof(SearchDbContext))]
-    [Migration("20260316130226_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260326132444_newMigration")]
+    partial class newMigration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -92,11 +92,17 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                     b.Property<int>("TermId")
                         .HasColumnType("int");
 
-                    b.Property<int>("Frequency")
+                    b.Property<int>("BodyFrequency")
+                        .HasColumnType("int");
+
+                    b.Property<int>("HeaderFrequency")
                         .HasColumnType("int");
 
                     b.Property<double>("TfWeight")
                         .HasColumnType("float");
+
+                    b.Property<int>("TitleFrequency")
+                        .HasColumnType("int");
 
                     b.HasKey("PageId", "TermId");
 

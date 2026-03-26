@@ -21,132 +21,94 @@ public class SqlIndexRepository : IIndexRepository
 
     // Saves a fully processed document from the pipeline to the database.
     // Merge words from the title, headers and body content.
-    public async Task SaveAsync(IndexDocument document)
+    public async Task AddDocumentAsync(IndexDocument document)
     {
-        // 1. Creates a fresh context for this thread
         await using var context = await _factory.CreateDbContextAsync();
 
-        // 2. Merge Title, Header and Content into a single large Dictionary
-        var totalWordFrequencies = new Dictionary<string, int>();
+        // Check if the Page already exists in the database
+        var page = await context.Pages.FirstOrDefaultAsync(p => p.Url.Equals(document.Url));
 
-        void MergeTerms(Dictionary<string, int> source)
+        if (page is null)
         {
-            foreach (var kvp in source)
+            page = new Page
             {
-                if (totalWordFrequencies.ContainsKey(kvp.Key))
-                    totalWordFrequencies[kvp.Key] += kvp.Value;
-                else
-                    totalWordFrequencies[kvp.Key] = kvp.Value;
+                Url = document.Url,
+                Title = document.Title,
+                LastCrawled = document.LastCrawl,
+                ContentHash = document.ContentHash,
+                WordCount = document.TotalWordCount,
+                Language = document.Language
+            };
+
+            context.Pages.Add(page);
+        }
+        else
+        {
+            // Remove old word frequencies for the page before adding new ones to avoid duplicates
+            var oldEntries = context.PageWordFrequencies.Where(pwf => pwf.PageId.Equals(page.Id));
+            context.PageWordFrequencies.RemoveRange(oldEntries);
+            // Update page metadata
+            page.Title = document.Title;
+            page.LastCrawled = document.LastCrawl;
+            page.ContentHash = document.ContentHash;
+            page.WordCount = document.TotalWordCount;
+            page.Language = document.Language;            
+        }
+
+        // Save to get a Page.Id 
+        await context.SaveChangesAsync();
+
+        var allUniqueTerms = document.TitleTerms.Keys
+            .Union(document.HeaderTerms.Keys)
+            .Union(document.ContentTerms.Keys)
+            .ToList();
+
+        // Retrieve any Terms that already exist in the database.
+        var existingTerms = await context.Terms
+            .Where(t => allUniqueTerms.Contains(t.Word))
+            .ToDictionaryAsync(t => t.Word);
+
+        bool hasNewTerms = false;
+
+        foreach (var term in allUniqueTerms)
+        {
+            // Creates new Terms if current Term did not exist. 
+            if (!existingTerms.TryGetValue(term, out var termEntity))
+            {
+                termEntity = new Term { Word = term };
+                context.Terms.Add(termEntity);
+                existingTerms[term] = termEntity;
+                hasNewTerms = true;
             }
         }
 
-        MergeTerms(document.TitleTerms);
-        MergeTerms(document.HeaderTerms);
-        MergeTerms(document.ContentTerms);
+        if (hasNewTerms) await context.SaveChangesAsync();
 
-        // 3. Create the database entity for the Page
-        var page = new Page
+
+        foreach (var term in allUniqueTerms)
         {
-            Url = document.Url,
-            Title = document.Title,
-            LastCrawled = DateTime.UtcNow,
-            WordCount = totalWordFrequencies.Values.Sum()
-        };
+            var termEntity = existingTerms[term];
 
-        context.Pages.Add(page);
-        //Save immediately to generate a ID
+            document.TitleTerms.TryGetValue(term, out int titleFrequency);
+            document.HeaderTerms.TryGetValue(term, out int headerFrequency);
+            document.ContentTerms.TryGetValue(term, out int contentFrequency);
+
+            var pageWordFrequency = new PageWordFrequency
+            {
+                PageId = page.Id,
+                TermId = termEntity.Id,
+                TitleFrequency = titleFrequency,
+                HeaderFrequency = headerFrequency,
+                BodyFrequency = contentFrequency
+            };
+
+            context.PageWordFrequencies.Add(pageWordFrequency);
+        }
+
+        // save everything at the same time        
         await context.SaveChangesAsync(); 
-
-        // 4. Iterate through all unique words and link them to the page
-        foreach (var kvp in totalWordFrequencies)
-        {
-            string wordText = kvp.Key;
-            int frequency = kvp.Value;
-
-            // Check if the word already exists globally in the database
-            var term = await context.Terms.FirstOrDefaultAsync(t => t.Word == wordText);
-
-            if (term == null)
-            {
-                // If the word is new, add it to the Term table
-                term = new Term { Word = wordText };
-                context.Terms.Add(term);
-                // Save immediately to generate a TermId
-                await context.SaveChangesAsync();
-            }
-
-            // 5. Create the relationship between the Page and the Word (including frequency)
-            var pageWordFrequency = new PageWordFrequency
-            {
-                PageId = page.Id,
-                TermId = term.Id,
-                Frequency = frequency
-            };
-
-            context.PageWordFrequencies.Add(pageWordFrequency);
-        }
-
-        // 6. Save all relationships to the database
-        await context.SaveChangesAsync();
     }
 
-    /// <summary>
-    /// Alternative method to save a page and its words directly via parameters.
-    /// </summary>
-    public async Task AddDocumentAsync(string url, string title, List<string> words)
-    {
-        await using var context = await _factory.CreateDbContextAsync();
-
-        // 1. Create and save the Page first
-        var page = new Page
-        {
-            Url = url,
-            Title = title,
-            LastCrawled = DateTime.UtcNow,
-            WordCount = words.Count
-        };
-
-        context.Pages.Add(page);
-        // Save here to get a Page.Id which we need for the words
-        await context.SaveChangesAsync();
-
-        // 2. Calculate the frequency of each word (how many times a word appears on the page)
-        var wordFrequencies = words
-            .GroupBy(w => w)
-            .ToDictionary(g => g.Key, g => g.Count());
-
-        // 3. Loop through each unique word
-        foreach (var item in wordFrequencies)
-        {
-            string wordText = item.Key;
-            int frequency = item.Value;
-
-            // Check if the word already exists in the database (to avoid duplicates)
-            var term = await context.Terms.FirstOrDefaultAsync(t => t.Word == wordText);
-
-            if (term == null)
-            {
-                // If the word does not exist, create it
-                term = new Term { Word = wordText };
-                context.Terms.Add(term);
-                // Save immediately to get a Term.Id
-                await context.SaveChangesAsync();
-            }
-
-            // 4. Link the Page and the Word in the junction table
-            var pageWordFrequency = new PageWordFrequency
-            {
-                PageId = page.Id,
-                TermId = term.Id,
-                Frequency = frequency
-            };
-
-            context.PageWordFrequencies.Add(pageWordFrequency);
-        }
-
-        // Save all connections
-        await context.SaveChangesAsync();
-    }
 
     /// <summary>
     /// Finds the IDs of all pages containing a specific word.

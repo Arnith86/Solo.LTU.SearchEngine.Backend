@@ -89,11 +89,17 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                     b.Property<int>("TermId")
                         .HasColumnType("int");
 
-                    b.Property<int>("Frequency")
+                    b.Property<int>("BodyFrequency")
+                        .HasColumnType("int");
+
+                    b.Property<int>("HeaderFrequency")
                         .HasColumnType("int");
 
                     b.Property<double>("TfWeight")
                         .HasColumnType("float");
+
+                    b.Property<int>("TitleFrequency")
+                        .HasColumnType("int");
 
                     b.HasKey("PageId", "TermId");
 
