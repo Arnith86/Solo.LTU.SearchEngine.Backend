@@ -51,6 +51,7 @@ public class IndexingPipeline : IIndexingPipeline
         return new IndexDocument(
             url: crawlResult.Url,
             title: crawlResult.Title!,
+            language: crawlResult.Language,
             titleTerms: sourceMap[TermSource.Title].ToReadOnly(), 
             headerTerms: sourceMap[TermSource.Header].ToReadOnly(),
             contentTerms: sourceMap[TermSource.Body].ToReadOnly(),
