@@ -1,62 +1,61 @@
 ﻿using LTU.SearchEngine.Backend.Core;
+using LTU.SearchEngine.Backend.Core.HelperClasses;
 using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 
-namespace LTU.SearchEngine.Infrastructure.Indexing
+namespace LTU.SearchEngine.Infrastructure.Indexing;
+
+/// <summary>Performs the transformation of crawl results into index-ready documents.</summary>
+/// <remarks>
+/// <para>
+/// The indexing pipeline is a pure transformation component that converts a <br />
+/// <see cref="CrawlResult"/> into an <see cref="IndexDocument"/> by normalizing terms <br />
+/// and calculating term frequency per document field.
+/// </para>
+/// </remarks>
+public class IndexingPipeline : IIndexingPipeline
 {
-    /// <summary>
-    /// Performs the transformation of crawl results into index-ready documents.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// The indexing pipeline is a pure transformation component that converts a
-    /// <see cref="CrawlResult"/> into an <see cref="IndexDocument"/> by normalizing terms
-    /// and calculating term frequency per document field.
-    /// </para>
-    /// <para>
-    /// This class does not make decisions, does not perform persistence, and does not
-    /// manage indexing flow. It is invoked by the <see cref="Indexer"/> and returns a
-    /// fully constructed index document.
-    /// </para>
-    /// </remarks>
-    public class IndexingPipeline : IIndexingPipeline
+    private readonly ITextNormalizer<string> _textNormalizer;
+
+    /// <summary>Initializes a new instance of the <see cref="IndexingPipeline"/> class.</summary>
+    /// <param name="normalizer">The strategy used to normalize terms (e.g., lowercasing, stemming, or removing punctuation).</param>
+    public IndexingPipeline(ITextNormalizer<string> normalizer)
     {
-        /// <summary>
-        /// Transforms a CrawlResult into an IndexDocument. 
-        /// Steps:
-        /// 1. Validate input.
-        /// 2. Loop through each IndexedTerm.
-        /// 3. Normalize each raw term using ITextNormalizer.
-        /// 4. Skip terms that normalize to null.
-        /// 5. Add normalized term to IndexDocument.
-        /// 6. Return completed IndexDocument.
-        /// </summary>
-        private readonly ITextNormalizer<string> _textNormalizer;
+        _textNormalizer = normalizer;
+    }
 
-        public IndexingPipeline(ITextNormalizer<string> normalizer)
+    /// <inheritdoc/>
+    /// <param name="crawlResult">The result containing the URL, raw terms, and content hash.</param>
+    /// <returns>An <see cref="IndexDocument"/> containing read-only maps of normalized terms and their frequencies.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="crawlResult"/> is null.</exception>
+    public virtual IndexDocument Transform(CrawlResult crawlResult)
+    {
+        if (crawlResult == null) throw new ArgumentNullException(nameof(crawlResult));
+
+        Dictionary<TermSource, TermFrequencyMap> sourceMap = new()
         {
-            _textNormalizer = normalizer;
-        }
-        public virtual IndexDocument Transform(CrawlResult crawlResult)
+            { TermSource.Title, new TermFrequencyMap() },
+            { TermSource.Header, new TermFrequencyMap() },
+            { TermSource.Body, new TermFrequencyMap() }  
+        };
+
+        foreach (var indexedTerm in crawlResult.IndexedTerms)
         {
-            if (crawlResult == null) throw new ArgumentNullException(nameof(crawlResult));
+            var normalized = _textNormalizer.Normalize(indexedTerm.Term);
 
-            var id = Guid.NewGuid().ToString();
-            var document = new IndexDocument(id,crawlResult.Url, crawlResult.Title!);
-
-
-            foreach (var indexedTerm in crawlResult.IndexedTerms)
-            {
-                var normalized = _textNormalizer.Normalize(indexedTerm.Term);
-
-                if (normalized == null)
-                    continue;
-
-                document.AddTerm(normalized, indexedTerm.Source);
-            }
-
-            return document; 
-
+            if (string.IsNullOrWhiteSpace(normalized)) continue;
+            
+            sourceMap[indexedTerm.Source].AddTerm(normalized);
         }
+
+        return new IndexDocument(
+            url: crawlResult.Url,
+            title: crawlResult.Title!,
+            titleTerms: sourceMap[TermSource.Title].ToReadOnly(), 
+            headerTerms: sourceMap[TermSource.Header].ToReadOnly(),
+            contentTerms: sourceMap[TermSource.Body].ToReadOnly(),
+            contentHash: crawlResult.ContentHash,
+            lastCrawl: crawlResult.CrawledAt
+        ); 
     }
 }
