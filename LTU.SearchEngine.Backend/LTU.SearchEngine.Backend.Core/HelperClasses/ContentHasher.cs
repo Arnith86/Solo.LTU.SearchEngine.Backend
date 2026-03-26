@@ -1,8 +1,6 @@
-namespace LTU.SearchEngine.Backend.Core.HelperClasses;
-
 using System.Security.Cryptography;
-using System.Text;
 
+namespace LTU.SearchEngine.Backend.Core.HelperClasses;
 /// <summary>
 /// Provides utility methods for generating cryptographic hashes of content.
 /// </summary>

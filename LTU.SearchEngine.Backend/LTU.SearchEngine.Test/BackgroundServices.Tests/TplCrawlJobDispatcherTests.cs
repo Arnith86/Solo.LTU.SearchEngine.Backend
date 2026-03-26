@@ -9,7 +9,6 @@ using LTU.SearchEngine.Test.HelperClasses;
 using Microsoft.Extensions.Logging;
 using Moq;
 using System.Net;
-using System.Text;
 
 namespace LTU.SearchEngine.Test.BackgroundServices.Tests;
 

@@ -1,7 +1,5 @@
 ﻿using LTU.SearchEngine.Backend.Core;
-using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using System.Collections.Concurrent;
-using System.Runtime.ConstrainedExecution;
 
 namespace LTU.SearchEngine.Test.Core.Tests;
 
