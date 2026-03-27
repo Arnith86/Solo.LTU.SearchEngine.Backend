@@ -1,154 +1,98 @@
-﻿using LTU.SearchEngine.Backend.Core.Model;
-using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
-using System;
-using Xunit;
+﻿using LTU.SearchEngine.Test.HelperClasses;
 
-namespace LTU.SearchEngine.Test.Indexing.Tests.Model
+namespace LTU.SearchEngine.Test.Indexing.Tests.Model;
+
+public class IndexDocumentTests
 {
-    public class IndexDocumentTests
+
+    private IndexDocument CreateTestDocument(
+        IEnumerable<string> outgoingLinks,
+        Dictionary<string, int> titleTerms, 
+        Dictionary<string, int> headerTerms, 
+        Dictionary<string, int> contentTerms
+        )
     {
-        private IndexDocument CreateDocument()
-        {
-            var id = "test-guid-id";
-            var url = "https://www.ltu.se/education/programmes/software-engineering";
+        return IndexDocumentBuilder.BuildIndexDocument(
+            outgoingLinks: outgoingLinks,
+            url: "https://test.com", 
+            title: "Test", 
+            language: "en", 
+            titleTerms: titleTerms,
+            headerTerms: headerTerms, 
+            contentTerms: contentTerms, 
+            contentHash: "hash", 
+            lastCrawl: DateTime.UtcNow
+        );
+    }
 
-            return new IndexDocument(
-                docId: id,
-                url: url,
-                title: "Software Engineering Programme"
-            );
-        }
+    [Fact]
+    public void Constructor_ShouldAssignPropertiesCorrectly()
+    {
+        // Arrange 
+        var url = "https://ltu.se";
+        var title = "Lulea Tennis University";
+        var language = "sv";
+        var links = new List<string> { "dummyLink" };
+        var titleTerms = new Dictionary<string, int> { { "ltu", 1 } };
+        var headerTerms = new Dictionary<string, int> { { "fortuning", 2 } };
+        var contentTerms = new Dictionary<string, int> { { "student", 5 } };
+        var hash = "ABC-123";
+        var now = DateTime.UtcNow;
 
-        [Fact]
-        public void Constructor_ShouldAssignPropertiesCorrectly()
-        {
-            var id = "id-123";
-            var url = "https://test.com";
-            var title = "Test Title";
+        // Act
+        var sut = IndexDocumentBuilder.BuildIndexDocument(
+            url: url, 
+            title: title,
+            language: language, 
+            outgoingLinks: links,
+            titleTerms: titleTerms, 
+            headerTerms: headerTerms, 
+            contentTerms: contentTerms, 
+            contentHash: hash, 
+            lastCrawl: now
+        );
 
-            var document = new IndexDocument(id, url, title);
+        // Assert 
+        Assert.Equal(url, sut.Url);
+        Assert.Equal(title, sut.Title);
+        Assert.Equal(language, sut.Language);
+        Assert.Equal(hash, sut.ContentHash);
+        Assert.Equal(now, sut.LastCrawl);
+        Assert.True(sut.TitleTerms.ContainsKey("ltu"));
+        Assert.Equal(1, sut.TitleTerms["ltu"]);
+    }
 
-            Assert.Equal(id, document.DocId);
-            Assert.Equal(url, document.Url);
-            Assert.Equal(title, document.Title);
+    [Fact]
+    public void TotalWordCount_ShouldCalculateSumOfAllFrequencies()
+    {
+        // Arrange
+        var outgoingLinks = new List<string> { "dummyLink" };
+        var titleTerms = new Dictionary<string, int> { { "a", 2 }, { "b", 3 } }; // 5 words
+        var headerTerms = new Dictionary<string, int> { { "c", 10 } };            // 10 words
+        var contentTerms = new Dictionary<string, int> { { "d", 1 }, { "e", 4 } }; // 5 words
+        
+        var doc = CreateTestDocument(outgoingLinks, titleTerms, headerTerms, contentTerms);
 
-            Assert.Empty(document.TitleTerms);
-            Assert.Empty(document.HeaderTerms);
-            Assert.Empty(document.ContentTerms);
-        }
+        // Act
+        var result = doc.TotalWordCount;
 
-        [Fact]
-        public void AddTerm_GivenNullTerm_ShouldThrowArgumentNullException()
-        {
-            var document = CreateDocument();
+        // Assert
+        // total: 2+3 + 10 + 1+4 = 20
+        Assert.Equal(20, result);
+    }
 
-            Assert.Throws<ArgumentNullException>(() =>
-                document.AddTerm(null!, TermSource.Title));
-        }
+    [Fact]
+    public void TotalWordCount_WithEmptyDictionaries_ShouldReturnZero()
+    {
+        // Arrange
+        var outgoingLinks = new List<string> { "dummyLink" };
+        var empty = new Dictionary<string, int>();
+        var doc = CreateTestDocument(outgoingLinks, empty, empty, empty);
 
-        [Fact]
-        public void AddTerm_GivenNewTitleTerm_ShouldStartFrequencyAtOne()
-        {
-            var document = CreateDocument();
+        // Act
+        var result = doc.TotalWordCount;
 
-            document.AddTerm("c++", TermSource.Title);
-
-            Assert.Equal(1, document.TitleTerms["c++"]);
-            Assert.Single(document.TitleTerms);
-        }
-
-        [Fact]
-        public void AddTerm_GivenExistingTitleTerm_ShouldIncrementFrequency()
-        {
-            var document = CreateDocument();
-
-            document.AddTerm("c++", TermSource.Title);
-            document.AddTerm("c++", TermSource.Title);
-
-            Assert.Equal(2, document.TitleTerms["c++"]);
-            Assert.Single(document.TitleTerms);
-        }
-
-        [Fact]
-        public void AddTerm_GivenExistingBodyTerm_ShouldIncrementFrequency()
-        {
-            var document = CreateDocument();
-
-            document.AddTerm("run", TermSource.Body);
-            document.AddTerm("run", TermSource.Body);
-
-            Assert.Equal(2, document.ContentTerms["run"]);
-        }
-
-        [Fact]
-        public void AddTerm_GivenBodyTerm_ShouldOnlyExistInContentTerms()
-        {
-            var document = CreateDocument();
-
-            document.AddTerm("run", TermSource.Body);
-
-            Assert.True(document.ContentTerms.ContainsKey("run"));
-            Assert.False(document.TitleTerms.ContainsKey("run"));
-            Assert.False(document.HeaderTerms.ContainsKey("run"));
-            Assert.Single(document.ContentTerms);
-        }
-
-        [Fact]
-        public void AddTerm_GivenNewHeaderTerm_ShouldStartFrequencyAtOne()
-        {
-            var document = CreateDocument();
-
-            document.AddTerm("api", TermSource.Header);
-
-            Assert.Equal(1, document.HeaderTerms["api"]);
-            Assert.Single(document.HeaderTerms);
-        }
-        [Fact]
-        public void AddTerm_GivenExistingHeaderTerm_ShouldIncrementFrequency()
-        {
-            var document = CreateDocument();
-
-            document.AddTerm("api", TermSource.Header);
-            document.AddTerm("api", TermSource.Header);
-
-            Assert.Equal(2, document.HeaderTerms["api"]);
-        }
-
-        [Fact]
-        public void AddTerm_SameWordDifferentSources_ShouldStoreSeparately()
-        {
-            var document = CreateDocument();
-
-            document.AddTerm("engineer", TermSource.Title);
-            document.AddTerm("engineer", TermSource.Body);
-
-            Assert.Equal(1, document.TitleTerms["engineer"]);
-            Assert.Equal(1, document.ContentTerms["engineer"]);
-        }
-        [Fact]
-        public void AddTerm_GivenEmptyString_ShouldThrow()
-        {
-            var document = CreateDocument();
-
-            Assert.Throws<ArgumentException>(() =>
-                document.AddTerm("", TermSource.Title));
-        }
-
-        [Fact]
-        public void AddTerm_GivenWhitespace_ShouldThrow()
-        {
-            var document = CreateDocument();
-
-            Assert.Throws<ArgumentException>(() =>
-                document.AddTerm(" ", TermSource.Title));
-        }
-        [Fact]
-        public void AddTerm_GivenUnknownTermSource_ShouldThrow()
-        {
-            var document = CreateDocument();
-
-            Assert.Throws<ArgumentOutOfRangeException>(() =>
-                document.AddTerm("x", (TermSource)999));
-        }
+        // Assert
+        Assert.Equal(0, result);
     }
 }

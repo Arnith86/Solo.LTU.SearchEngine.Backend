@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LTU.SearchEngine.Infrastructure.Migrations
 {
     [DbContext(typeof(SearchDbContext))]
-    [Migration("20260316130226_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260327093606_newMigration")]
+    partial class newMigration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -92,11 +92,17 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                     b.Property<int>("TermId")
                         .HasColumnType("int");
 
-                    b.Property<int>("Frequency")
+                    b.Property<int>("BodyFrequency")
+                        .HasColumnType("int");
+
+                    b.Property<int>("HeaderFrequency")
                         .HasColumnType("int");
 
                     b.Property<double>("TfWeight")
                         .HasColumnType("float");
+
+                    b.Property<int>("TitleFrequency")
+                        .HasColumnType("int");
 
                     b.HasKey("PageId", "TermId");
 
@@ -133,11 +139,11 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                     b.HasOne("LTU.SearchEngine.Backend.Core.Entities.Page", "FromPage")
                         .WithMany("OutgoingLinks")
                         .HasForeignKey("FromPageId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("LTU.SearchEngine.Backend.Core.Entities.Page", "ToPage")
-                        .WithMany()
+                        .WithMany("IncomingLinks")
                         .HasForeignKey("ToPageId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -168,6 +174,8 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
 
             modelBuilder.Entity("LTU.SearchEngine.Backend.Core.Entities.Page", b =>
                 {
+                    b.Navigation("IncomingLinks");
+
                     b.Navigation("OutgoingLinks");
 
                     b.Navigation("WordFrequencies");

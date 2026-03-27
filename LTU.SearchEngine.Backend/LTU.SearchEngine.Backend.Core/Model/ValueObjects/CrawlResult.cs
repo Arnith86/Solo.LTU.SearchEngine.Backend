@@ -25,6 +25,7 @@ public sealed class CrawlResult
 	public HttpStatusCode StatusCode { get; }
 	public long TimeTakenMs { get; }
 	public string ContentHash { get; }
+	public DateTime CrawledAt { get; }
 
 	public CrawlResult(
 		string url,
@@ -36,7 +37,9 @@ public sealed class CrawlResult
 		IEnumerable<string> extractedLinks,
 		HttpStatusCode statusCode,
 		long timeTakenMs,
-		string contentHash)
+		string contentHash,
+		DateTime crawledAt
+		)
 	{
 		Url = !string.IsNullOrWhiteSpace(url)
 			? url
@@ -70,5 +73,6 @@ public sealed class CrawlResult
 		Title = title;
 		StatusCode = statusCode;
 		TimeTakenMs = timeTakenMs;
+		CrawledAt = crawledAt; 
 	}
 }

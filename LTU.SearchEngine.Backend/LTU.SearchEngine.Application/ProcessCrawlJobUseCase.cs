@@ -1,8 +1,5 @@
-﻿using LTU.SearchEngine.Backend.Core;
-using LTU.SearchEngine.Backend.Core.Exceptions;
-using LTU.SearchEngine.Backend.Core.Model.Entities;
+﻿using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
-using LTU.SearchEngine.Infrastructure.Configurations;
 using LTU.SearchEngine.Infrastructure.Crawling;
 
 namespace LTU.SearchEngine.Application;
@@ -24,20 +21,11 @@ namespace LTU.SearchEngine.Application;
 public class ProcessCrawlJobUseCase : IProcessCrawlJobUseCase
 {
 	private ICrawler _crawler;
-	private IDomainValidator _domainValidator;
-	private readonly IRobotsHandler _robotsHandler;
 	private IIndexer _indexer;
 
-	public ProcessCrawlJobUseCase(
-		ICrawler crawler, 
-		IDomainValidator domainValidator,
-		IRobotsHandler robotsHandler, 
-		IIndexer indexer
-		)
+	public ProcessCrawlJobUseCase(ICrawler crawler, IIndexer indexer)
 	{
 		_crawler = crawler ?? throw new ArgumentNullException(nameof(crawler));
-		_domainValidator = domainValidator ?? throw new ArgumentNullException(nameof(domainValidator));
-		_robotsHandler = robotsHandler ?? throw new ArgumentNullException(nameof(robotsHandler));
 		_indexer = indexer ?? throw new ArgumentNullException(nameof(indexer));
 	}
 
@@ -62,12 +50,6 @@ public class ProcessCrawlJobUseCase : IProcessCrawlJobUseCase
 			throw new ArgumentNullException(nameof(job));
 
 		if (string.IsNullOrWhiteSpace(job.Url))
-			throw new ArgumentException("URL must have a value.", nameof(job.Url));
-		
-		if (!_domainValidator.IsWhitelisted(job.Url))
-			throw new DomainNotWhitelistedException(job.Url);
-
-		if (!await _robotsHandler.IsAllowedAsync(job.Url))
-			throw new BlockedByRobotsTxtException(job.Url);
+			throw new ArgumentException("URL must have a value.", nameof(job.Url));		
 	}
 }

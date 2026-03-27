@@ -1,6 +1,5 @@
 ﻿using LTU.SearchEngine.Application;
 using LTU.SearchEngine.Backend.Core;
-using LTU.SearchEngine.Backend.Core.Exceptions;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure.Configuration;
@@ -103,14 +102,6 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 		{
 			CrawlResult result = await _processCrawlJobUseCase.Execute(job);
 			await EnqueueNewJobs(result);
-		}
-		catch (DomainNotWhitelistedException ex)
-		{
-			_logger.LogWarning($"Job {job.Id} skipped: domain not whitelisted ({ex.Message})");
-		}
-		catch (BlockedByRobotsTxtException ex)
-		{
-			_logger.LogWarning($"Job {job.Id} skipped: URL blocked by robots.txt ({ex.Message})");
 		}
 		catch (ArgumentException ex)
 		{

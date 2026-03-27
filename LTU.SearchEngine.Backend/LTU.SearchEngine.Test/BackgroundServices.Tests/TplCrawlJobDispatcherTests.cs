@@ -1,6 +1,5 @@
 ﻿using LTU.SearchEngine.Application;
 using LTU.SearchEngine.Backend.Core;
-using LTU.SearchEngine.Backend.Core.Exceptions;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.BackgroundServices;
@@ -306,34 +305,6 @@ public class TplCrawlJobDispatcherTests
 
 		// Assert - Retry counter is only incremented before enqueue.
 		Assert.Equal(3, job.RetryCount);
-
-		cts.Cancel();
-		await startTask;
-	}
-
-	[Fact]
-	public async Task DomainNotWhitelisted_DoesNotRetry()
-	{
-		var job = new CrawlJob
-		{
-			Id = 4,
-			Url = "https://blocked.com",
-			NextAttempt = DateTime.UtcNow
-		};
-
-		_mockUseCase.Setup(u => u.Execute(It.IsAny<CrawlJob>()))
-			.ThrowsAsync(new DomainNotWhitelistedException(job.Url));
-
-		using var cts = new CancellationTokenSource();
-		var startTask = _sut.Start(cts.Token);
-
-		// Act
-		await _sut.Enqueue(job);
-
-		await Task.Delay(300);
-
-		// Assert
-		_mockUseCase.Verify(u => u.Execute(It.IsAny<CrawlJob>()), Times.Once);
 
 		cts.Cancel();
 		await startTask;

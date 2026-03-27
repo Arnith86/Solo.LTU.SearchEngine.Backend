@@ -21,6 +21,7 @@ public class Crawler : ICrawler
     public async Task<CrawlResult> FetchAsync(string url)
     {
         var stopwatch = Stopwatch.StartNew();
+        var crawledAt = DateTime.UtcNow;
 
         try
         {
@@ -31,7 +32,7 @@ public class Crawler : ICrawler
             // Return status code without body content.
             if (!response.IsSuccessStatusCode)
             {
-                return CreateErrorResult(url, response.StatusCode, stopwatch.ElapsedMilliseconds, "None");
+                return CreateErrorResult(url, response.StatusCode, stopwatch.ElapsedMilliseconds, "None", crawledAt);
             }
 
             //if call successful get the data
@@ -47,7 +48,7 @@ public class Crawler : ICrawler
                 var htmlString = System.Text.Encoding.UTF8.GetString(content);
 
                 terms = _htmlParser.ExtractTerms(htmlString);
-                links = _htmlParser.ExtractInternalLinks(htmlString, url);
+                links = await _htmlParser.ExtractInternalLinks(htmlString, url);
                 title = _htmlParser.ExtractTitle(htmlString);
             }
 
@@ -61,13 +62,20 @@ public class Crawler : ICrawler
                 extractedLinks: links,
                 statusCode: response.StatusCode,
                 timeTakenMs: stopwatch.ElapsedMilliseconds,
-                contentHash: _contentHasher.CalculateHash(content)
+                contentHash: _contentHasher.CalculateHash(content),
+                crawledAt: crawledAt
             );
         }
         catch (HttpRequestException ex) 
         {
             stopwatch.Stop();
-            return CreateErrorResult(url, System.Net.HttpStatusCode.ServiceUnavailable, stopwatch.ElapsedMilliseconds, $"Error: {ex}");
+            return CreateErrorResult(
+                url, 
+                System.Net.HttpStatusCode.ServiceUnavailable,
+                stopwatch.ElapsedMilliseconds, 
+                $"Error: {ex}",
+                crawledAt
+            );
         }
         catch (Exception) 
         {
@@ -77,7 +85,8 @@ public class Crawler : ICrawler
     }
 
     // Help method for creating a "failed" result
-    private CrawlResult CreateErrorResult(string url, System.Net.HttpStatusCode statusCode, long timeTaken, string type)
+    private CrawlResult CreateErrorResult(
+        string url, System.Net.HttpStatusCode statusCode, long timeTaken, string type, DateTime crawledAt)
     {
         return new CrawlResult(
             url: url,
@@ -89,7 +98,8 @@ public class Crawler : ICrawler
             extractedLinks: Enumerable.Empty<string>(),
             statusCode: statusCode,
             timeTakenMs: timeTaken,
-            contentHash: _contentHasher.CalculateHash(Array.Empty<byte>())
+            contentHash: _contentHasher.CalculateHash(Array.Empty<byte>()), 
+            crawledAt: crawledAt
         );
     }
 }

@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Http;
 using LTU.SearchEngine.Infrastructure.Configuration;
 using Microsoft.Extensions.Logging;
 using LTU.SearchEngine.Test.HelperClasses;
+using System.Collections.Concurrent;
 
 namespace LTU.SearchEngine.Test.IntegrationTesting;
 
@@ -80,7 +81,10 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
                 if (descriptor is not null) services.Remove(descriptor);
 
-                services.AddSingleton(httpClientForCrawler); // Replace the HttpClient the client uses to the in-memory webHostBuilder
+                var descriptors = services.Where(d => d.ServiceType == typeof(HttpClient)).ToList();
+                foreach (var d in descriptors) services.Remove(d);
+
+                services.AddSingleton<HttpClient>(httpClientForCrawler); // Replace the HttpClient the client uses to the in-memory webHostBuilder
                 services.AddSingleton(indexerMock.Object);
                 if (logger is not null) services.AddSingleton(logger.Object);
                 if (robotsHandlerMock is not null) services.AddSingleton(robotsHandlerMock.Object);
@@ -236,15 +240,15 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
         CrawlJob crawlJob = new CrawlJob{ Url = seedURL, NextAttempt = DateTime.UtcNow };
 
-        var visitedList = new List<CrawlResult>();
+        var visitedBag = new ConcurrentBag<CrawlResult>();
         var indexerMock = new Mock<IIndexer>();
 
         indexerMock
             .Setup(im => im.IndexAsync(It.IsAny<CrawlResult>()))
-            .Callback<CrawlResult>(result => visitedList.Add(result))
+            .Callback<CrawlResult>(result => visitedBag.Add(result))
             .Returns(Task.CompletedTask);
 
-        using var httpClientForCrawler = _webHostBuilder.CreateFakeInternetClient();
+        var httpClientForCrawler = _webHostBuilder.CreateFakeInternetClient();
         
         
         using WebApplicationFactory<Program> testFactory = CreateTestFactory<TplCrawlJobDispatcher>(
@@ -262,31 +266,29 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         await dispatcher.Enqueue(crawlJob);
         var cts = new CancellationTokenSource();
         
-        try
-        {
-            _ = dispatcher.Start(cts.Token);
-            
-            int timeoutMs = 4000;
-            int elapsedTime = 0;
 
-            // Wait up to 4 sec to fill list 
-            while (visitedList.Count < 4 && elapsedTime < timeoutMs)
-            {
-                await Task.Delay(100); // wait with 100 ms intervals
-                elapsedTime += 100;
-            }
-        }
-        finally
+        Task crawlTask = dispatcher.Start(cts.Token);
+        
+        int timeoutMs = 1000;
+        int elapsedTime = 0;
+
+        // Wait up to 4 sec to fill list 
+        while (visitedBag.Count < 4 && elapsedTime < timeoutMs)
         {
-            cts.Cancel();
+            await Task.Delay(100); // wait with 100 ms intervals
+            elapsedTime += 100;
         }
 
+        cts.Cancel();
+        
         // Assert
-        Assert.Equal(4, visitedList.Count);
-        Assert.Equal(seedURL, visitedList[0].Url);
-        Assert.Equal(page1, visitedList[1].Url);
-        Assert.Equal(page2, visitedList[2].Url);
-        Assert.Equal(final, visitedList[3].Url);
+        var results = visitedBag.ToList();
+
+        Assert.Equal(4, results.Count);
+        Assert.Contains(results, r => r.Url.Equals(seedURL));
+        Assert.Contains(results, r => r.Url.Equals(page1));
+        Assert.Contains(results, r => r.Url.Equals(page2));
+        Assert.Contains(results, r => r.Url.Equals(final));
     }
 
     

@@ -1,14 +1,33 @@
 ﻿using HtmlAgilityPack;
+using LTU.SearchEngine.Backend.Core;
+using LTU.SearchEngine.Backend.Core.Exceptions;
 using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using LTU.SearchEngine.Infrastructure.Configurations;
 using LTU.SearchEngine.Infrastructure.Crawling;
+using Microsoft.Extensions.Logging;
 
 namespace LTU.SearchEngine.Infrastructure;
 
 public class HapHtmlParser : IHtmlParser
 {
+    private readonly IDomainValidator _domainValidator;
+    private readonly IRobotsHandler _robotsHandler;
+    private readonly ILogger _logger;
+
+    public HapHtmlParser(
+        IDomainValidator domainValidator, 
+        IRobotsHandler robotsHandler,
+        ILogger<HapHtmlParser> logger
+        )
+    {
+        _domainValidator = domainValidator ?? throw new ArgumentNullException(nameof(domainValidator)); 
+        _robotsHandler = robotsHandler ?? throw new ArgumentNullException(nameof(robotsHandler)); 
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
     /// <inheritdoc/>
-    public List<string> ExtractInternalLinks(string html, string baseUrl)
+    public async Task<List<string>> ExtractInternalLinks(string html, string baseUrl)
     {
         var doc = new HtmlDocument();
         doc.LoadHtml(html);
@@ -40,18 +59,43 @@ public class HapHtmlParser : IHtmlParser
                 // 1. The scheme must be http or https (excludes mailto:, javascript:, etc).
                 // 2. The host (domain) must match the base URL's host to be considered "internal".
                 bool isHttp = resultUri.Scheme == Uri.UriSchemeHttp || resultUri.Scheme == Uri.UriSchemeHttps;
-                // bool isSameDomain = resultUri.Host.Equals(baseUri.Host, StringComparison.OrdinalIgnoreCase);
-
+                
                 if (isHttp)
                 {
-                    internalLinks.Add(resultUri.AbsoluteUri);
-                }
+                    string url = resultUri.AbsoluteUri;
 
+                    try
+                    {
+                        await IsNotRobotsBlockedAndWhitelistedAsync(url);
+                        internalLinks.Add(url);
+                    }
+                    catch (DomainNotWhitelistedException ex)
+                    {
+                        _logger.LogWarning($"Url: {url} skipped: domain not whitelisted ({ex.Message})");
+                    }
+                    catch (BlockedByRobotsTxtException ex)
+                    {
+                        _logger.LogWarning($"Job {url} skipped: URL blocked by robots.txt ({ex.Message})");
+                    }
+                }
             }
         }
         // Return distinct links to avoid processing the same URL multiple times.
         return internalLinks.Distinct().ToList();
     }
+    
+
+    private async Task<bool> IsNotRobotsBlockedAndWhitelistedAsync(string url)
+    {
+        if (!_domainValidator.IsWhitelisted(url))
+			throw new DomainNotWhitelistedException(url);
+
+		if (!await _robotsHandler.IsAllowedAsync(url))
+			throw new BlockedByRobotsTxtException(url);   
+
+        return true; 
+    }
+
 
     /// <inheritdoc/>
     public IEnumerable<IndexedTerm> ExtractTerms(string html)

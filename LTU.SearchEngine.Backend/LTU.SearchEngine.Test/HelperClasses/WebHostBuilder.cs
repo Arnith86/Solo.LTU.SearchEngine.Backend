@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Hosting;
-using HtmlAgilityPack;
+using System.Diagnostics;
 
 namespace LTU.SearchEngine.Test.HelperClasses;
 
@@ -93,7 +93,7 @@ public class WebHostBuilder
 					endpoint.MapGet("/page2.html", () =>
 					{
 						var html = $"""
-							<html><body><a href="http://localhost/final.html">Page 2</a></body></html>
+							<html><body><a href="http://localhost/final.html">Final Page</a></body></html>
 						"""; 
 						
 						return Results.Content(html, "text/html");
@@ -113,6 +113,7 @@ public class WebHostBuilder
 					// Seed Url with external domain
 					endpoint.MapGet("/SeedIncludingExternalUrl.html", () =>
 					{
+						Debug.WriteLine("--- TEST SERVER HIT: SeedIncludingExternalUrl ---");
 						var html = $"""
 							<html>
 								<body>
@@ -143,7 +144,10 @@ public class WebHostBuilder
 		.Build();
 		
 		host.Start();
-		return host.GetTestClient();
+		var client = host.GetTestClient();
+		client.BaseAddress = new Uri("http://localhost/");
+
+		return client;
 	}
 
 	public HttpClient BuildHttpClient()

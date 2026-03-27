@@ -14,9 +14,12 @@ public class CrawlResultBuilder
 		string content = "x",
 		HttpStatusCode statusCode = HttpStatusCode.OK,
 		int timeTakenMs = 1,
-		string hashContent = "FakeHash"
+		string hashContent = "FakeHash",
+		DateTime dateTime = default
         )
     {
+		var crawledAt = dateTime == default ? DateTime.UtcNow : dateTime; 
+
         return new CrawlResult(
 			url: url,
 			title: title,
@@ -27,7 +30,8 @@ public class CrawlResultBuilder
 			extractedLinks: Array.Empty<string>(),
 			statusCode: statusCode,
 			timeTakenMs: timeTakenMs,
-            contentHash: hashContent
+            contentHash: hashContent,
+			crawledAt: crawledAt
 		);
     }
 
@@ -41,9 +45,12 @@ public class CrawlResultBuilder
 		string content = "x",
 		HttpStatusCode statusCode = HttpStatusCode.OK,
 		int timeTakenMs = 1,
-		string hashContent = "FakeHash"
+		string hashContent = "FakeHash",
+		DateTime dateTime = default
         )
     {
+		var crawledAt = dateTime == default ? DateTime.UtcNow : dateTime; 
+
         return new CrawlResult(
 			url: url,
 			title: title,
@@ -54,7 +61,8 @@ public class CrawlResultBuilder
 			extractedLinks: extractedLinks!,
 			statusCode: statusCode,
 			timeTakenMs: timeTakenMs,
-            contentHash: hashContent
+            contentHash: hashContent,
+			crawledAt: crawledAt
 		);
     }
 }
