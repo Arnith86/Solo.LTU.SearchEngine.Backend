@@ -1,7 +1,5 @@
-﻿using LTU.SearchEngine.Backend.Core;
-using LTU.SearchEngine.Backend.Core.Model.Entities;
+﻿using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
-using LTU.SearchEngine.Infrastructure.Configurations;
 using LTU.SearchEngine.Infrastructure.Crawling;
 
 namespace LTU.SearchEngine.Application;
@@ -25,10 +23,7 @@ public class ProcessCrawlJobUseCase : IProcessCrawlJobUseCase
 	private ICrawler _crawler;
 	private IIndexer _indexer;
 
-	public ProcessCrawlJobUseCase(
-		ICrawler crawler, 
-		IIndexer indexer
-		)
+	public ProcessCrawlJobUseCase(ICrawler crawler, IIndexer indexer)
 	{
 		_crawler = crawler ?? throw new ArgumentNullException(nameof(crawler));
 		_indexer = indexer ?? throw new ArgumentNullException(nameof(indexer));
