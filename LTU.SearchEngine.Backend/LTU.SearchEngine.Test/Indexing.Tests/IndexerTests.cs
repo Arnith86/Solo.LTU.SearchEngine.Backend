@@ -32,10 +32,7 @@ public class IndexerTests
             url: "https://test.com",
             title: "Test",
             language: "en",
-            indexedTerms: new List<IndexedTerm>
-            {
-                new IndexedTerm("engine", TermSource.Title)
-            },
+            indexedTerms: new List<IndexedTerm>{ new IndexedTerm("engine", TermSource.Title)},
             type: "text/html",
             content: "x",
             extractedLinks: new List<string>(),
@@ -49,7 +46,6 @@ public class IndexerTests
     public async Task IndexAsync_ShouldThrow_WhenCrawlResultIsNull()
     {
         // Act & Assert
-        // Vi måste använda ThrowsAsync när metoden returnerar en Task
         await Assert.ThrowsAsync<ArgumentNullException>(() => _sut.IndexAsync(null!));
     }
 
@@ -58,13 +54,11 @@ public class IndexerTests
     {
         var crawlResult = CreateDummyCrawlResult();
 
-        // Lade till "Test" som titel i IndexDocument-konstruktorn
         _pipelineMock
             .Setup(p => p.Transform(crawlResult))
-            .Returns(new IndexDocument("1", "https://test.com", "Test"));
+            .Returns(IndexDocumentBuilder.BuildIndexDocument());
 
         // Act
-        // Vi måste ha await framför asynkrona metodanrop i tester
         await _sut.IndexAsync(crawlResult);
 
         // Assert
@@ -76,8 +70,7 @@ public class IndexerTests
     {
         var crawlResult = CreateDummyCrawlResult();
 
-        // Lade till "Test" som titel i IndexDocument-konstruktorn
-        var indexDocument = new IndexDocument("1", "https://test.com", "Test");
+        var indexDocument = IndexDocumentBuilder.BuildIndexDocument();
 
         _pipelineMock
             .Setup(p => p.Transform(crawlResult))
@@ -87,6 +80,6 @@ public class IndexerTests
         await _sut.IndexAsync(crawlResult); 
 
         // Assert
-        _repositoryMock.Verify(r => r.SaveAsync(indexDocument), Times.Once);
+        _repositoryMock.Verify(r => r.AddDocumentAsync(indexDocument), Times.Once);
     }
 }

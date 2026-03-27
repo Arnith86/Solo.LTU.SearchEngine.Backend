@@ -21,7 +21,6 @@ namespace LTU.SearchEngine.Infrastructure.Repositories;
 public interface IIndexRepository
 {
     Task AddDocumentAsync(IndexDocument document);
-    // Task AddDocumentAsync(string url, string title, List<string> words);
 	Task<HashSet<int>> GetDocumentIdsForTermAsync(string term);
 	Task<HashSet<int>> GetDocumentIdsForPhraseAsync(PhraseNode<HashSet<int>> phrase); 
 	Task<List<Page>> GetDocumentsByIdAsync(List<int> pageIds);

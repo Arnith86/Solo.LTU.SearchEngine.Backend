@@ -2,6 +2,7 @@
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Infrastructure.Data;
 using LTU.SearchEngine.Infrastructure.Repositories;
+using LTU.SearchEngine.Test.HelperClasses;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,7 +13,7 @@ public class SqlIndexRepositoryTests : IDisposable
 {
     private readonly SqliteConnection _connection;
     private readonly IDbContextFactory<SearchDbContext> _factory;
-    private readonly SqlIndexRepository _sut;
+    private readonly IIndexRepository _sut;
 
     public SqlIndexRepositoryTests()
     {
@@ -34,62 +35,28 @@ public class SqlIndexRepositoryTests : IDisposable
         _sut = new SqlIndexRepository(_factory);
     }
 
-    /// <summary>
-    /// Verifies that a webpage and its words are saved correctly to the database, 
-    /// and that duplicate words are merged with the correct frequency.
-    /// </summary>
-    [Fact]
-    public async Task AddDocumentAsync_ShouldSavePageAndWordsToDatabase_WithCorrectFrequencies()
-    {
-        // Arrange
-        string url = "https://arbetsformedlingen.se/jobb";
-        string title = "Hitta Jobb";
-        var words = new List<string> { "sök", "jobb", "nu", "jobb" };
-
-        // Act
-        await _sut.AddDocumentAsync(url, title, words);
-
-        // Assert
-        await using var context = await _factory.CreateDbContextAsync();
-
-        var savedPage = await context.Pages.FirstOrDefaultAsync(p => p.Url == url);
-        Assert.NotNull(savedPage);
-        Assert.Equal(title, savedPage.Title);
-        Assert.Equal(4, savedPage.WordCount);
-
-        var savedTerms = await context.Terms.ToListAsync();
-        Assert.Equal(3, savedTerms.Count);
-        Assert.Contains(savedTerms, t => t.Word == "jobb");
-
-        var frequencies = await context.PageWordFrequencies
-            .Include(f => f.Term)
-            .ToListAsync();
-
-        Assert.Equal(3, frequencies.Count);
-
-        var jobbFrequency = frequencies.First(f => f.Term.Word == "jobb");
-        Assert.Equal(2, jobbFrequency.Frequency);
-    }
+    
 
     /// <summary>
     /// Verifies that a processed IndexDocument is saved correctly, and that 
     /// word frequencies from the title, content, and headers are summed up for the total.
     /// </summary>
     [Fact]
-    public async Task SaveAsync_ShouldMergeDictionaries_AndSaveCorrectly()
+    public async Task AddDocumentAsync_ShouldMergeDictionaries_AndSaveCorrectly()
     {
         // Arrange
-        var document = new IndexDocument("doc1", "https://ltu.se", "LTU Start");
-
         // We add the word "student" to both title and content. 
         // Total frequency should be 1 + 3 = 4.
-        document.TitleTerms.Add("student", 1);
-        document.TitleTerms.Add("ltu", 1);
-        document.ContentTerms.Add("student", 3);
-        document.HeaderTerms.Add("utbildning", 2);
+        var document = IndexDocumentBuilder.BuildIndexDocument(
+            url: "https://ltu.se", 
+            title: "LTU Start",
+            titleTerms: new Dictionary<string, int>(){{"student", 1},{"ltu", 1}},
+            headerTerms: new Dictionary<string, int>(){{"student", 3}},
+            contentTerms: new Dictionary<string, int>(){{"utbildning", 2}}
+        );
 
         // Act
-        await _sut.SaveAsync(document);
+        await _sut.AddDocumentAsync(document);
 
         // Assert
         await using var context = await _factory.CreateDbContextAsync();
@@ -109,7 +76,8 @@ public class SqlIndexRepositoryTests : IDisposable
             .FirstOrDefaultAsync(pwf => pwf.PageId == savedPage.Id && pwf.TermId == studentTerm.Id);
 
         Assert.NotNull(frequency);
-        Assert.Equal(4, frequency.Frequency); // 1 from Title + 3 from Content
+        int totalFrequency = frequency.TitleFrequency + frequency.HeaderFrequency + frequency.BodyFrequency;
+        Assert.Equal(4, totalFrequency); // 1 from Title + 3 from Content
     }
 
     /// <summary>
@@ -132,8 +100,13 @@ public class SqlIndexRepositoryTests : IDisposable
         await setupContext.SaveChangesAsync(); // Save to generate IDs
 
         // Link the search term to BOTH pages
-        setupContext.PageWordFrequencies.Add(new PageWordFrequency { PageId = page1.Id, TermId = termMatch.Id, Frequency = 1 });
-        setupContext.PageWordFrequencies.Add(new PageWordFrequency { PageId = page2.Id, TermId = termMatch.Id, Frequency = 5 });
+        setupContext.PageWordFrequencies.Add(
+            new PageWordFrequency { PageId = page1.Id, TermId = termMatch.Id, HeaderFrequency = 1 }
+        );
+        setupContext.PageWordFrequencies.Add(
+            new PageWordFrequency { PageId = page2.Id, TermId = termMatch.Id, HeaderFrequency = 5 }
+        );
+        
         await setupContext.SaveChangesAsync();
 
         // Act
