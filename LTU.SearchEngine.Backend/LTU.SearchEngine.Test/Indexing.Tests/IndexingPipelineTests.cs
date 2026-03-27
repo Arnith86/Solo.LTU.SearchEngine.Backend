@@ -83,6 +83,32 @@ public class IndexingPipelineTests
         _normalizerMock.Verify(n => n.Normalize("Running"), Times.Exactly(2));
     }
 
+
+    [Fact]
+    public void Transform_GivenBodyTerm_ShouldOnlyExistInContentTerms()
+    {
+        // Arrange 
+        var crawlResult = CrawlResultBuilder.BuildCrawlResult(
+            indexedTerms: new List<IndexedTerm> { new IndexedTerm("run", TermSource.Body)},
+            extractedLinks: new List<string>()
+        );
+        
+        _normalizerMock
+            .Setup(n => n.Normalize(It.IsAny<string>()))
+            .Returns("run");
+
+        // Act 
+        var document = _pipeline.Transform(crawlResult);
+        
+
+        // Assert
+        Assert.True(document.ContentTerms.ContainsKey("run"));
+        Assert.False(document.TitleTerms.ContainsKey("run"));
+        Assert.False(document.HeaderTerms.ContainsKey("run"));
+        Assert.Single(document.ContentTerms);
+    }
+
+
     [Fact]
     public void Transform_GivenNullNormalizedTerm_ShouldSkipTerm()
     {
