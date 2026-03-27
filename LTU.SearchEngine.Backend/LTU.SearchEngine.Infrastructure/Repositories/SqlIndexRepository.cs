@@ -44,9 +44,13 @@ public class SqlIndexRepository : IIndexRepository
         }
         else
         {
-            // Remove old word frequencies for the page before adding new ones to avoid duplicates
-            var oldEntries = context.PageWordFrequencies.Where(pwf => pwf.PageId.Equals(page.Id));
-            context.PageWordFrequencies.RemoveRange(oldEntries);
+            // Remove old word frequencies and page links for the page before adding new ones to avoid duplicates
+            var oldTermEntries = context.PageWordFrequencies.Where(pwf => pwf.PageId.Equals(page.Id));
+            context.PageWordFrequencies.RemoveRange(oldTermEntries);
+
+            var oldLinkEntries = context.PageLinks.Where(pl => pl.FromPageId.Equals(page.Id));
+            context.PageLinks.RemoveRange(oldLinkEntries);
+
             // Update page metadata
             page.Title = document.Title;
             page.LastCrawled = document.LastCrawl;
@@ -58,6 +62,7 @@ public class SqlIndexRepository : IIndexRepository
         // Save to get a Page.Id 
         await context.SaveChangesAsync();
 
+        // Handle WordFrequency relation    
         var allUniqueTerms = document.TitleTerms.Keys
             .Union(document.HeaderTerms.Keys)
             .Union(document.ContentTerms.Keys)
@@ -103,6 +108,39 @@ public class SqlIndexRepository : IIndexRepository
             };
 
             context.PageWordFrequencies.Add(pageWordFrequency);
+        }
+
+        // Handle PageLink relation 
+        if (document.OutgoingLinks is not null && document.OutgoingLinks.Any())
+        {
+            var targetLinks = document.OutgoingLinks.Distinct().ToList();
+            var existingTargetPages = await context.Pages
+                .Where(p => targetLinks.Contains(p.Url))
+                .ToDictionaryAsync(p => p.Url);        
+
+            foreach (var url in targetLinks)
+            {
+                // If no such page exist yet, create a stub in wait of crawl
+                if (!existingTargetPages.TryGetValue(url, out var targetStubPage))
+                {
+                    targetStubPage = new Page
+                    {
+                      Url = url,
+                      Title = "pending..",
+                      ContentHash = string.Empty,
+                      Language = string.Empty
+                    };
+
+                    context.Pages.Add(targetStubPage);
+                    existingTargetPages[url] = targetStubPage;
+                }
+
+                context.PageLinks.Add( new PageLink
+                {
+                    FromPage = page,
+                    ToPage = targetStubPage   
+                });
+            }
         }
 
         // save everything at the same time        

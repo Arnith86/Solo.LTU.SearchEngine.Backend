@@ -15,4 +15,5 @@ public class Page
     public string Language { get; set; } = string.Empty;
     public ICollection<PageWordFrequency> WordFrequencies { get; set; } = new List<PageWordFrequency>();
     public ICollection<PageLink> OutgoingLinks { get; set; } = new List<PageLink>();
+    public ICollection<PageLink> IncomingLinks { get; set; } = new List<PageLink>();
 }

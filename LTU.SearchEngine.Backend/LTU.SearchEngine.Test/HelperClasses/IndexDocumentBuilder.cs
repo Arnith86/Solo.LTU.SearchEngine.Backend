@@ -3,6 +3,7 @@ namespace LTU.SearchEngine.Test.HelperClasses;
 public static class IndexDocumentBuilder
 {
     public static IndexDocument BuildIndexDocument(
+        IEnumerable<string> outgoingLinks,
         IReadOnlyDictionary<string, int> titleTerms, 
         IReadOnlyDictionary<string, int> headerTerms, 
         IReadOnlyDictionary<string, int> contentTerms,
@@ -19,6 +20,7 @@ public static class IndexDocumentBuilder
             url: url, 
             title: title,
             language: language,
+            outgoingLinks: outgoingLinks,
             titleTerms: titleTerms, 
             headerTerms: headerTerms, 
             contentTerms: contentTerms,
@@ -36,7 +38,7 @@ public static class IndexDocumentBuilder
         )
     {
         var tempCrawl = lastCrawl == default ? DateTime.UtcNow : lastCrawl;
-
+        var dummyOutgoingLinks = new List<string> { "dummyLink" };
         var dummyTitleTerms = new Dictionary<string, int> { { "titleWord", 1 } };
         var dummyHeaderTerms = new Dictionary<string, int> { { "headerWord", 1 } };
         var dummyContentTerms = new Dictionary<string, int> { { "contentWord", 1 } };
@@ -45,6 +47,7 @@ public static class IndexDocumentBuilder
             url: url, 
             title: title,
             language: language,
+            outgoingLinks: dummyOutgoingLinks,
             titleTerms: dummyTitleTerms, 
             headerTerms: dummyHeaderTerms, 
             contentTerms: dummyContentTerms,

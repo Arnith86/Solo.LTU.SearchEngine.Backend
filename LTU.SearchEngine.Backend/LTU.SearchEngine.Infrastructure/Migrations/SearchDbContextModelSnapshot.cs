@@ -136,11 +136,11 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                     b.HasOne("LTU.SearchEngine.Backend.Core.Entities.Page", "FromPage")
                         .WithMany("OutgoingLinks")
                         .HasForeignKey("FromPageId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("LTU.SearchEngine.Backend.Core.Entities.Page", "ToPage")
-                        .WithMany()
+                        .WithMany("IncomingLinks")
                         .HasForeignKey("ToPageId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -171,6 +171,8 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
 
             modelBuilder.Entity("LTU.SearchEngine.Backend.Core.Entities.Page", b =>
                 {
+                    b.Navigation("IncomingLinks");
+
                     b.Navigation("OutgoingLinks");
 
                     b.Navigation("WordFrequencies");

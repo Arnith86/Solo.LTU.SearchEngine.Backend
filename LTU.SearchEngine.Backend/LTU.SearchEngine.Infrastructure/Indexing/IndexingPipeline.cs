@@ -52,6 +52,7 @@ public class IndexingPipeline : IIndexingPipeline
             url: crawlResult.Url,
             title: crawlResult.Title!,
             language: crawlResult.Language,
+            outgoingLinks: crawlResult.ExtractedLinks,
             titleTerms: sourceMap[TermSource.Title].ToReadOnly(), 
             headerTerms: sourceMap[TermSource.Header].ToReadOnly(),
             contentTerms: sourceMap[TermSource.Body].ToReadOnly(),

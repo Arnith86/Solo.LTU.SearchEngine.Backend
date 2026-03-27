@@ -13,10 +13,10 @@ public class PageLinkConfiguration : IEntityTypeConfiguration<PageLink>
         builder.HasOne(pl => pl.FromPage)
             .WithMany(p => p.OutgoingLinks)
             .HasForeignKey(pl => pl.FromPageId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(pl => pl.ToPage)
-            .WithMany()
+            .WithMany(pl => pl.IncomingLinks)
             .HasForeignKey(pl => pl.ToPageId)
             .OnDelete(DeleteBehavior.Restrict);
     }

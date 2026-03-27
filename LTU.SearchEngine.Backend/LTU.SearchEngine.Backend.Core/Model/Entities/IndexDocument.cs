@@ -3,6 +3,7 @@
     public string Url { get; }
     public string Title { get; } 
     public string Language { get; }
+    public IEnumerable<string> OutgoingLinks { get; }
     public IReadOnlyDictionary<string, int> TitleTerms { get; }
     public IReadOnlyDictionary<string, int> HeaderTerms { get; }
     public IReadOnlyDictionary<string, int> ContentTerms { get; }
@@ -13,6 +14,7 @@
         string url, 
         string title,
         string language,
+        IEnumerable<string> outgoingLinks,
         IReadOnlyDictionary<string, int> titleTerms, 
         IReadOnlyDictionary<string, int> headerTerms, 
         IReadOnlyDictionary<string, int> contentTerms,
@@ -23,6 +25,7 @@
         Url = url;
         Title = title;
         Language = language;
+        OutgoingLinks = outgoingLinks;
         TitleTerms = titleTerms;
         HeaderTerms = headerTerms;
         ContentTerms = contentTerms;

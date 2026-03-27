@@ -60,7 +60,7 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                         column: x => x.FromPageId,
                         principalTable: "Pages",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_PageLinks_Pages_ToPageId",
                         column: x => x.ToPageId,
