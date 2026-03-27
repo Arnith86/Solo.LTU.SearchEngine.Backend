@@ -233,6 +233,34 @@ public class IndexingPipelineTests
         // Assert
         Assert.Equal(2, document.ContentTerms["run"]);
     }
+    
+    
+    [Fact]
+    public void Transform_SameWordDifferentSources_ShouldStoreSeparately()
+    {
+        // Arrange 
+        var crawlResult = CrawlResultBuilder.BuildCrawlResult(
+            indexedTerms: new List<IndexedTerm> { 
+                new IndexedTerm("run", TermSource.Title),
+                new IndexedTerm("run", TermSource.Header),
+                new IndexedTerm("run", TermSource.Body)
+            },
+            extractedLinks: new List<string>()
+        );
+        
+        _normalizerMock
+            .Setup(n => n.Normalize(It.IsAny<string>()))
+            .Returns("run");
+
+        // Act 
+        var document = _pipeline.Transform(crawlResult);
+        
+
+        // Assert
+        Assert.Equal(1, document.TitleTerms["run"]);
+        Assert.Equal(1, document.HeaderTerms["run"]);
+        Assert.Equal(1, document.ContentTerms["run"]);
+    }
 
 
     [Fact]
