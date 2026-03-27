@@ -19,7 +19,7 @@ public interface IHtmlParser
 	/// <returns>
 	/// A list of absolute URLs representing internal links found within the HTML content.
 	/// </returns>
-	List<string> ExtractInternalLinks(string html, string baseUrl);
+	Task<List<string>> ExtractInternalLinks(string html, string baseUrl);
 
 	/// <summary>
 	/// Extracts the visible textual content from the given HTML, <br />	

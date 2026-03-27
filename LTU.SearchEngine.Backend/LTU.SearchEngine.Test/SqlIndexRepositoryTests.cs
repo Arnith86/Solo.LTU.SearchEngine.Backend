@@ -48,6 +48,7 @@ public class SqlIndexRepositoryTests : IDisposable
         // We add the word "student" to both title and content. 
         // Total frequency should be 1 + 3 = 4.
         var document = IndexDocumentBuilder.BuildIndexDocument(
+            outgoingLinks: new List<string> { "dummyLink" },
             url: "https://ltu.se", 
             title: "LTU Start",
             titleTerms: new Dictionary<string, int>(){{"student", 1},{"ltu", 1}},

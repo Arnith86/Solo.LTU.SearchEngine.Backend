@@ -104,14 +104,6 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 			CrawlResult result = await _processCrawlJobUseCase.Execute(job);
 			await EnqueueNewJobs(result);
 		}
-		catch (DomainNotWhitelistedException ex)
-		{
-			_logger.LogWarning($"Job {job.Id} skipped: domain not whitelisted ({ex.Message})");
-		}
-		catch (BlockedByRobotsTxtException ex)
-		{
-			_logger.LogWarning($"Job {job.Id} skipped: URL blocked by robots.txt ({ex.Message})");
-		}
 		catch (ArgumentException ex)
 		{
 			_logger.LogWarning($"Job {job.Id} skipped: invalid job ({ex.Message})");

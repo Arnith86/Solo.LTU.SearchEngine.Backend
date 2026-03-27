@@ -64,10 +64,10 @@ public class ProcessCrawlJobUseCase : IProcessCrawlJobUseCase
 		if (string.IsNullOrWhiteSpace(job.Url))
 			throw new ArgumentException("URL must have a value.", nameof(job.Url));
 		
-		if (!_domainValidator.IsWhitelisted(job.Url))
-			throw new DomainNotWhitelistedException(job.Url);
+		// if (!_domainValidator.IsWhitelisted(job.Url))
+		// 	throw new DomainNotWhitelistedException(job.Url);
 
-		if (!await _robotsHandler.IsAllowedAsync(job.Url))
-			throw new BlockedByRobotsTxtException(job.Url);
+		// if (!await _robotsHandler.IsAllowedAsync(job.Url))
+		// 	throw new BlockedByRobotsTxtException(job.Url);
 	}
 }

@@ -48,7 +48,7 @@ public class Crawler : ICrawler
                 var htmlString = System.Text.Encoding.UTF8.GetString(content);
 
                 terms = _htmlParser.ExtractTerms(htmlString);
-                links = _htmlParser.ExtractInternalLinks(htmlString, url);
+                links = await _htmlParser.ExtractInternalLinks(htmlString, url);
                 title = _htmlParser.ExtractTitle(htmlString);
             }
 
