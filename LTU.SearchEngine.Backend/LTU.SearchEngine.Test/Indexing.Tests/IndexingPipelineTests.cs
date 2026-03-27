@@ -85,6 +85,56 @@ public class IndexingPipelineTests
 
 
     [Fact]
+    public void Transform_GivenTitleTerm_ShouldOnlyExistInTitleTerms()
+    {
+        // Arrange 
+        var crawlResult = CrawlResultBuilder.BuildCrawlResult(
+            indexedTerms: new List<IndexedTerm> { new IndexedTerm("run", TermSource.Title)},
+            extractedLinks: new List<string>()
+        );
+        
+        _normalizerMock
+            .Setup(n => n.Normalize(It.IsAny<string>()))
+            .Returns("run");
+
+        // Act 
+        var document = _pipeline.Transform(crawlResult);
+        
+
+        // Assert
+        Assert.True(document.TitleTerms.ContainsKey("run"));
+        Assert.False(document.ContentTerms.ContainsKey("run"));
+        Assert.False(document.HeaderTerms.ContainsKey("run"));
+        Assert.Single(document.TitleTerms);
+    }
+    
+    
+    [Fact]
+    public void Transform_GivenHeaderTerm_ShouldOnlyExistInHeaderTerms()
+    {
+        // Arrange 
+        var crawlResult = CrawlResultBuilder.BuildCrawlResult(
+            indexedTerms: new List<IndexedTerm> { new IndexedTerm("run", TermSource.Header)},
+            extractedLinks: new List<string>()
+        );
+        
+        _normalizerMock
+            .Setup(n => n.Normalize(It.IsAny<string>()))
+            .Returns("run");
+
+        // Act 
+        var document = _pipeline.Transform(crawlResult);
+        
+
+        // Assert
+        Assert.True(document.HeaderTerms.ContainsKey("run"));
+        Assert.False(document.TitleTerms.ContainsKey("run"));
+        Assert.False(document.ContentTerms.ContainsKey("run"));
+        Assert.Single(document.HeaderTerms);
+    }
+
+
+    [Fact]
     public void Transform_GivenBodyTerm_ShouldOnlyExistInContentTerms()
     {
         // Arrange 
