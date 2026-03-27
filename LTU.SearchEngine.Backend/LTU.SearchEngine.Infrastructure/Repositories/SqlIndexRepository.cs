@@ -19,6 +19,7 @@ public class SqlIndexRepository : IIndexRepository
         _factory = factory;
     }
 
+    // ToDo: method AddDocumentAsync needs to be refactored and extract smaller portions of the code into smaller private methods
     // Saves a fully processed document from the pipeline to the database.
     // Merge words from the title, headers and body content.
     public async Task AddDocumentAsync(IndexDocument document)

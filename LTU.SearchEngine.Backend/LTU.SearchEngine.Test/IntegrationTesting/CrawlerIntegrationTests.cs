@@ -269,7 +269,7 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
         Task crawlTask = dispatcher.Start(cts.Token);
         
-        int timeoutMs = 10000;
+        int timeoutMs = 1000;
         int elapsedTime = 0;
 
         // Wait up to 4 sec to fill list 
@@ -280,25 +280,7 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         }
 
         cts.Cancel();
-        // try
-        // {
-        //     _ = dispatcher.Start(cts.Token);
-            
-        //     int timeoutMs = 5000;
-        //     int elapsedTime = 0;
-
-        //     // Wait up to 4 sec to fill list 
-        //     while (visitedBag.Count < 4 && elapsedTime < timeoutMs)
-        //     {
-        //         await Task.Delay(100); // wait with 100 ms intervals
-        //         elapsedTime += 100;
-        //     }
-        // }
-        // finally
-        // {
-        //     cts.Cancel();
-        // }
-
+        
         // Assert
         var results = visitedBag.ToList();
 
