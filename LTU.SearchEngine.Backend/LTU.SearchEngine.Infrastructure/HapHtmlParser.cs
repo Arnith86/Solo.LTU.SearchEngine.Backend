@@ -69,7 +69,7 @@ public class HapHtmlParser : IHtmlParser
                         await IsNotRobotsBlockedAndWhitelistedAsync(url);
                         internalLinks.Add(url);
                     }
-                    	catch (DomainNotWhitelistedException ex)
+                    catch (DomainNotWhitelistedException ex)
                     {
                         _logger.LogWarning($"Url: {url} skipped: domain not whitelisted ({ex.Message})");
                     }
@@ -84,6 +84,7 @@ public class HapHtmlParser : IHtmlParser
         return internalLinks.Distinct().ToList();
     }
     
+
     private async Task<bool> IsNotRobotsBlockedAndWhitelistedAsync(string url)
     {
         if (!_domainValidator.IsWhitelisted(url))
@@ -94,6 +95,7 @@ public class HapHtmlParser : IHtmlParser
 
         return true; 
     }
+
 
     /// <inheritdoc/>
     public IEnumerable<IndexedTerm> ExtractTerms(string html)
