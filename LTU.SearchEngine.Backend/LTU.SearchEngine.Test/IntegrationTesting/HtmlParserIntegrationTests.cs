@@ -1,4 +1,3 @@
-using Castle.Components.DictionaryAdapter.Xml;
 using LTU.SearchEngine.Backend.Api;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
