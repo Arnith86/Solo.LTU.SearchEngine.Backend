@@ -111,6 +111,85 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         return testFactory;
     } 
 
+    [Fact]
+    [Trait("TestCase", "TC-FRQ-2002")]
+    public async Task Indexer_IndexedTermsStoredWithWithReferenceToPagesTheyAppearOn_UsingInvertedIndex()
+    {
+        // Included terms in test files:
+        //  Page1                       Page2
+        //  -------------------------------------------------
+        //  Term1                   |   Term1
+        //                          |   Term2    
+        //  Term3                   |   
+        //  InvertedIndexTestFile2  |
+        
+        // Arrange
+        string seedUrl = "http://localhost/InvertedIndexTestFile1.html";
+        var httpClient = _webHostBuilder.CreateFakeInternetClient();
+        
+        using var testFactory = CreateTestFactory<Indexer>(httpClient: httpClient, seedUrl: seedUrl);
+        using var scope = testFactory.Services.CreateScope();
+        
+        var dispatcher = scope.ServiceProvider.GetRequiredService<ICrawlJobDispatcher>();
+        await dispatcher.Enqueue(new CrawlJob{Url = seedUrl, NextAttempt = DateTime.UtcNow});
+
+        var cts = new CancellationTokenSource();
+        
+        var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<SearchDbContext>>();
+        using var dbContext = dbFactory.CreateDbContext();
+        dbContext.Database.EnsureCreated();
+        
+        // Act 
+        Task dispatchTask = dispatcher.Start(cts.Token);
+        
+        int timeoutMs = 5000;
+        int elapsedTime = 0;
+        
+        while (elapsedTime < timeoutMs)
+        {
+            elapsedTime += 100;
+            await Task.Delay(100);
+        }
+
+        cts.Cancel();
+
+
+        
+        // Assert 
+        // Each unique term is stored exactly once in the index.
+        var TotalTermCount = await dbContext.Terms.CountAsync();
+        var Term1Count = await dbContext.Terms.Where(t => t.Word.Equals("term1")).CountAsync();
+        var Term2Count = await dbContext.Terms.Where(t => t.Word.Equals("term2")).CountAsync();
+        var Term3Count = await dbContext.Terms.Where(t => t.Word.Equals("term3")).CountAsync();
+
+        Assert.True(TotalTermCount.Equals(4));
+        Assert.True(Term1Count.Equals(1));
+        Assert.True(Term2Count.Equals(1));
+        Assert.True(Term3Count.Equals(1));
+        
+        // Each term maps to one or more page references (URLs or document IDs).
+        // Pages containing the same term are associated with that term.
+        int term1Id = await dbContext.Terms
+            .Where(t => t.Word.Equals("term1"))
+            .Select(t => t.Id)
+            .FirstAsync();;
+     
+        var term1PageWordLink = await dbContext.PageWordFrequencies
+            .Include(pwf => pwf.Page)
+            .Include(pwf => pwf.Term)
+            .Where(pwf => pwf.Term.Id.Equals(term1Id))
+            .ToListAsync(); 
+
+        var term1PageAssociation = term1PageWordLink
+            .Where(pwl => pwl.TermId.Equals(term1Id))
+            .Select(pwl => pwl.Page.Url);
+
+        Assert.Contains("http://localhost/InvertedIndexTestFile1.html", term1PageAssociation);
+        Assert.Contains("http://localhost/InvertedIndexTestFile2.html", term1PageAssociation);
+           
+}
+    
+
     public void Dispose()
     {
         if (File.Exists(_tempSettingsPath)) File.Delete(_tempSettingsPath);
