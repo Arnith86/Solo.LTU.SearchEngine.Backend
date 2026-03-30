@@ -166,6 +166,29 @@ public class WebHostBuilder
 						return Results.Content(html, "text/html");
 
 					});
+
+					endpoint.MapGet("/InvertedIndexTestFile1.html", () =>
+					{
+						var html = """
+							<head><title>Term1</title></head>
+							<body>
+								<p>Term3</p>
+								<a href="http://localhost/InvertedIndexTestFile2.html">InvertedIndexTestFile2</a>
+							</body>
+						""";
+
+						return Results.Content(html, "text/html");
+					});
+					
+					endpoint.MapGet("/InvertedIndexTestFile2.html", () =>
+					{
+						var html = """
+							<head><title>Term1</title></head>
+							<body><h1>Term2</h1></body>
+						""";
+
+						return Results.Content(html, "text/html");
+					});
 				});
 			});
 		})
