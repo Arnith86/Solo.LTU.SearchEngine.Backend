@@ -89,6 +89,67 @@ public class HtmlParserIntegrationTests : IClassFixture<WebApplicationFactory<Pr
         return testFactory;
     } 
 
+    [Fact]
+    [Trait("TestCase", "TC-FRQ-2001")]
+    public async Task HtmlParser_ShouldOnlyExtractVisibleText_AndIgnoreNonTextualElements()
+    {
+        // Arrange
+        string seedUrl = "http://localhost/ParserTestFile.html";
+      
+        CrawlResult capturedCrawlResult = null!; 
+
+        Mock<IIndexer> indexerMock = new Mock<IIndexer>();
+        indexerMock.Setup(i => i.IndexAsync(It.IsAny<CrawlResult>()))
+            .Callback<CrawlResult>(result => capturedCrawlResult = result) 
+            .Returns(Task.CompletedTask);
+
+        using var httpClient = _webHostBuilder.CreateFakeInternetClient();
+
+        using var testFactory = CreateTestFactory<HapHtmlParser>(
+            indexerMock: indexerMock,
+            httpClient: httpClient,
+            seedUrl: seedUrl
+        );
+
+        using var scope = testFactory.Services.CreateScope();
+        var dispatcher = scope.ServiceProvider.GetRequiredService<ICrawlJobDispatcher>();
+        var cts = new CancellationTokenSource();
+
+        await dispatcher.Enqueue(new CrawlJob{ Url = seedUrl, NextAttempt = DateTime.UtcNow});
+        
+        // Act 
+        Task parseTask = dispatcher.Start(cts.Token);
+
+        int timeoutMs = 1000;
+        int elapsedTime = 0;
+        
+        while (elapsedTime < timeoutMs)
+        {
+            elapsedTime += 100;
+            await Task.Delay(100);
+        }
+
+        // Assert
+        Assert.Contains("Title Text", capturedCrawlResult.Title);
+        Assert.Contains("Headers", capturedCrawlResult.IndexedTerms.Select(t => t.Term));
+        Assert.Contains("Paragraph", capturedCrawlResult.IndexedTerms.Select(t => t.Term));
+        Assert.Contains("AltText", capturedCrawlResult.IndexedTerms.Select(t => t.Term));
+        Assert.Contains("HiddenText", capturedCrawlResult.IndexedTerms.Select(t => t.Term));
+        Assert.DoesNotContain("DOCTYPE", capturedCrawlResult.IndexedTerms.Select(t => t.Term));
+        Assert.DoesNotContain("html", capturedCrawlResult.IndexedTerms.Select(t => t.Term));
+        Assert.DoesNotContain("lang", capturedCrawlResult.IndexedTerms.Select(t => t.Term));
+        Assert.DoesNotContain("script", capturedCrawlResult.IndexedTerms.Select(t => t.Term));
+        Assert.DoesNotContain("ScriptText", capturedCrawlResult.IndexedTerms.Select(t => t.Term));
+        Assert.DoesNotContain("style", capturedCrawlResult.IndexedTerms.Select(t => t.Term));
+        Assert.DoesNotContain("display", capturedCrawlResult.IndexedTerms.Select(t => t.Term));
+        Assert.DoesNotContain("none", capturedCrawlResult.IndexedTerms.Select(t => t.Term));
+        Assert.DoesNotContain("img", capturedCrawlResult.IndexedTerms.Select(t => t.Term));
+        Assert.DoesNotContain("imageName", capturedCrawlResult.IndexedTerms.Select(t => t.Term));
+        Assert.DoesNotContain("video", capturedCrawlResult.IndexedTerms.Select(t => t.Term));
+        Assert.DoesNotContain("controls", capturedCrawlResult.IndexedTerms.Select(t => t.Term));
+        Assert.DoesNotContain("lecture", capturedCrawlResult.IndexedTerms.Select(t => t.Term));
+        Assert.DoesNotContain("mp4", capturedCrawlResult.IndexedTerms.Select(t => t.Term));
+    }
 
 
     public void Dispose()
