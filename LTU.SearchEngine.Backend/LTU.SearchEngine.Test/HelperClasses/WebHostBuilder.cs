@@ -113,7 +113,6 @@ public class WebHostBuilder
 					// Seed Url with external domain
 					endpoint.MapGet("/SeedIncludingExternalUrl.html", () =>
 					{
-						Debug.WriteLine("--- TEST SERVER HIT: SeedIncludingExternalUrl ---");
 						var html = $"""
 							<html>
 								<body>
@@ -133,6 +132,35 @@ public class WebHostBuilder
 					{
 						var html = $"""
 							<html><body><h1>External</h1></body></html>
+						""";
+
+						return Results.Content(html, "text/html");
+
+					});
+					
+					endpoint.MapGet("/ParserTestFile.html", () =>
+					{
+						var html = """
+							<!DOCTYPE html>
+								<html lang="en">
+								<head>
+									<meta charset="UTF-8">
+									<title>Title Text</title>
+								</head>
+								<body>
+									<h1>Headers</h1>
+									
+									<!-- Text that should be indexed -->
+									<p>Paragraph</p>
+
+									<!-- Content that should be ignored -->
+									<script>var secret = "ScriptText";</script>
+									<style>.hidden { display: none; color: red; }</style>
+									<img src="imageName.jpg" alt="AltText">
+									<video controls><source src="lecture.mp4" type="video/mp4"></video>
+									<div style="display:none">HiddenText</div>
+								</body>
+							</html>
 						""";
 
 						return Results.Content(html, "text/html");
