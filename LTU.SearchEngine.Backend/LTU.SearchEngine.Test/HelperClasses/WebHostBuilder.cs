@@ -167,6 +167,7 @@ public class WebHostBuilder
 
 					});
 
+					
 					endpoint.MapGet("/InvertedIndexTestFile1.html", () =>
 					{
 						var html = """
@@ -180,6 +181,7 @@ public class WebHostBuilder
 						return Results.Content(html, "text/html");
 					});
 					
+					
 					endpoint.MapGet("/InvertedIndexTestFile2.html", () =>
 					{
 						var html = """
@@ -189,6 +191,40 @@ public class WebHostBuilder
 
 						return Results.Content(html, "text/html");
 					});
+					
+					
+					endpoint.MapGet("/IndexerNormalizingTextRun.html", () =>
+					{
+						var html = """
+							<body>
+								<h1>Running run Run runs Runs</h1>
+							</body>
+						""";
+
+						return Results.Content(html, "text/html");
+					});
+					
+					
+					endpoint.MapGet("/IndexerNormalizingTextSwim.html", () =>
+					{
+						var html = """
+							<body>
+								<h1>Swimming swims SwiMs SwIM swim</h1>
+							</body>
+						""";
+						return Results.Content(html, "text/html");
+					});
+					
+					endpoint.MapGet("/IndexerNormalizingTextCat.html", () =>
+					{
+						var html = """
+							<body>
+								<h1>Cat Cats cat's cat cats</h1>
+							</body>
+						""";
+						return Results.Content(html, "text/html");
+					});
+
 				});
 			});
 		})
