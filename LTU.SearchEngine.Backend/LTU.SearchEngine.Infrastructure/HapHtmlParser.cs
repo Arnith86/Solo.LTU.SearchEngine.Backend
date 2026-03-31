@@ -1,4 +1,5 @@
-﻿using HtmlAgilityPack;
+﻿using System.Text.RegularExpressions;
+using HtmlAgilityPack;
 using LTU.SearchEngine.Backend.Core;
 using LTU.SearchEngine.Backend.Core.Exceptions;
 using LTU.SearchEngine.Backend.Core.Model;
@@ -198,14 +199,15 @@ public class HapHtmlParser : IHtmlParser
 
         var decodedText = System.Net.WebUtility.HtmlDecode(text);
 
-        var words = decodedText.Split(
-            new[] { ' ', '\r', '\n', '\t' },
-            StringSplitOptions.RemoveEmptyEntries
-        );
+        // This regex pattern matches words that may include letters (including accented), numbers, and certain punctuation.
+        // It allows for contractions (e.g., "don't"), hyphenated words (e.g., "state-of-the-art"), and dot-separated terms (e.g., "term1.2").
+        var cleanTextPattern = @"[\wåäöé]+(['.-][\wåäöé]+)*";
 
-        foreach (var word in words)
+        var matches = Regex.Matches(decodedText, cleanTextPattern, RegexOptions.IgnoreCase);
+
+        foreach (Match match in matches)
         {
-            terms.Add(new IndexedTerm(word.Trim(), source));
+            terms.Add(new IndexedTerm(match.Value.Trim(), source));
         }
     }
 
