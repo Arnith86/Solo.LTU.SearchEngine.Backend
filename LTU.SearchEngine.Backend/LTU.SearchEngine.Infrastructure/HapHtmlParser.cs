@@ -112,8 +112,7 @@ public class HapHtmlParser : IHtmlParser
 
         if (garbageNodes != null)
         {
-            foreach (var node in garbageNodes)  node.Remove();
-            
+            foreach (var node in garbageNodes) node.Remove();
         }
 
         // --- 2. EXTRACT TITLE (High Ranking Priority) ---
@@ -199,11 +198,15 @@ public class HapHtmlParser : IHtmlParser
 
         var decodedText = System.Net.WebUtility.HtmlDecode(text);
 
+        // Fix broken words split by newlines or tabs (e.g., "state-\nof-the-art" -> "state-of-the-art")
+        var fixedBrokenText = Regex.Replace(decodedText, @"(?<=\w)-\s*[\r\n]+\s*", ""); 
+
         // This regex pattern matches words that may include letters (including accented), numbers, and certain punctuation.
         // It allows for contractions (e.g., "don't"), hyphenated words (e.g., "state-of-the-art"), and dot-separated terms (e.g., "term1.2").
         var cleanTextPattern = @"[\wåäöé]+(['.-][\wåäöé]+)*";
 
-        var matches = Regex.Matches(decodedText, cleanTextPattern, RegexOptions.IgnoreCase);
+
+        var matches = Regex.Matches(fixedBrokenText, cleanTextPattern, RegexOptions.IgnoreCase);
 
         foreach (Match match in matches)
         {
