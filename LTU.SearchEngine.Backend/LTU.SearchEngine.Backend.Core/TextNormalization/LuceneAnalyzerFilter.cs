@@ -1,6 +1,9 @@
 ﻿using Lucene.Net.Analysis;
 using Lucene.Net.Analysis.Core;
 using Lucene.Net.Analysis.En;
+using Lucene.Net.Analysis.Snowball;
+using Lucene.Net.Analysis.Standard;
+using Lucene.Net.Analysis.Sv;
 using Lucene.Net.Analysis.TokenAttributes;
 using Lucene.Net.Util;
 
@@ -20,12 +23,13 @@ public class LuceneAnalyzerFilter : ITextFilter
         return Analyzer.NewAnonymous((fieldName, reader) =>
         {
             // LowerCase term
-            var tokenizer = new KeywordTokenizer(reader);
+            var tokenizer = new StandardTokenizer(LuceneVersion.LUCENE_48, reader);
             TokenStream stream = new LowerCaseFilter(LuceneVersion.LUCENE_48, tokenizer);
             // stopWords
-            stream = new StopFilter(LuceneVersion.LUCENE_48, stream, EnglishAnalyzer.DefaultStopSet);
+            stream = new StopFilter(LuceneVersion.LUCENE_48, stream, SwedishAnalyzer.DefaultStopSet); //EnglishAnalyzer.DefaultStopSet);
             // Normalize "Running" → "run"
-            stream = new PorterStemFilter(stream);
+            // stream = new PorterStemFilter(stream);
+            stream = new SnowballFilter(stream, "Swedish");
 
             return new TokenStreamComponents(tokenizer, stream);
         });
