@@ -218,9 +218,11 @@ public class WebHostBuilder
 					endpoint.MapGet("/IndexerNormalizingTextCat.html", () =>
 					{
 						var html = """
+						<html lang="en">
 							<body>
 								<h1>Cat Cats cat's cat cats</h1>
 							</body>
+						</html>
 						""";
 						return Results.Content(html, "text/html");
 					});
