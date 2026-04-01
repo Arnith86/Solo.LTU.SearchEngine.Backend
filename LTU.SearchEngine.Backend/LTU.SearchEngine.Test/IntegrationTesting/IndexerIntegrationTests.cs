@@ -185,6 +185,9 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     [InlineData("/IndexerNormalizingTextRun.html", "run", 5)]
     [InlineData("/IndexerNormalizingTextSwim.html", "swim", 5)]
     [InlineData("/IndexerNormalizingTextCat.html", "cat", 5)]
+    [InlineData("/IndexerNormalizingTextHäst.html", "häst", 8)]
+    [InlineData("/IndexerNormalizingTextArt.html", "art", 5)]
+    [InlineData("/IndexerNormalizingTextEat.html", "eat", 5)]
     [Trait("TestCase", "TC-FRQ-2007")]
     public async Task Indexer_TextIsNormalizedOnIndex(string url, string expectedTerm, int expectedFrequency)
     {
