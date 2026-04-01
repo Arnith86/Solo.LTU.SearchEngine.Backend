@@ -27,6 +27,7 @@ public class HapHtmlParser : IHtmlParser
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+
     /// <inheritdoc/>
     public async Task<List<string>> ExtractInternalLinks(string html, string baseUrl)
     {
@@ -85,139 +86,7 @@ public class HapHtmlParser : IHtmlParser
         return internalLinks.Distinct().ToList();
     }
     
-
-    private async Task<bool> IsNotRobotsBlockedAndWhitelistedAsync(string url)
-    {
-        if (!_domainValidator.IsWhitelisted(url))
-			throw new DomainNotWhitelistedException(url);
-
-		if (!await _robotsHandler.IsAllowedAsync(url))
-			throw new BlockedByRobotsTxtException(url);   
-
-        return true; 
-    }
-
-     // Add space to prevent word concatenation after removal
-    private void ReplaceChildWithSpaceNode(HtmlDocument doc, HtmlNode childNode)
-    {
-        var spaceNode = doc.CreateTextNode(" "); 
-        childNode.ParentNode.ReplaceChild(spaceNode, childNode); 
-    }
-
     /// <inheritdoc/>
-    public IEnumerable<IndexedTerm> ExtractTerms(string html)
-    {
-        var terms = new List<IndexedTerm>();
-        var doc = new HtmlDocument();
-        doc.LoadHtml(html);
-
-        // --- 1. CLEANUP
-        // Remove non-content nodes (scripts, styles, metadata, navigation) 
-        // to prevent indexing code or irrelevant UI elements.
-        var garbageNodes = doc.DocumentNode.SelectNodes("//script|//style|//noscript|//nav");
-
-        if (garbageNodes != null)
-        {
-            foreach (var node in garbageNodes) node.Remove();
-        }
-
-        // --- 2. EXTRACT TITLE (High Ranking Priority) ---
-        // The <title> tag contains the most relevant keywords for the page
-        // We use SelectSingleNode since a valid HTML document only has one title.
-        var titleNode = doc.DocumentNode.SelectSingleNode("//title");
-        if (titleNode != null)
-        {
-            AddTerms(terms, titleNode.InnerText, TermSource.Title);
-            ReplaceChildWithSpaceNode(doc, titleNode);
-        }
-
-        // --- 3. EXTRACT HEADERS (Medium Ranking Priority) ---
-        // H1-H6 tags represent section headers and are weighted higher than body text.
-        var headerNodes = doc.DocumentNode.SelectNodes("//h1|//h2|//h3|//h4|//h5|//h6");
-        if (headerNodes != null)
-        {
-            foreach (var node in headerNodes)
-            {
-                AddTerms(terms, node.InnerText, TermSource.Header);
-                ReplaceChildWithSpaceNode(doc, node);
-            }
-        }
-
-        // --- 3. EXTRACT META DATA (Fix for UTF-8 test) ---
-        var metaNodes = doc.DocumentNode.SelectNodes("//meta");
-        if (metaNodes != null)
-        {
-            foreach (var node in metaNodes)
-            {
-                // Meta-tags seldomly have meaningful InnerText, so we check attributes like 'charset' or 'content'
-                var content = node.GetAttributeValue("content", "");
-                var charset = node.GetAttributeValue("charset", "");
-
-                if (!string.IsNullOrEmpty(content)) AddTerms(terms, content, TermSource.Header);
-                if (!string.IsNullOrEmpty(charset)) AddTerms(terms, charset, TermSource.Header);
-
-                ReplaceChildWithSpaceNode(doc, node);
-            }
-        }
-
-        var footerNodes = doc.DocumentNode.SelectNodes("//footer");
-        if (footerNodes != null)
-        {
-            foreach (var node in footerNodes)
-            {
-                AddTerms(terms, node.InnerText, TermSource.Body);
-                ReplaceChildWithSpaceNode(doc, node);
-            }
-        }
-
-        // --- EXTRACT IMAGE TEXT (Alt-tags) <img> with alt-attributes ---
-        var imageNodes = doc.DocumentNode.SelectNodes("//img[@alt]");
-        if (imageNodes != null)
-        {
-            foreach (var node in imageNodes)
-            {
-                var altText = node.GetAttributeValue("alt", "");
-                if (!string.IsNullOrWhiteSpace(altText))
-                {
-                    // alt-text is often given the same importance as a body or header
-                    AddTerms(terms, altText, TermSource.Body);
-                }
-                ReplaceChildWithSpaceNode(doc, node);
-            }
-        }
-
-        // --- 4. EXTRACT BODY TEXT (Low/Standard Ranking Priority) ---
-        // At this stage, scripts, titles, and headers have been removed.
-        // InnerText now contains only the remaining "Body" content (paragraphs, lists, divs).
-        var bodyText = doc.DocumentNode.InnerText;
-        AddTerms(terms, bodyText, TermSource.Body);
-
-        return terms;
-    }
-
-    // Helper method for Tokenization and Object Creation
-    private void AddTerms(List<IndexedTerm> terms, string text, TermSource source)
-    {
-        if (string.IsNullOrWhiteSpace(text)) return;
-
-        var decodedText = System.Net.WebUtility.HtmlDecode(text);
-
-        // Fix broken words split by newlines or tabs (e.g., "state-\nof-the-art" -> "state-of-the-art")
-        var fixedBrokenText = Regex.Replace(decodedText, @"(?<=\w)-\s*[\r\n]+\s*", ""); 
-
-        // This regex pattern matches words that may include letters (including accented), numbers, and certain punctuation.
-        // It allows for contractions (e.g., "don't"), hyphenated words (e.g., "state-of-the-art"), and dot-separated terms (e.g., "term1.2").
-        var cleanTextPattern = @"[\wåäöé]+(['.-][\wåäöé]+)*";
-
-
-        var matches = Regex.Matches(fixedBrokenText, cleanTextPattern, RegexOptions.IgnoreCase);
-
-        foreach (Match match in matches)
-        {
-            terms.Add(new IndexedTerm(match.Value.Trim(), source));
-        }
-    }
-
     public string ExtractRawText(string html)
     {
         if (string.IsNullOrWhiteSpace(html)) return string.Empty;
@@ -237,12 +106,10 @@ public class HapHtmlParser : IHtmlParser
         return HtmlEntity.DeEntitize(plainText).Trim();
     }
 
+    /// <inheritdoc/>
     public string ExtractTitle(string html)
     {
-        if(string.IsNullOrWhiteSpace(html))
-        {
-            return string.Empty;
-        }
+        if(string.IsNullOrWhiteSpace(html)) return string.Empty;
 
         //Load HTML in HtmlAgilityPack
         var doc = new HtmlDocument();
@@ -252,15 +119,176 @@ public class HapHtmlParser : IHtmlParser
         var titleNode = doc.DocumentNode.SelectSingleNode("//title");
 
         //handle if tag is missing
-        if(titleNode == null)
-        {
-            return string.Empty;
-        }
+        if(titleNode == null)return string.Empty;
 
         //Get text, decode HTML entities and trim whitespace
         string titleText = titleNode.InnerText;
 
         return HtmlEntity.DeEntitize(titleText).Trim();
+    }
+
+
+    /// <inheritdoc/>
+    public IEnumerable<IndexedTerm> ExtractTerms(string html)
+    {
+        var terms = new List<IndexedTerm>();
+        var doc = new HtmlDocument();
+        doc.LoadHtml(html);
+
+        RemoveGarbageNodes(doc);
+        HandleTitleNode(doc, terms);
+        HandleHeaderNodes(doc, terms);
+        HandleMetaNodes(doc, terms);
+        HandleFooterNodes(doc, terms);
+        HandleImageAltTextNodes(doc, terms);
+        HandleBodyText(doc, terms);
+
+        return terms;
+    }
+    
+
+    private async Task<bool> IsNotRobotsBlockedAndWhitelistedAsync(string url)
+    {
+        if (!_domainValidator.IsWhitelisted(url))
+			throw new DomainNotWhitelistedException(url);
+
+		if (!await _robotsHandler.IsAllowedAsync(url))
+			throw new BlockedByRobotsTxtException(url);   
+
+        return true; 
+    }
+
+
+    // Remove non-content nodes (scripts, styles, metadata, navigation)
+    private void RemoveGarbageNodes(HtmlDocument doc)
+    {
+        var garbageNodes = doc.DocumentNode.SelectNodes("//script|//style|//noscript|//nav");
+
+        if (garbageNodes != null)
+        {
+            foreach (var node in garbageNodes) node.Remove();
+        }
+    }
+
+
+    private void HandleTitleNode(HtmlDocument doc, List<IndexedTerm> terms)
+    {   
+        // We use SelectSingleNode since a valid HTML document only has one title.
+        var titleNode = doc.DocumentNode.SelectSingleNode("//title");
+        if (titleNode != null)
+        {
+            AddTerms(terms, titleNode.InnerText, TermSource.Title);
+            ReplaceChildWithSpaceNode(doc, titleNode);
+        }
+    }   
+    
+
+    private void HandleHeaderNodes(HtmlDocument doc, List<IndexedTerm> terms)
+    {
+        // H1-H6 tags represent section headers and are weighted higher than body text.
+        var headerNodes = doc.DocumentNode.SelectNodes("//h1|//h2|//h3|//h4|//h5|//h6");
+        if (headerNodes != null)
+        {
+            foreach (var node in headerNodes)
+            {
+                AddTerms(terms, node.InnerText, TermSource.Header);
+                ReplaceChildWithSpaceNode(doc, node);
+            }
+        }
+    }
+
+
+    private void HandleMetaNodes(HtmlDocument doc, List<IndexedTerm> terms)
+    {
+        var metaNodes = doc.DocumentNode.SelectNodes("//meta");
+        if (metaNodes != null)
+        {
+            foreach (var node in metaNodes)
+            {
+                // Meta-tags seldomly have meaningful InnerText, so we check attributes like 'charset' or 'content'
+                var content = node.GetAttributeValue("content", "");
+                var charset = node.GetAttributeValue("charset", "");
+
+                if (!string.IsNullOrEmpty(content)) AddTerms(terms, content, TermSource.Header);
+                if (!string.IsNullOrEmpty(charset)) AddTerms(terms, charset, TermSource.Header);
+
+                ReplaceChildWithSpaceNode(doc, node);
+            }
+        } 
+    }
+
+
+    private void HandleFooterNodes(HtmlDocument doc, List<IndexedTerm> terms)
+    {
+       var footerNodes = doc.DocumentNode.SelectNodes("//footer");
+        if (footerNodes != null)
+        {
+            foreach (var node in footerNodes)
+            {
+                AddTerms(terms, node.InnerText, TermSource.Body);
+                ReplaceChildWithSpaceNode(doc, node);
+            }
+        } 
+    }
+
+
+    private void HandleImageAltTextNodes(HtmlDocument doc, List<IndexedTerm> terms)
+    {
+        // --- EXTRACT IMAGE TEXT (Alt-tags) <img> with alt-attributes ---
+        var imageNodes = doc.DocumentNode.SelectNodes("//img[@alt]");
+        if (imageNodes != null)
+        {
+            foreach (var node in imageNodes)
+            {
+                var altText = node.GetAttributeValue("alt", "");
+                
+                if (!string.IsNullOrWhiteSpace(altText))
+                   AddTerms(terms, altText, TermSource.Body);
+                
+                ReplaceChildWithSpaceNode(doc, node);
+            }
+        }
+    }
+
+
+    private void HandleBodyText(HtmlDocument doc, List<IndexedTerm> terms)
+    {
+        // At this stage, scripts, titles, and headers have been removed.
+        // InnerText now contains only the remaining "Body" content (paragraphs, lists, divs).
+        var bodyText = doc.DocumentNode.InnerText;
+        AddTerms(terms, bodyText, TermSource.Body);
+        
+    }
+    
+
+    // Add space to prevent word concatenation after removal
+    private void ReplaceChildWithSpaceNode(HtmlDocument doc, HtmlNode childNode)
+    {
+        var spaceNode = doc.CreateTextNode(" "); 
+        childNode.ParentNode.ReplaceChild(spaceNode, childNode); 
+    }
+
+
+    // Helper method for Tokenization and Object Creation
+    private void AddTerms(List<IndexedTerm> terms, string text, TermSource source)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return;
+
+        var decodedText = System.Net.WebUtility.HtmlDecode(text);
+
+        // Fix broken words split by newlines or tabs (e.g., "state-\nof-the-art" -> "state-of-the-art")
+        var fixedBrokenText = Regex.Replace(decodedText, @"(?<=\w)-\s*[\r\n]+\s*", ""); 
+
+        // This regex pattern matches words that may include letters (including accented), numbers, and certain punctuation.
+        // It allows for contractions (e.g., "don't"), hyphenated words (e.g., "state-of-the-art"), and dot-separated terms (e.g., "term1.2").
+        var cleanTextPattern = @"[\wåäöé]+(['.-][\wåäöé]+)*";
+
+        var matches = Regex.Matches(fixedBrokenText, cleanTextPattern, RegexOptions.IgnoreCase);
+
+        foreach (Match match in matches)
+        {
+            terms.Add(new IndexedTerm(match.Value.Trim(), source));
+        }
     }
 }
 
