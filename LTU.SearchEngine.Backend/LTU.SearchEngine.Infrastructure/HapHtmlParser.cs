@@ -200,23 +200,47 @@ public class HapHtmlParser : IHtmlParser
 
     private void HandleMetaNodes(HtmlDocument doc, List<IndexedTerm> terms)
     {
-        var metaNodes = doc.DocumentNode.SelectNodes("//meta");
+        var whiteListedContentKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "description", "keywords", "title", "abstract", "subject",
+            "og:description", "og:title", "og:image:alt", "og:site_name",
+            "twitter:title", "twitter:description", "twitter:image:alt",
+            "citation_title", "citation_author", "citation_publication_date"
+        };
+
+        var metaNodes = doc.DocumentNode.SelectNodes("//meta[@content]");
         if (metaNodes != null)
         {
             foreach (var node in metaNodes)
             {
-                // Meta-tags seldomly have meaningful InnerText, so we check attributes like 'charset' or 'content'
-                var content = node.GetAttributeValue("content", "");
-                var charset = node.GetAttributeValue("charset", "");
-
-                if (!string.IsNullOrEmpty(content)) AddTerms(terms, content, TermSource.Header);
+                // ToDo: charset should be extracted to own method and stored separately in CrawlResult
+                string charset = node.GetAttributeValue("charset", "");
                 if (!string.IsNullOrEmpty(charset)) AddTerms(terms, charset, TermSource.Header);
+                
+                string nameContent = node.GetAttributeValue("name", "");
+                string propertyContent = node.GetAttributeValue("property", "");
+                string content = node.GetAttributeValue("content", "");
+
+                
+                if (IsDesiredMetaContentType(whiteListedContentKeys, nameContent, propertyContent, content))
+                    AddTerms(terms, content, TermSource.Header);
 
                 ReplaceChildWithSpaceNode(doc, node);
             }
         } 
     }
 
+    private bool IsDesiredMetaContentType(
+        HashSet<string> whiteListedContentKeys,  
+        string nameContent, 
+        string propertyContent, 
+        string content
+        )
+    {
+        return (whiteListedContentKeys.Contains(nameContent) || 
+                whiteListedContentKeys.Contains(propertyContent)) && 
+                !string.IsNullOrEmpty(content);
+    }
 
     private void HandleFooterNodes(HtmlDocument doc, List<IndexedTerm> terms)
     {
