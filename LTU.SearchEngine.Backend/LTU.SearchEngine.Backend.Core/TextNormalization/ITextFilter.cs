@@ -2,10 +2,9 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace LTU.SearchEngine.Backend.Core.TextNormalization
+namespace LTU.SearchEngine.Backend.Core.TextNormalization;
+
+public interface ITextFilter
 {
-    public interface ITextFilter
-    {
-        string? Apply(string rawTerm);
-    }
+    string? Apply(string rawTerm);
 }

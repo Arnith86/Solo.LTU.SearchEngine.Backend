@@ -1,47 +1,44 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Text;
 
-namespace LTU.SearchEngine.Backend.Core.TextNormalization
+namespace LTU.SearchEngine.Backend.Core.TextNormalization;
+
+public class PunctuationFilter : ITextFilter
 {
-    public class PunctuationFilter : ITextFilter
+    public string? Apply(string rawTerm)
     {
-        public string? Apply(string rawTerm)
+        if (string.IsNullOrWhiteSpace(rawTerm))
+            return null;
+
+        var builder = new StringBuilder();
+        bool hasAlphaNumeric = false;
+
+        foreach (var c in rawTerm)
         {
-            if (string.IsNullOrWhiteSpace(rawTerm))
-                return null;
-
-            var builder = new StringBuilder();
-            bool hasAlphaNumeric = false;
-
-            foreach (var c in rawTerm)
+            if (char.IsLetterOrDigit(c))
             {
-                if (char.IsLetterOrDigit(c))
-                {
-                    builder.Append(c);
-                    hasAlphaNumeric = true;
-                }
-                else if (c == '+' || c == '#')
-                {
-                    builder.Append(c);
-                }
+                builder.Append(c);
+                hasAlphaNumeric = true;
             }
-
-            if (!hasAlphaNumeric)
-                return null;
-
-            var result = builder.ToString();
-
-            // Remove leading + or #
-            while (result.StartsWith("+") || result.StartsWith("#"))
+            else if (c == '+' || c == '#')
             {
-                result = result.Substring(1);
+                builder.Append(c);
             }
-
-            if (result.Length == 0)
-                return null;
-
-            return result;
         }
+
+        if (!hasAlphaNumeric)
+            return null;
+
+        var result = builder.ToString();
+
+        // Remove leading + or #
+        while (result.StartsWith("+") || result.StartsWith("#"))
+        {
+            result = result.Substring(1);
+        }
+
+        if (result.Length == 0)
+            return null;
+
+        return result;
     }
 }
