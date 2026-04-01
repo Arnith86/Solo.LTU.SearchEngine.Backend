@@ -97,6 +97,12 @@ public class HapHtmlParser : IHtmlParser
         return true; 
     }
 
+     // Add space to prevent word concatenation after removal
+    private void ReplaceChildWithSpaceNode(HtmlDocument doc, HtmlNode childNode)
+    {
+        var spaceNode = doc.CreateTextNode(" "); 
+        childNode.ParentNode.ReplaceChild(spaceNode, childNode); 
+    }
 
     /// <inheritdoc/>
     public IEnumerable<IndexedTerm> ExtractTerms(string html)
@@ -122,7 +128,7 @@ public class HapHtmlParser : IHtmlParser
         if (titleNode != null)
         {
             AddTerms(terms, titleNode.InnerText, TermSource.Title);
-            titleNode.Remove(); 
+            ReplaceChildWithSpaceNode(doc, titleNode);
         }
 
         // --- 3. EXTRACT HEADERS (Medium Ranking Priority) ---
@@ -133,8 +139,7 @@ public class HapHtmlParser : IHtmlParser
             foreach (var node in headerNodes)
             {
                 AddTerms(terms, node.InnerText, TermSource.Header);
-
-                node.Remove();
+                ReplaceChildWithSpaceNode(doc, node);
             }
         }
 
@@ -151,7 +156,7 @@ public class HapHtmlParser : IHtmlParser
                 if (!string.IsNullOrEmpty(content)) AddTerms(terms, content, TermSource.Header);
                 if (!string.IsNullOrEmpty(charset)) AddTerms(terms, charset, TermSource.Header);
 
-                node.Remove();
+                ReplaceChildWithSpaceNode(doc, node);
             }
         }
 
@@ -161,8 +166,7 @@ public class HapHtmlParser : IHtmlParser
             foreach (var node in footerNodes)
             {
                 AddTerms(terms, node.InnerText, TermSource.Body);
-
-                node.Remove();
+                ReplaceChildWithSpaceNode(doc, node);
             }
         }
 
@@ -178,7 +182,7 @@ public class HapHtmlParser : IHtmlParser
                     // alt-text is often given the same importance as a body or header
                     AddTerms(terms, altText, TermSource.Body);
                 }
-                node.Remove();
+                ReplaceChildWithSpaceNode(doc, node);
             }
         }
 
