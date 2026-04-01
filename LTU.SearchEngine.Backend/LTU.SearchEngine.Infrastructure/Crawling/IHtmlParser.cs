@@ -29,15 +29,15 @@ public interface IHtmlParser
 	/// <returns>A plain-text representation of the visible content.</returns>
 	string ExtractRawText(string html);
 
-	/// <summary>
-	/// Extracts the document title from the given HTML content.
-	/// </summary>
+	/// <summary>Extracts the document title from the given HTML content.</summary>
 	/// <param name="html">The raw HTML content to parse.</param>
-	/// <returns>
-	/// The value of the HTML <c>&lt;title&gt;</c> element, or an empty <br />
-	/// string if no title is present.
-	/// </returns>
+	/// <returns>The value of the HTML <c>&lt;title&gt;</c> element, or an empty string if no title is present.</returns>
 	string ExtractTitle(string html);
+
+	/// <summary>Extracts the language code used in the given HTML content.</summary>
+	/// <param name="html">The raw HTML content to parse.</param>
+	/// <returns>The value of the HTML <c>&lt;html&gt;</c> element's <c>lang</c> attribute, or an "Unknown" if not specified.</returns>
+	string ExtractLanguage(string html);
 
     /// <summary>
     /// Extracts indexable terms from raw HTML by stripping non-content elements (scripts, styles) 
