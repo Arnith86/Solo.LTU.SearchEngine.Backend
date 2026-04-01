@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Diagnostics;
+using System.Text.RegularExpressions;
 using HtmlAgilityPack;
 using LTU.SearchEngine.Backend.Core;
 using LTU.SearchEngine.Backend.Core.Exceptions;
@@ -33,6 +34,7 @@ public class HapHtmlParser : IHtmlParser
     {
         var doc = new HtmlDocument();
         doc.LoadHtml(html);
+
         var internalLinks = new List<string>();
 
         // Try to create a Uri object from the baseUrl.
@@ -109,7 +111,7 @@ public class HapHtmlParser : IHtmlParser
     /// <inheritdoc/>
     public string ExtractTitle(string html)
     {
-        if(string.IsNullOrWhiteSpace(html)) return string.Empty;
+        if (string.IsNullOrWhiteSpace(html)) return string.Empty;
 
         //Load HTML in HtmlAgilityPack
         var doc = new HtmlDocument();
@@ -119,7 +121,7 @@ public class HapHtmlParser : IHtmlParser
         var titleNode = doc.DocumentNode.SelectSingleNode("//title");
 
         //handle if tag is missing
-        if(titleNode == null)return string.Empty;
+        if (titleNode == null) return string.Empty;
 
         //Get text, decode HTML entities and trim whitespace
         string titleText = titleNode.InnerText;
@@ -127,6 +129,21 @@ public class HapHtmlParser : IHtmlParser
         return HtmlEntity.DeEntitize(titleText).Trim();
     }
 
+
+    public string ExtractLanguage(string html)
+    {
+        string languageCode = "Unknown";
+
+        var doc = new HtmlDocument();
+        doc.LoadHtml(html);
+
+        var htmlNode = doc.DocumentNode.SelectSingleNode("//html");
+        
+        if (htmlNode is not null)
+            languageCode = htmlNode.GetAttributeValue("lang", "Unknown"); 
+        
+        return languageCode;
+    }
 
     /// <inheritdoc/>
     public IEnumerable<IndexedTerm> ExtractTerms(string html)
@@ -288,8 +305,15 @@ public class HapHtmlParser : IHtmlParser
     // Add space to prevent word concatenation after removal
     private void ReplaceChildWithSpaceNode(HtmlDocument doc, HtmlNode childNode)
     {
-        var spaceNode = doc.CreateTextNode(" "); 
-        childNode.ParentNode.ReplaceChild(spaceNode, childNode); 
+        if (childNode?.ParentNode is not null)
+        {
+            var spaceNode = doc.CreateTextNode(" "); 
+            childNode.ParentNode.ReplaceChild(spaceNode, childNode); 
+        }
+        else
+        {
+            childNode?.Remove();
+        }
     }
 
 

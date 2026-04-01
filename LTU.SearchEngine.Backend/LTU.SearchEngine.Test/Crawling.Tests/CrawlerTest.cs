@@ -1,7 +1,9 @@
-﻿using LTU.SearchEngine.Backend.Core.HelperClasses;
+﻿using Castle.Core.Logging;
+using LTU.SearchEngine.Backend.Core.HelperClasses;
 using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure.Crawling;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
 using System.Net;
@@ -28,7 +30,12 @@ public class CrawlerTest
         // We create a HttpClient that uses our mocked handler
         _httpClient = new HttpClient(_handlerMock.Object);
 
-        _sut = new Crawler(_httpClient, _parserMock.Object, _contentHasherMock.Object);
+        _sut = new Crawler(
+            httpClient: _httpClient, 
+            htmlParser: _parserMock.Object, 
+            contentHasher: _contentHasherMock.Object,
+            logger: new Mock<ILogger<Crawler>>().Object
+            );
         _output = output;
     }
 
@@ -38,8 +45,8 @@ public class CrawlerTest
     {
         // ARRANGE
         var url = "https://ltu.se";
-        var fakeHtml = @"
-            <html>
+        var fakeHtml = """
+            <html lang="en">
                 <head>
                   <title>Test Page Title</title>
                 </head>
@@ -48,7 +55,8 @@ public class CrawlerTest
                     <p>This is a test page with search terms.</p>
                     <a href='/contact'>Contact Us</a>
                 </body>
-            </html>";
+            </html>
+            """;
 
         var expectedContent = System.Text.Encoding.UTF8.GetBytes(fakeHtml);
 
@@ -66,7 +74,10 @@ public class CrawlerTest
 
         _parserMock.Setup(p => p.ExtractTitle(It.IsAny<string>()))
             .Returns(expectedTitle);
-
+    
+        _parserMock.Setup(p => p.ExtractLanguage(It.IsAny<string>()))
+            .Returns("en");
+        
         SetupHttpResponse(HttpStatusCode.OK, fakeHtml);
 
         // ACT
@@ -77,7 +88,7 @@ public class CrawlerTest
         Assert.NotNull(result);
         Assert.Equal(url, result.Url);
         Assert.Equal(HttpStatusCode.OK, result.StatusCode);
-        Assert.Equal("Unknown", result.Language);
+        Assert.Equal("en", result.Language);
         Assert.NotEmpty(result.IndexedTerms);
         Assert.Equal(expectedContent, result.Content);
         Assert.True(result.TimeTakenMs >= 0);
