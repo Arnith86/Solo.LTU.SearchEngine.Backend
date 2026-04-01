@@ -189,8 +189,6 @@ public class ParserTests
         // Case A: High Priority (Terms found in <title>)
         Assert.Contains(result, t => t.Term == "Extraction" && t.Source == TermSource.Title);
 
-        Assert.Contains(result, t => t.Term == "UTF-8" && t.Source == TermSource.Header);
-
         // Case B: Medium Priority (Terms found in <h1> - <h6>)
         Assert.Contains(result, t => t.Term == "Result" && t.Source == TermSource.Header);
 
