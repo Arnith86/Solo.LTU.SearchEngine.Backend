@@ -26,10 +26,10 @@ public class LuceneAnalyzerFilter : ITextFilter
             var tokenizer = new StandardTokenizer(LuceneVersion.LUCENE_48, reader);
             TokenStream stream = new LowerCaseFilter(LuceneVersion.LUCENE_48, tokenizer);
             // stopWords
-            stream = new StopFilter(LuceneVersion.LUCENE_48, stream, SwedishAnalyzer.DefaultStopSet); //EnglishAnalyzer.DefaultStopSet);
+            stream = new StopFilter(LuceneVersion.LUCENE_48, stream, EnglishAnalyzer.DefaultStopSet); //EnglishAnalyzer.DefaultStopSet);
             // Normalize "Running" → "run"
             // stream = new PorterStemFilter(stream);
-            stream = new SnowballFilter(stream, "Swedish");
+            stream = new SnowballFilter(stream, "English");
 
             return new TokenStreamComponents(tokenizer, stream);
         });
