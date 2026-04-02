@@ -23,9 +23,9 @@ public class QueryParser : IQueryParser
 			throw new ArgumentNullException("String tokenizer cannot be null.", nameof(stringTokenizer));
 	}
 
-	public QueryNode<HashSet<int>> Parse(string rawQuery)
+	public QueryNode<HashSet<int>> Parse(string rawQuery, string languageCode = "sv")
 	{
-		List<ExtractedQueryToken> tokens = _stringTokenizer.Tokenize(rawQuery);
+		List<ExtractedQueryToken> tokens = _stringTokenizer.Tokenize(rawQuery, languageCode);
 		QueryNode<HashSet<int>> rootNode = _treeBuilder.BuildTree(tokens);
 
 		return rootNode;

@@ -28,14 +28,16 @@ namespace LTU.SearchEngine.Api
         )]
         [SwaggerResponse(200, "The search was successful.", typeof(SearchResponseDTO))]
         [SwaggerResponse(400, "The search query was empty or invalid.")]
-        public async Task<ActionResult<SearchResponseDTO>> GetSearchResponses([FromQuery] string query)
+        public async Task<ActionResult<SearchResponseDTO>> GetSearchResponses(
+            [FromQuery] string query,
+            [FromQuery] string language = "sv")
         {
             if (string.IsNullOrWhiteSpace(query))
             {
                 return BadRequest("Search query cannot be empty.");
             }
 
-            var responseDto = await _serviceManager.QueryService.GetSearchResultsAsync(query);
+            var responseDto = await _serviceManager.QueryService.GetSearchResultsAsync(query, language);
 
             return Ok(responseDto);
         }

@@ -1,125 +1,122 @@
 ﻿using LTU.SearchEngine.Api;
 using LTU.SearchEngine.Application;
 using LTU.SearchEngine.Application.QueryParsing;
-using LTU.SearchEngine.Backend.Core.Entities;
 using LTU.SearchEngine.Backend.Core.Model.DTOs;
-using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 
-namespace LTU.SearchEngine.Test.Api.Tests
+namespace LTU.SearchEngine.Test.Api.Tests;
+
+public class SearchControllerTests
 {
-    public class SearchControllerTests
+    private readonly Mock<IServiceManager> _mockServiceManager;
+    private readonly Mock<IQueryService> _mockQueryService;
+    private readonly SearchController _controller;
+
+    public SearchControllerTests()
     {
-        private readonly Mock<IServiceManager> _mockServiceManager;
-        private readonly Mock<IQueryService> _mockQueryService;
-        private readonly SearchController _controller;
+        _mockQueryService = new Mock<IQueryService>();
+        _mockServiceManager = new Mock<IServiceManager>();
 
-        public SearchControllerTests()
+        // Connect ServiceManager with QueryService
+        _mockServiceManager.Setup(m => m.QueryService).Returns(_mockQueryService.Object);
+        _controller = new SearchController(_mockServiceManager.Object);
+    }
+
+    [Fact]
+    public async Task GetSearchResponses_ShouldReturnOk_WhenQueryIsValid()
+    {
+        // Arrange
+        string validQuery = "test search";
+
+        var fakeItems = new List<DocumentDTO>
         {
-            _mockQueryService = new Mock<IQueryService>();
-            _mockServiceManager = new Mock<IServiceManager>();
+            new DocumentDTO("Test", "http://test.com", "sv"/*, "Test snippet"*/)
+        };
 
-            // Connect ServiceManager with QueryService
-            _mockServiceManager.Setup(m => m.QueryService).Returns(_mockQueryService.Object);
-            _controller = new SearchController(_mockServiceManager.Object);
-        }
+        var expectedDto = new SearchResponseDTO(
+            searchResults: fakeItems,
+            currentPage: 1,
+            pageSize: 1,
+            totalResults: 1,
+            message: "Success"
+        );
 
-        [Fact]
-        public async Task GetSearchResponses_ShouldReturnOk_WhenQueryIsValid()
-        {
-            // Arrange
-            string validQuery = "test search";
+        _mockQueryService
+            .Setup(s => s.GetSearchResultsAsync(validQuery))
+            .Returns(Task.FromResult(expectedDto)); 
 
-            var fakeItems = new List<DocumentDTO>
-            {
-                new DocumentDTO("Test", "http://test.com", "sv"/*, "Test snippet"*/)
-            };
+        // Act
+        var result = await _controller.GetSearchResponses(validQuery);
 
-            var expectedDto = new SearchResponseDTO(
-                searchResults: fakeItems,
-                currentPage: 1,
-                pageSize: 1,
-                totalResults: 1,
-                message: "Success"
-            );
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var responseDto = Assert.IsType<SearchResponseDTO>(okResult.Value);
 
-            _mockQueryService
-                .Setup(s => s.GetSearchResultsAsync(validQuery))
-                .Returns(Task.FromResult(expectedDto)); 
+        Assert.NotEmpty(responseDto.searchResults);
+        Assert.Equal(1, responseDto.totalResults);
+        Assert.Equal("Success", responseDto.message);
 
-            // Act
-            var result = await _controller.GetSearchResponses(validQuery);
+        // Verify that the call reached the service layer 
+        _mockQueryService.Verify(s => s.GetSearchResultsAsync(validQuery), Times.Once);
+    }
 
-            // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            var responseDto = Assert.IsType<SearchResponseDTO>(okResult.Value);
+    [Fact]
+    public async Task GetSearchResponses_ShouldReturnOkWithEmptyList_WhenNoMatchesFound()
+    {
+        // Arrange
+        string query = "zero-results";
 
-            Assert.NotEmpty(responseDto.searchResults);
-            Assert.Equal(1, responseDto.totalResults);
-            Assert.Equal("Success", responseDto.message);
+        var emptyDto = new SearchResponseDTO(
+            searchResults: new List<DocumentDTO>(),
+            currentPage: 1,
+            pageSize: 0,
+            totalResults: 0,
+            message: "No results found"
+        );
 
-            // Verify that the call reached the service layer 
-            _mockQueryService.Verify(s => s.GetSearchResultsAsync(validQuery), Times.Once);
-        }
+        _mockQueryService
+            .Setup(s => s.GetSearchResultsAsync(query))
+            .Returns(Task.FromResult(emptyDto)); 
 
-        [Fact]
-        public async Task GetSearchResponses_ShouldReturnOkWithEmptyList_WhenNoMatchesFound()
-        {
-            // Arrange
-            string query = "zero-results";
+        // Act
+        var result = await _controller.GetSearchResponses(query);
 
-            var emptyDto = new SearchResponseDTO(
-                searchResults: new List<DocumentDTO>(),
-                currentPage: 1,
-                pageSize: 0,
-                totalResults: 0,
-                message: "No results found"
-            );
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var responseDto = Assert.IsType<SearchResponseDTO>(okResult.Value);
 
-            _mockQueryService
-                .Setup(s => s.GetSearchResultsAsync(query))
-                .Returns(Task.FromResult(emptyDto)); 
+        Assert.Empty(responseDto.searchResults);
+        Assert.Equal(0, responseDto.totalResults);
+        Assert.Equal("No results found", responseDto.message);
+    }
 
-            // Act
-            var result = await _controller.GetSearchResponses(query);
+    [Theory]
+    [InlineData("")]
+    [InlineData("    ")]
+    [InlineData("NULL_TEST")]
+    public async Task GetSearchResponses_ShouldReturnBadRequest_WhenQueryIsInvalid(string input)
+    {
+        string? invalidQuery = input.Equals("NULL_TEST") ? null : input;
 
-            // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            var responseDto = Assert.IsType<SearchResponseDTO>(okResult.Value);
+        // Act
+        var result = await _controller.GetSearchResponses(invalidQuery!);
 
-            Assert.Empty(responseDto.searchResults);
-            Assert.Equal(0, responseDto.totalResults);
-            Assert.Equal("No results found", responseDto.message);
-        }
+        // Assert
+        Assert.IsType<BadRequestObjectResult>(result.Result);
+    }
 
-        [Theory]
-        [InlineData("")]
-        [InlineData("    ")]
-        [InlineData("NULL_TEST")]
-        public async Task GetSearchResponses_ShouldReturnBadRequest_WhenQueryIsInvalid(string input)
-        {
-            string? invalidQuery = input.Equals("NULL_TEST") ? null : input;
+    [Fact]
+    public async Task GetSearchResponses_ShouldReturnInternalServerError_WhenServiceThrowsException()
+    {
+        // Arrange
+        string query = "error";
 
-            // Act
-            var result = await _controller.GetSearchResponses(invalidQuery!);
+        _mockQueryService
+            .Setup(s => s.GetSearchResultsAsync(query))
+            .ThrowsAsync(new System.Exception("Database connection failed"));
 
-            // Assert
-            Assert.IsType<BadRequestObjectResult>(result.Result);
-        }
-
-        [Fact]
-        public async Task GetSearchResponses_ShouldReturnInternalServerError_WhenServiceThrowsException()
-        {
-            // Arrange
-            string query = "error";
-
-            _mockQueryService
-                .Setup(s => s.GetSearchResultsAsync(query))
-                .ThrowsAsync(new System.Exception("Database connection failed"));
-
-            // Act & Assert
-            await Assert.ThrowsAsync<System.Exception>(() => _controller.GetSearchResponses(query));
-        }
+        // Act & Assert
+        await Assert.ThrowsAsync<System.Exception>(() => _controller.GetSearchResponses(query));
     }
 }

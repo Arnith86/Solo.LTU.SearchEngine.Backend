@@ -6,8 +6,9 @@ public class ExtractedQueryToken
 {
 	public QueryTokenType TokenType { get; }
 	public string Token { get; }
+	public string Language { get; }
 
-	public ExtractedQueryToken(QueryTokenType tokenType, string token)
+	public ExtractedQueryToken(QueryTokenType tokenType, string token, string language = "sv")
 	{
 		if (string.IsNullOrWhiteSpace(token))
 			throw new ArgumentException("Token cannot be empty.", nameof(token));
@@ -24,5 +25,6 @@ public class ExtractedQueryToken
 
 		Token = token;
 		TokenType = tokenType;
+		Language = language;
 	}
 }

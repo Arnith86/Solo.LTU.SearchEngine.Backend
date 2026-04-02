@@ -6,7 +6,7 @@ namespace LTU.SearchEngine.Application.QueryParsing.Helpers;
 
 public class PhraseAndTermNormalizer : ITextNormalizer<ExtractedQueryToken>
 {
-    public string Normalize(ExtractedQueryToken token)
+    public string Normalize(ExtractedQueryToken token, string languageCode)
     {
         if (token == null || token.Token == null)
         {

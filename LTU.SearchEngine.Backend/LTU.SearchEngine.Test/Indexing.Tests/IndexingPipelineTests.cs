@@ -49,7 +49,7 @@ public class IndexingPipelineTests
     {
         // Arrange
         _normalizerMock
-            .Setup(n => n.Normalize("Running"))
+            .Setup(n => n.Normalize("Running", "en"))
             .Returns("run");
 
         var crawlResult = CreateCrawlResult(
@@ -60,7 +60,7 @@ public class IndexingPipelineTests
 
         // Assert
         Assert.Equal(1, document.ContentTerms["run"]);
-        _normalizerMock.Verify(n => n.Normalize("Running"), Times.Once());
+        _normalizerMock.Verify(n => n.Normalize("Running", "en"), Times.Once());
     }
 
 
@@ -69,7 +69,7 @@ public class IndexingPipelineTests
     {
         // Arrange
         _normalizerMock
-            .Setup(n => n.Normalize("Running"))
+            .Setup(n => n.Normalize("Running", "en"))
             .Returns("run");
 
         var crawlResult = CreateCrawlResult( new[]
@@ -85,7 +85,7 @@ public class IndexingPipelineTests
         Assert.Equal(1, document.TitleTerms["run"]);
         Assert.Equal(1, document.ContentTerms["run"]);
 
-        _normalizerMock.Verify(n => n.Normalize("Running"), Times.Exactly(2));
+        _normalizerMock.Verify(n => n.Normalize("Running", "en"), Times.Exactly(2));
     }
 
 
@@ -99,7 +99,7 @@ public class IndexingPipelineTests
         );
         
         _normalizerMock
-            .Setup(n => n.Normalize(It.IsAny<string>()))
+            .Setup(n => n.Normalize(It.IsAny<string>(), "en"))
             .Returns("run");
 
         
@@ -127,7 +127,7 @@ public class IndexingPipelineTests
         );
         
         _normalizerMock
-            .Setup(n => n.Normalize(It.IsAny<string>()))
+            .Setup(n => n.Normalize(It.IsAny<string>(), "en"))
             .Returns("run");
 
         
@@ -150,7 +150,7 @@ public class IndexingPipelineTests
         );
         
         _normalizerMock
-            .Setup(n => n.Normalize(It.IsAny<string>()))
+            .Setup(n => n.Normalize(It.IsAny<string>(), "en"))
             .Returns("run");
 
         // Act 
@@ -178,7 +178,7 @@ public class IndexingPipelineTests
         );
         
         _normalizerMock
-            .Setup(n => n.Normalize(It.IsAny<string>()))
+            .Setup(n => n.Normalize(It.IsAny<string>(), "en"))
             .Returns("run");
 
         // Act 
@@ -200,7 +200,7 @@ public class IndexingPipelineTests
         );
         
         _normalizerMock
-            .Setup(n => n.Normalize(It.IsAny<string>()))
+            .Setup(n => n.Normalize(It.IsAny<string>(), "en"))
             .Returns("run");
 
         // Act 
@@ -228,7 +228,7 @@ public class IndexingPipelineTests
         );
         
         _normalizerMock
-            .Setup(n => n.Normalize(It.IsAny<string>()))
+            .Setup(n => n.Normalize(It.IsAny<string>(), "en"))
             .Returns("run");
 
         // Act 
@@ -254,7 +254,7 @@ public class IndexingPipelineTests
         );
         
         _normalizerMock
-            .Setup(n => n.Normalize(It.IsAny<string>()))
+            .Setup(n => n.Normalize(It.IsAny<string>(), "en"))
             .Returns("run");
 
         // Act 
@@ -273,11 +273,11 @@ public class IndexingPipelineTests
     {
         // Arrange
         _normalizerMock
-            .Setup(n => n.Normalize("Running"))
+            .Setup(n => n.Normalize("Running", "en"))
             .Returns("run");
 
         _normalizerMock
-            .Setup(n => n.Normalize("THE"))
+            .Setup(n => n.Normalize("THE", "en"))
             .Returns((string?)null);
 
         var crawlResult = CreateCrawlResult(new[]
@@ -293,7 +293,7 @@ public class IndexingPipelineTests
         Assert.Equal(1, document.ContentTerms["run"]);
         Assert.Single(document.ContentTerms);
 
-        _normalizerMock.Verify(n => n.Normalize(It.IsAny<string>()), Times.Exactly(2));
+        _normalizerMock.Verify(n => n.Normalize(It.IsAny<string>(), "en"), Times.Exactly(2));
     }
 
 
@@ -313,7 +313,7 @@ public class IndexingPipelineTests
         Assert.Empty(document.HeaderTerms);
         Assert.Empty(document.ContentTerms);
 
-        _normalizerMock.Verify(n => n.Normalize(It.IsAny<string>()), Times.Never());
+        _normalizerMock.Verify(n => n.Normalize(It.IsAny<string>(), "en"), Times.Never());
     }
 }
 

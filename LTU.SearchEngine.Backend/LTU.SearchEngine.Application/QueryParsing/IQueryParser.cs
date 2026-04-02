@@ -1,9 +1,8 @@
 ﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 
-namespace LTU.SearchEngine.Application.QueryParsing
+namespace LTU.SearchEngine.Application.QueryParsing;
+
+public interface IQueryParser
 {
-	public interface IQueryParser
-	{
-		QueryNode<HashSet<int>> Parse(string rawQuery);
-	}
+	QueryNode<HashSet<int>> Parse(string rawQuery, string languageCode = "sv");
 }

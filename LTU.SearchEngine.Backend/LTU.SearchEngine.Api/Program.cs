@@ -62,6 +62,9 @@ public partial class Program
         // Domain Validator (White-listing logic) and Indexing Pipeline (Text Normalization).
         builder.Services.AddTransient<IDomainValidator, DomainValidator>();
         builder.Services.AddTransient<IRobotsHandler, RobotsHandler>();
+        builder.Services.AddSingleton<LuceneAnalyzerStrategy>();
+        builder.Services.AddSingleton<ILanguageAnalyzerRegistry, LanguageAnalyzerRegistry>();
+        builder.Services.AddTransient<IHtmlLanguageCodeConverter, HtmlLanguageCodeConverter>();
         builder.Services.AddTransient<ITextFilter, LuceneAnalyzerFilter>();
         builder.Services.AddTransient<ITextNormalizer<string>, TextNormalizer>();
         builder.Services.AddTransient<IIndexingPipeline, IndexingPipeline>();

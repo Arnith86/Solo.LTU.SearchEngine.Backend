@@ -17,6 +17,7 @@ public interface IStringTokenizer<TToken, TType>
 	/// <param name="stringBuilder">The buffer holding characters for the token currently being built.</param>
 	/// <param name="tokens">The collection where the finalized token will be added.</param>
 	/// <param name="tokenType">The category to assign to the token (of type <typeparamref name="TType"/>).</param>
+	/// <param name="languageCode">The main language for the given query.</param>
 	/// <remarks>
 	/// Clears the <paramref name="stringBuilder"/> after the token is added. 
 	/// If the buffer is empty, no action is taken.
@@ -24,13 +25,15 @@ public interface IStringTokenizer<TToken, TType>
 	void Flush(
 		StringBuilder stringBuilder,
 		List<TToken> tokens,
-		TType tokenType
+		TType tokenType,
+		string languageCode = "sv"
 	);
 
 	/// <summary>
 	/// Transforms a raw input string into a sequence of categorized tokens.
 	/// </summary>
 	/// <param name="input">The raw string to be tokenized.</param>
+	/// <param name="languageCode">The main language for the given query.</param>
 	/// <returns>A list of tokens of type <typeparamref name="TToken"/>.</returns>
-	List<TToken> Tokenize(string input);
+	List<TToken> Tokenize(string input, string languageCode = "sv");
 }

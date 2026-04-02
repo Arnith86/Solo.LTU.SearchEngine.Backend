@@ -12,13 +12,13 @@ public class TextNormalizer : ITextNormalizer<string>
 
     }
 
-    public string? Normalize(string rawTerm)
+    public string? Normalize(string rawTerm, string languageCode)
     {
-        var cleaned = _punctuationFilter.Apply(rawTerm);
+        var cleaned = _punctuationFilter.Apply(rawTerm, languageCode);
 
         if (cleaned == null) return null;
 
-        return _luceneFilter.Apply(cleaned);
+        return _luceneFilter.Apply(cleaned, languageCode);
     }
 }
 

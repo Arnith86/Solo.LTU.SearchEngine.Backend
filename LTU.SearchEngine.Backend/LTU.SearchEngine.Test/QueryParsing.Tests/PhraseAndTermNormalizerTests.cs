@@ -24,7 +24,7 @@ namespace LTU.SearchEngine.Test.QueryParsing.Tests
             var token = new ExtractedQueryToken(QueryTokenType.Term, input);
 
             // Act
-            var result = _normalizer.Normalize(token);
+            var result = _normalizer.Normalize(token, "en");
 
             // Assert
             Assert.Equal(expected, result);
@@ -41,7 +41,7 @@ namespace LTU.SearchEngine.Test.QueryParsing.Tests
             var token = new ExtractedQueryToken(QueryTokenType.Phrase, input);
 
             // Act
-            var result = _normalizer.Normalize(token);
+            var result = _normalizer.Normalize(token, "en");
 
             // Assert
             Assert.Equal(expected, result);
@@ -57,7 +57,7 @@ namespace LTU.SearchEngine.Test.QueryParsing.Tests
             var token = new ExtractedQueryToken(QueryTokenType.LogicalOperator, op);
 
             // Act
-            var result = _normalizer.Normalize(token);
+            var result = _normalizer.Normalize(token, "en");
 
             // Assert
             Assert.Equal(op, result);
@@ -67,7 +67,7 @@ namespace LTU.SearchEngine.Test.QueryParsing.Tests
         public void Normalize_ShouldHandleNullGracefully()
         {
             // Act
-            var result = _normalizer.Normalize(null!);
+            var result = _normalizer.Normalize(null!, "en");
 
             // Assert
             Assert.Equal(string.Empty, result);
@@ -82,7 +82,7 @@ namespace LTU.SearchEngine.Test.QueryParsing.Tests
             var token = new ExtractedQueryToken(QueryTokenType.GroupingOperator, op);
 
             // Act
-            var result = _normalizer.Normalize(token);
+            var result = _normalizer.Normalize(token, "en");
 
             // Assert
             Assert.Equal(op, result);
