@@ -185,6 +185,9 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     [InlineData("/IndexerNormalizingTextRun.html", "run", 5)]
     [InlineData("/IndexerNormalizingTextSwim.html", "swim", 5)]
     [InlineData("/IndexerNormalizingTextCat.html", "cat", 5)]
+    [InlineData("/IndexerNormalizingTextHäst.html", "häst", 8)]
+    [InlineData("/IndexerNormalizingTextArt.html", "art", 5)]
+    [InlineData("/IndexerNormalizingTextEat.html", "eat", 5)]
     [Trait("TestCase", "TC-FRQ-2007")]
     public async Task Indexer_TextIsNormalizedOnIndex(string url, string expectedTerm, int expectedFrequency)
     {
@@ -208,11 +211,12 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         Task dispatchTask = dispatcher.Start(cts.Token);
         
         await ASecondsWait();
+        await ASecondsWait();
 
         cts.Cancel();
         
         // Assert 
-        // Each unique term is stored exactly once in the index.
+        // Each unique term is stored exact1ly once in the index.
         var termPageWordLink = await dbContext.PageWordFrequencies
             .Include(pwf => pwf.Page)
             .Include(pwf => pwf.Term)

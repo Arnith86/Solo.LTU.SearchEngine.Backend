@@ -111,7 +111,6 @@ public class HapHtmlParser : IHtmlParser
     /// <inheritdoc/>
     public string ExtractTitle(string html)
     {
-        Debug.WriteLine("inside ExtractTitle");
         if (string.IsNullOrWhiteSpace(html)) return string.Empty;
 
         //Load HTML in HtmlAgilityPack
@@ -133,7 +132,6 @@ public class HapHtmlParser : IHtmlParser
 
     public string ExtractLanguage(string html)
     {
-        Debug.WriteLine("inside ExtractLanguage");
         string languageCode = "Unknown";
 
         var doc = new HtmlDocument();
@@ -150,7 +148,6 @@ public class HapHtmlParser : IHtmlParser
     /// <inheritdoc/>
     public IEnumerable<IndexedTerm> ExtractTerms(string html)
     {
-        Debug.WriteLine("inside externaTerms");
         var terms = new List<IndexedTerm>();
         var doc = new HtmlDocument();
         doc.LoadHtml(html);

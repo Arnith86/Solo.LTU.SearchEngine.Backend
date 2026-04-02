@@ -196,9 +196,11 @@ public class WebHostBuilder
 					endpoint.MapGet("/IndexerNormalizingTextRun.html", () =>
 					{
 						var html = """
+						<html lang="en">
 							<body>
 								<h1>Running run Run runs Runs</h1>
 							</body>
+						</html>
 						""";
 
 						return Results.Content(html, "text/html");
@@ -208,9 +210,11 @@ public class WebHostBuilder
 					endpoint.MapGet("/IndexerNormalizingTextSwim.html", () =>
 					{
 						var html = """
+						<html lang="en">
 							<body>
 								<h1>Swimming swims SwiMs SwIM swim</h1>
 							</body>
+						</html>
 						""";
 						return Results.Content(html, "text/html");
 					});
@@ -226,7 +230,43 @@ public class WebHostBuilder
 						""";
 						return Results.Content(html, "text/html");
 					});
+					
+					endpoint.MapGet("/IndexerNormalizingTextEat.html", () =>
+					{
+						var html = """
+						<html lang="en">
+							<body>
+								<h1>eat Eat Eating eatINg eats</h1>
+							</body>
+						</html>
+						""";
+						return Results.Content(html, "text/html");
+					});
 
+
+					endpoint.MapGet("/IndexerNormalizingTextHäst.html", () =>
+					{
+						var html = """
+						<html lang="sv">
+							<body>
+								<h1>Häst häst hästarna Hästarna hästen Hästen Hästar hästar</h1>
+							</body>
+						</html>
+						""";
+						return Results.Content(html, "text/html");
+					});
+
+					endpoint.MapGet("/IndexerNormalizingTextArt.html", () =>
+					{
+						var html = """
+							<html lang="sv">
+							<body>
+								<h1>artig Artig artigare ARTIGARE Artigast</h1>
+							</body>
+							</html>
+						""";
+						return Results.Content(html, "text/html");
+					});
 				});
 			});
 		})
