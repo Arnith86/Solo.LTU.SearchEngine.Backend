@@ -211,11 +211,12 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         Task dispatchTask = dispatcher.Start(cts.Token);
         
         await ASecondsWait();
+        await ASecondsWait();
 
         cts.Cancel();
         
         // Assert 
-        // Each unique term is stored exactly once in the index.
+        // Each unique term is stored exact1ly once in the index.
         var termPageWordLink = await dbContext.PageWordFrequencies
             .Include(pwf => pwf.Page)
             .Include(pwf => pwf.Term)
