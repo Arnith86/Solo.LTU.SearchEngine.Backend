@@ -28,19 +28,20 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 	public void Flush(
 		StringBuilder stringBuilder,
 		List<ExtractedQueryToken> tokens,
-		QueryTokenType queryTokenType)
+		QueryTokenType queryTokenType,
+		string languageCode)
 	{
 		if (stringBuilder.Length == 0) return;
 
 
 		var token = stringBuilder.ToString().Trim();
-        var extractedToken = new ExtractedQueryToken(queryTokenType, token);
+        var extractedToken = new ExtractedQueryToken(queryTokenType, token, languageCode);
 
         // Normalize BEFORE creating ExtractedQueryToken
         if (queryTokenType == QueryTokenType.Term ||
 			queryTokenType == QueryTokenType.Phrase)
 		{
-			token = _normalizer.Normalize(token);
+			token = _normalizer.Normalize(token, languageCode);
 			
 			if (token == null)
 			{
@@ -49,7 +50,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 			}
 			else
 			{
-				extractedToken = new ExtractedQueryToken(queryTokenType, token);	
+				extractedToken = new ExtractedQueryToken(queryTokenType, token, languageCode);	
 			}
 		}
 
@@ -61,7 +62,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 
 
 	/// <inheritdoc/>
-	public List<ExtractedQueryToken> Tokenize(string input)
+	public List<ExtractedQueryToken> Tokenize(string input, string languageCode)
 	{
 		var tokens = new List<ExtractedQueryToken>();
 		var stringBuilder = new StringBuilder();
@@ -75,17 +76,17 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 			var character = input[index];
 
             // Checks implicit OR
-            action = TryHandleImplicitOr(input, tokens, stringBuilder, ref isBuildingAPhrase, index);
+            action = TryHandleImplicitOr(input, tokens, stringBuilder, ref isBuildingAPhrase, index, languageCode);
 
             if (action.Equals(LoopAction.Continue)) continue;
             // Checks for grouping operators. ( ) [ ] { } 
-            action = TryHandleIsGroupingOperator(tokens, stringBuilder, character);
+            action = TryHandleIsGroupingOperator(tokens, stringBuilder, character, languageCode);
 
 			if (action.Equals(LoopAction.Continue))	continue;
 
 			// AND, OR, NOT, are exceptions and are handled in the next method.
 			(action, indexOut) =
-				TryHandleLogicalOperator(input, tokens, stringBuilder, index, character);
+				TryHandleLogicalOperator(input, tokens, stringBuilder, index, character, languageCode);
 
 			if (action.Equals(LoopAction.Continue))
 			{
@@ -94,7 +95,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 			}
 
 			(action, indexOut) =
-				TryHandleIsCapitalLetterOperator(input, tokens, stringBuilder, index);
+				TryHandleIsCapitalLetterOperator(input, tokens, stringBuilder, index, languageCode);
 
 			if (action.Equals(LoopAction.Continue))
 			{
@@ -111,7 +112,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 
 			// Appends phrase characters
 			action = TryHandleIsEdgeOfPhrase(
-				input, tokens, stringBuilder, ref isBuildingAPhrase, index, character
+				input, tokens, stringBuilder, ref isBuildingAPhrase, index, character, languageCode
 			);
 
 			if (action.Equals(LoopAction.Continue)) continue;
@@ -119,7 +120,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 			// If this is reached must be term
 			if (IsTokenTerm(character))
 			{
-				Flush(stringBuilder, tokens, QueryTokenType.Term);
+				Flush(stringBuilder, tokens, QueryTokenType.Term, languageCode);
 				continue;
 			}
 			else
@@ -129,7 +130,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 		}
 
 		// Handles the last term if there is one
-		Flush(stringBuilder, tokens, QueryTokenType.Term);
+		Flush(stringBuilder, tokens, QueryTokenType.Term, languageCode);
 
 		_syntaxHelper.ValidateGrouping(tokens);
 
@@ -141,7 +142,8 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
        List<ExtractedQueryToken> tokens,
        StringBuilder stringBuilder,
        ref bool isBuildingAPhrase,
-       int index)
+       int index, 
+	   string languageCode)
     {
         char character = input[index];
 
@@ -173,24 +175,24 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 
         int tokenCountBeforeFlush = tokens.Count;
 
-        Flush(stringBuilder, tokens, QueryTokenType.Term);
+        Flush(stringBuilder, tokens, QueryTokenType.Term, languageCode);
 
         // Flush may not add a token if normalization removes it
         if (tokens.Count == tokenCountBeforeFlush)
             return LoopAction.Continue;
 
-        tokens.Add(new ExtractedQueryToken(QueryTokenType.LogicalOperator,"OR"));
+        tokens.Add(new ExtractedQueryToken(QueryTokenType.LogicalOperator,"OR", languageCode));
 
         return LoopAction.Continue;
     }
 
     private LoopAction TryHandleIsGroupingOperator(
-		List<ExtractedQueryToken> tokens, StringBuilder stringBuilder, char character)
+		List<ExtractedQueryToken> tokens, StringBuilder stringBuilder, char character, string languageCode)
 	{
 		if (IsGroupingOperator(character))
 		{
 			stringBuilder.Append(character);
-			Flush(stringBuilder, tokens, QueryTokenType.GroupingOperator);
+			Flush(stringBuilder, tokens, QueryTokenType.GroupingOperator, languageCode);
 			return LoopAction.Continue;
 		}
 
@@ -206,7 +208,8 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 		List<ExtractedQueryToken> tokens, 
 		StringBuilder stringBuilder, 
 		int index, 
-		char character
+		char character, 
+		string languageCode
 		)
 	{
 		if (IsLogicalOperator(input, index, character))
@@ -214,12 +217,12 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 			if (IsDoubleLogicalOperator(input, index, character))
 			{
 				stringBuilder.Append(input, index++, 2);
-				Flush(stringBuilder, tokens, QueryTokenType.LogicalOperator);
+				Flush(stringBuilder, tokens, QueryTokenType.LogicalOperator, languageCode);
 				return (LoopAction.Continue, 1);
 			}
 
 			stringBuilder.Append(character);
-			Flush(stringBuilder, tokens, QueryTokenType.LogicalOperator);
+			Flush(stringBuilder, tokens, QueryTokenType.LogicalOperator, languageCode);
 			return (LoopAction.Continue, 0);
 		}
 
@@ -231,7 +234,8 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 		string input,
 		List<ExtractedQueryToken> tokens,
 		StringBuilder stringBuilder,
-		int index
+		int index,
+		string languageCode
 		)
 	{
 		if (IsCapitalLetterOperator(input, index))
@@ -240,7 +244,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 			int length = (span.StartsWith("AND") || span.StartsWith("NOT")) ? 3 : 2;
 
 			stringBuilder.Append(input, index, length);
-			Flush(stringBuilder, tokens, QueryTokenType.LogicalOperator);
+			Flush(stringBuilder, tokens, QueryTokenType.LogicalOperator, languageCode);
 
 			index += (length - 1);
 			return (LoopAction.Continue, length - 1);
@@ -256,7 +260,8 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 		StringBuilder stringBuilder,
 		ref bool isBuildingAPhrase,
 		int index,
-		char character
+		char character,
+		string languageCode
 		)
 	{
 		if (isBuildingAPhrase)
@@ -265,7 +270,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 			if (IsEdgeOfPhrase(input, index, character, checkEndPhrase: true))
 			{
 				isBuildingAPhrase = !isBuildingAPhrase;
-				Flush(stringBuilder, tokens, QueryTokenType.Phrase);
+				Flush(stringBuilder, tokens, QueryTokenType.Phrase, languageCode);
 				return LoopAction.Continue;
 			}
 

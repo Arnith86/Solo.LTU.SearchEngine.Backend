@@ -41,7 +41,7 @@ public class IndexingPipeline : IIndexingPipeline
 
         foreach (var indexedTerm in crawlResult.IndexedTerms)
         {
-            var normalized = _textNormalizer.Normalize(indexedTerm.Term);
+            var normalized = _textNormalizer.Normalize(indexedTerm.Term, crawlResult.Language);
 
             if (string.IsNullOrWhiteSpace(normalized)) continue;
             

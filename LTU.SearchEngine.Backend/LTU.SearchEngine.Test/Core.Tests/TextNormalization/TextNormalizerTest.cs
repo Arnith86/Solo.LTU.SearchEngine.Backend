@@ -1,101 +1,98 @@
 ﻿using LTU.SearchEngine.Backend.Core.TextNormalization;
 using Moq;
-using System;
-using Xunit;
 
-namespace LTU.SearchEngine.Test.Core.Tests.TextNormalization
+namespace LTU.SearchEngine.Test.Core.Tests.TextNormalization;
+
+public class TextNormalizerTests
 {
-    public class TextNormalizerTests
+    private readonly Mock<ITextFilter> _punctuationMock;
+    private readonly Mock<ITextFilter> _luceneMock;
+    private readonly TextNormalizer _normalizer;
+
+    public TextNormalizerTests()
     {
-        private readonly Mock<ITextFilter> _punctuationMock;
-        private readonly Mock<ITextFilter> _luceneMock;
-        private readonly TextNormalizer _normalizer;
+        _punctuationMock = new Mock<ITextFilter>();
+        _luceneMock = new Mock<ITextFilter>();
+        _normalizer = new TextNormalizer(
+            _punctuationMock.Object,
+            _luceneMock.Object);
+    }
 
-        public TextNormalizerTests()
-        {
-            _punctuationMock = new Mock<ITextFilter>();
-            _luceneMock = new Mock<ITextFilter>();
-            _normalizer = new TextNormalizer(
-                _punctuationMock.Object,
-                _luceneMock.Object);
-        }
+    [Fact]
+    public void Normalize_GivenPunctuationReturnsNull_ShouldReturnNull_AndNotCallLucene()
+    {
+        // Arrange
+        _punctuationMock
+            .Setup(f => f.Apply("!!!", "en"))
+            .Returns((string?)null);
 
-        [Fact]
-        public void Normalize_GivenPunctuationReturnsNull_ShouldReturnNull_AndNotCallLucene()
-        {
-            // Arrange
-            _punctuationMock
-                .Setup(f => f.Apply("!!!"))
-                .Returns((string?)null);
+        // Act
+        var result = _normalizer.Normalize("!!!", "en");
 
-            // Act
-            var result = _normalizer.Normalize("!!!");
+        // Assert
+        Assert.Null(result);
 
-            // Assert
-            Assert.Null(result);
+        _luceneMock.Verify(
+            f => f.Apply(It.IsAny<string>()),
+            Times.Never()
+        );
+    }
 
-            _luceneMock.Verify(
-                f => f.Apply(It.IsAny<string>()),
-                Times.Never()
-            );
-        }
+    [Fact]
+    public void Normalize_GivenBothFiltersReturnValue_ShouldReturnLuceneResult()
+    {
+        // Arrange
+        _punctuationMock
+            .Setup(f => f.Apply("Running!!!", "en"))
+            .Returns("Running");
 
-        [Fact]
-        public void Normalize_GivenBothFiltersReturnValue_ShouldReturnLuceneResult()
-        {
-            // Arrange
-            _punctuationMock
-                .Setup(f => f.Apply("Running!!!"))
-                .Returns("Running");
+        _luceneMock
+            .Setup(f => f.Apply("Running", "en"))
+            .Returns("run");
 
-            _luceneMock
-                .Setup(f => f.Apply("Running"))
-                .Returns("run");
+        // Act
+        var result = _normalizer.Normalize("Running!!!", "en");
 
-            // Act
-            var result = _normalizer.Normalize("Running!!!");
+        // Assert
+        Assert.Equal("run", result);
 
-            // Assert
-            Assert.Equal("run", result);
+        _punctuationMock.Verify(
+            f => f.Apply("Running!!!", "en"),
+            Times.Once()
+        );
 
-            _punctuationMock.Verify(
-                f => f.Apply("Running!!!"),
-                Times.Once()
-            );
+        _luceneMock.Verify(
+            f => f.Apply("Running", "en"),
+            Times.Once()
+        );
+    }
 
-            _luceneMock.Verify(
-                f => f.Apply("Running"),
-                Times.Once()
-            );
-        }
+    [Fact]
+    public void Normalize_GivenLuceneReturnsNull_ShouldReturnNull()
+    {
+        // Arrange
+        _punctuationMock
+            .Setup(f => f.Apply("THE", "en"))
+            .Returns("THE");
 
-        [Fact]
-        public void Normalize_GivenLuceneReturnsNull_ShouldReturnNull()
-        {
-            // Arrange
-            _punctuationMock
-                .Setup(f => f.Apply("THE"))
-                .Returns("THE");
+        _luceneMock
+            .Setup(f => f.Apply("THE", "en"))
+            .Returns((string?)null);
 
-            _luceneMock
-                .Setup(f => f.Apply("THE"))
-                .Returns((string?)null);
+        // Act
+        var result = _normalizer.Normalize("THE", "en");
 
-            // Act
-            var result = _normalizer.Normalize("THE");
+        // Assert
+        Assert.Null(result);
 
-            // Assert
-            Assert.Null(result);
+        _punctuationMock.Verify(
+            f => f.Apply("THE", "en"),
+            Times.Once()
+        );
 
-            _punctuationMock.Verify(
-                f => f.Apply("THE"),
-                Times.Once()
-            );
-
-            _luceneMock.Verify(
-                f => f.Apply("THE"),
-                Times.Once()
-            );
-        }
+        _luceneMock.Verify(
+            f => f.Apply("THE", "en"),
+            Times.Once()
+        );
     }
 }

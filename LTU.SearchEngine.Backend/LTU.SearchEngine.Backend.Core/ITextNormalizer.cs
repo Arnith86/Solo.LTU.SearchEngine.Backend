@@ -11,5 +11,5 @@ public interface ITextNormalizer<T>
     /// </summary>
     /// <param name="token">The object to normalize.</param>
     /// <returns>A normalized string representation of the input.</returns>
-    string? Normalize(T token);
+    string? Normalize(T token, string languageCode);
 }

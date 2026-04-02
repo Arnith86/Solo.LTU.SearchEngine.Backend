@@ -24,13 +24,13 @@ public class QueryService : IQueryService
 		_queryEvaluatorVisitor = queryEvaluatorVisitor;
 	}
 
-	public async Task<SearchResponseDTO> GetSearchResultsAsync(string rawQuery)
+	public async Task<SearchResponseDTO> GetSearchResultsAsync(string rawQuery, string languageCode = "sv")
 	{
 		QueryNode<HashSet<int>> queryNode;
 
 		var stopWatch = Stopwatch.StartNew();
 
-		queryNode = _queryParser.Parse(rawQuery);
+		queryNode = _queryParser.Parse(rawQuery, languageCode);
 		
 		var resultIds = await _queryEvaluatorVisitor.ExecuteAsync(queryNode);
 		

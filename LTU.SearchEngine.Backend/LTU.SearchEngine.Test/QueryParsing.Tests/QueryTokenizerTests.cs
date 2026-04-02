@@ -21,8 +21,8 @@ public class QueryTokenizerTests
 		_sut = new QueryStringTokenizer(_mockSyntaxHelper.Object, _mockNormalizer.Object);
 
         _mockNormalizer
-            .Setup(n => n.Normalize(It.IsAny<string>()))
-            .Returns((string s) => s);
+            .Setup(n => n.Normalize(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns((string s, string lang) => s);
     }
 
 	[Fact]
@@ -30,9 +30,11 @@ public class QueryTokenizerTests
 	{
         // Act & Assert 
         Assert.Throws<ArgumentNullException>(() =>
-		new QueryStringTokenizer(
-        new Mock<IQuerySyntaxHelper>().Object,
-        null!));
+			new QueryStringTokenizer(
+				new Mock<IQuerySyntaxHelper>().Object,
+				null!
+			)
+		);
     }
 
 	[Fact]
@@ -52,7 +54,7 @@ public class QueryTokenizerTests
 			.Throws(new InvalidQueryStringException("Mismatched parentheses", input));
 
 		// Act & Assert 
-		Assert.Throws<InvalidQueryStringException>(() => _sut.Tokenize(input));
+		Assert.Throws<InvalidQueryStringException>(() => _sut.Tokenize(input, "en"));
 	}
 
 	[Fact]
@@ -61,14 +63,14 @@ public class QueryTokenizerTests
 		// Arrange
 		var input = "apple orange banana";
 		
-		var apple = new ExtractedQueryToken(QueryTokenType.Term, "apple");
-		var orange = new ExtractedQueryToken(QueryTokenType.Term, "orange");
-		var banana = new ExtractedQueryToken(QueryTokenType.Term, "banana");
+		var apple = new ExtractedQueryToken(QueryTokenType.Term, "apple", "en");
+		var orange = new ExtractedQueryToken(QueryTokenType.Term, "orange", "en");
+		var banana = new ExtractedQueryToken(QueryTokenType.Term, "banana", "en");
 
 		var expected = new List<ExtractedQueryToken> { apple, orange, banana };
 
 		// Act 
-		var result = _sut.Tokenize(input);
+		var result = _sut.Tokenize(input, "en");
 
 		// Assert 
 		Assert.Equivalent(expected, result);
@@ -80,12 +82,12 @@ public class QueryTokenizerTests
 		// Arrange
 		var input = "cat \"hello dolly\" dog";
 
-		var cat = new ExtractedQueryToken(QueryTokenType.Term, "cat");
-		var helloDolly = new ExtractedQueryToken(QueryTokenType.Phrase, "hello dolly");
-		var dog = new ExtractedQueryToken(QueryTokenType.Term, "dog");
+		var cat = new ExtractedQueryToken(QueryTokenType.Term, "cat", "en");
+		var helloDolly = new ExtractedQueryToken(QueryTokenType.Phrase, "hello dolly", "en");
+		var dog = new ExtractedQueryToken(QueryTokenType.Term, "dog", "en");
 
 		// Act 
-		var result = _sut.Tokenize(input);
+		var result = _sut.Tokenize(input, "en");
 
 		// Assert
 		Assert.Equal(3, result.Count);
@@ -99,23 +101,25 @@ public class QueryTokenizerTests
 	{
 		// Arrange
 		var input = "  word1    word2  ";
-		var word1 = new ExtractedQueryToken(QueryTokenType.Term, "word1");
-		var word2 = new ExtractedQueryToken(QueryTokenType.Term, "word2");
+		var word1 = new ExtractedQueryToken(QueryTokenType.Term, "word1", "en");
+		var word2 = new ExtractedQueryToken(QueryTokenType.Term, "word2", "en");
 
 		// Act
-		var result = _sut.Tokenize(input);
+		var result = _sut.Tokenize(input, "en");
 
 		// Assert
 		Assert.Equivalent(new[] { word1, word2}, result);
 	}
 
+
 	[Fact]
 	public void Tokenize_EmptyInput_ReturnsEmptyList()
 	{
 		// Act & Assert 
-		Assert.Empty(_sut.Tokenize(""));
-		Assert.Empty(_sut.Tokenize("   "));
+		Assert.Empty(_sut.Tokenize("", "en"));
+		Assert.Empty(_sut.Tokenize("   ", "en"));
 	}
+
 
 	[Fact]
 	public void Tokenize_UnclosedQuotes_TreatsAllWordsAsTerms()
@@ -123,12 +127,12 @@ public class QueryTokenizerTests
 		// Arrange
 		var input = "start \"unclosed phrase";
 
-		var start = new ExtractedQueryToken(QueryTokenType.Term, "start");
-		var unclosed = new ExtractedQueryToken(QueryTokenType.Term, "\"unclosed");
-		var phrase = new ExtractedQueryToken(QueryTokenType.Term, "phrase");
+		var start = new ExtractedQueryToken(QueryTokenType.Term, "start", "en");
+		var unclosed = new ExtractedQueryToken(QueryTokenType.Term, "\"unclosed", "en");
+		var phrase = new ExtractedQueryToken(QueryTokenType.Term, "phrase", "en");
 
 		// Act
-		var result = _sut.Tokenize(input);
+		var result = _sut.Tokenize(input, "en");
 
 		// Assert
 		Assert.Equal(3, result.Count);
@@ -142,7 +146,7 @@ public class QueryTokenizerTests
     {
         // Arrange
         var input = "apple banana";
-        var result = _sut.Tokenize(input);
+        var result = _sut.Tokenize(input, "en");
 
         Assert.Equal(3, result.Count);
         Assert.Equal(QueryTokenType.Term, result[0].TokenType);
@@ -160,7 +164,7 @@ public class QueryTokenizerTests
     {
 		//Arrange
 		var input = "apple banana orange";
-        var result = _sut.Tokenize(input);
+        var result = _sut.Tokenize(input, "en");
 
         Assert.Equal(5, result.Count);
 
@@ -176,7 +180,7 @@ public class QueryTokenizerTests
     {
 		// Arrange
 		var input = "start AND phrase";
-        var result = _sut.Tokenize(input);
+        var result = _sut.Tokenize(input, "en");
 
         Assert.Equal(3, result.Count);
 
@@ -190,7 +194,7 @@ public class QueryTokenizerTests
     {
         var input = "cat \"hello dolly\" dog";
 
-        var result = _sut.Tokenize(input);
+        var result = _sut.Tokenize(input, "en");
 
         Assert.Equal(3, result.Count);
         Assert.Equal(QueryTokenType.Term, result[0].TokenType);
@@ -203,7 +207,7 @@ public class QueryTokenizerTests
     {
 		// Arrange 
 		var input = "start \"unclosed phrase";
-        var result = _sut.Tokenize(input);
+        var result = _sut.Tokenize(input, "en");
 
         Assert.Equal(3, result.Count);
 
@@ -217,7 +221,7 @@ public class QueryTokenizerTests
     {
 		// Arrange
 		var input = "start && phrase";
-        var result = _sut.Tokenize(input);
+        var result = _sut.Tokenize(input, "en");
 
         Assert.Equal(3, result.Count);
 
@@ -240,12 +244,12 @@ public class QueryTokenizerTests
 		// Arrange
 		var input = $"start {operatorInput} phrase";
 
-		var start = new ExtractedQueryToken(QueryTokenType.Term, "start");
-		var expectedOperator = new ExtractedQueryToken(QueryTokenType.LogicalOperator, operatorInput);
-		var phrase = new ExtractedQueryToken(QueryTokenType.Term, "phrase");
+		var start = new ExtractedQueryToken(QueryTokenType.Term, "start", "en");
+		var expectedOperator = new ExtractedQueryToken(QueryTokenType.LogicalOperator, operatorInput, "en");
+		var phrase = new ExtractedQueryToken(QueryTokenType.Term, "phrase", "en");
 
 		// Act
-		var result = _sut.Tokenize(input);
+		var result = _sut.Tokenize(input, "en");
 
 		// Assert
 		Assert.Equal(3, result.Count);
@@ -263,12 +267,12 @@ public class QueryTokenizerTests
 		// Arrange
 		var input = $"first {operatorInput}second";
 
-		var first = new ExtractedQueryToken(QueryTokenType.Term, "first");
-		var expectedOperator = new ExtractedQueryToken(QueryTokenType.LogicalOperator, operatorInput);
-		var second = new ExtractedQueryToken(QueryTokenType.Term, "second");
+		var first = new ExtractedQueryToken(QueryTokenType.Term, "first", "en");
+		var expectedOperator = new ExtractedQueryToken(QueryTokenType.LogicalOperator, operatorInput, "en");
+		var second = new ExtractedQueryToken(QueryTokenType.Term, "second", "en");
 
 		// Act
-		var result = _sut.Tokenize(input);
+		var result = _sut.Tokenize(input, "en");
 
 		// Assert
 		Assert.Equal(3, result.Count);
@@ -287,12 +291,12 @@ public class QueryTokenizerTests
 		// Arrange
 		var input = $"{operator1}\"start phrase\"{operator2}";
 
-		var expectedOperator1 = new ExtractedQueryToken(QueryTokenType.GroupingOperator, operator1);
-		var expectedPhrase = new ExtractedQueryToken(QueryTokenType.Phrase, "start phrase");
-		var expectedOperator2 = new ExtractedQueryToken(QueryTokenType.GroupingOperator, operator2);
+		var expectedOperator1 = new ExtractedQueryToken(QueryTokenType.GroupingOperator, operator1, "en");
+		var expectedPhrase = new ExtractedQueryToken(QueryTokenType.Phrase, "start phrase", "en");
+		var expectedOperator2 = new ExtractedQueryToken(QueryTokenType.GroupingOperator, operator2, "en");
 
 		// Act
-		var result = _sut.Tokenize(input);
+		var result = _sut.Tokenize(input, "en");
 
 		// Assert
 		Assert.Equal(3, result.Count);
@@ -315,7 +319,7 @@ public class QueryTokenizerTests
 		var sb = new StringBuilder();
 
 		// Act
-		_sut.Flush(sb, tokens, queryTokenType: type);
+		_sut.Flush(sb, tokens, queryTokenType: type, "en");
 
 		// Assert
 		Assert.Empty(tokens);
@@ -338,10 +342,10 @@ public class QueryTokenizerTests
 		var tokens = new List<ExtractedQueryToken>();
 		var sb = new StringBuilder(termOrPhrase);
 
-		var token = new ExtractedQueryToken(type, termOrPhrase.Trim());
+		var token = new ExtractedQueryToken(type, termOrPhrase.Trim(), "en");
 
 		// Act
-		_sut.Flush(sb, tokens, queryTokenType: type);
+		_sut.Flush(sb, tokens, queryTokenType: type, "en");
 
 		// Assert
 		Assert.Single(tokens);
@@ -354,15 +358,15 @@ public class QueryTokenizerTests
     {
 		// Arrange 
         _mockNormalizer
-            .Setup(n => n.Normalize(It.IsAny<string>()))
-            .Returns((string s) => s);
+            .Setup(n => n.Normalize(It.IsAny<string>(), "en"))
+            .Returns((string s, string lang) => s);
 
 		// Act 
-        _sut.Tokenize("the Running man");
+        _sut.Tokenize("the Running man", "en");
 
 		// Assert
         _mockNormalizer.Verify(
-            n => n.Normalize(It.IsAny<string>()),
+            n => n.Normalize(It.IsAny<string>(), "en"),
             Times.Exactly(3));
     }
 
@@ -378,7 +382,7 @@ public class QueryTokenizerTests
     public void Tokenize_Should_Not_Normalize_LogicalOperators(string input)
     {
         // Arrange
-        var result = _sut.Tokenize(input);
+        var result = _sut.Tokenize(input, "en");
 
 		// Act 
         Assert.Single(result);
@@ -386,7 +390,7 @@ public class QueryTokenizerTests
 		
 		// Assert 
         _mockNormalizer.Verify(
-            n => n.Normalize(It.IsAny<string>()),
+            n => n.Normalize(It.IsAny<string>(), "en"),
             Times.Never);
     }
 }
