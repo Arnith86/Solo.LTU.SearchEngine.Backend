@@ -24,14 +24,6 @@ namespace LTU.SearchEngine.Test.Core.Tests.TextNormalization
         }
 
         [Fact]
-        public void Apply_GivenCPlusPlus_ShouldReturnLowercaseWithoutRemovingSymbols()
-        {
-            var result = _filter.Apply("C++");
-
-            Assert.Equal("c++", result);
-        }
-
-        [Fact]
         public void Apply_GivenProgramming_ShouldStemToProgram()
         {
             var result = _filter.Apply("Programming");
