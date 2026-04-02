@@ -12,7 +12,7 @@ public class LuceneAnalyzerFilter : ITextFilter
             throw new ArgumentNullException(nameof(luceneAnalyzerStrategy));
     }
 
-    public string? Apply(string rawTerm, string languageCode = "en")
+    public string? Apply(string rawTerm, string languageCode = "sv")
     {
         if (string.IsNullOrWhiteSpace(rawTerm)) return null;
 

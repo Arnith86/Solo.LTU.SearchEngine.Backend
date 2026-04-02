@@ -2,5 +2,5 @@
 
 public interface ITextFilter
 {
-    string? Apply(string rawTerm, string languageCode = "en");
+    string? Apply(string rawTerm, string languageCode = "sv");
 }

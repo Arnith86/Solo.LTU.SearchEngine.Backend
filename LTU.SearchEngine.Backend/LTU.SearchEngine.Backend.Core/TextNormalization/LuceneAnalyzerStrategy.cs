@@ -39,22 +39,22 @@ public class LuceneAnalyzerStrategy
 
     // <summary>Selects a Lucene <see cref="Analyzer"/> based on the provided language code.</summary>
     /// <param name="languageCode">The raw language code extracted from the HTML (e.g., "sv-SE").</param>
-    /// <returns>A language-specific <see cref="Analyzer"/> if found; otherwise, defaults to the "English" analyzer and logs a warning.</returns>
+    /// <returns>A language-specific <see cref="Analyzer"/> if found; otherwise, defaults to the "Swedish" analyzer and logs a warning.</returns>
     /// <remarks>
     /// The method first converts the raw code (like "en-GB") to a normalized 
     /// name (like "English") before checking the registry.
     /// </remarks>
-    public Analyzer GetAppropriateAnalyzer(string languageCode)
+    public virtual Analyzer GetAppropriateAnalyzer(string languageCode)
     {
         var language = _languageCodeConverter.Convert(languageCode);
 
         if (!_languageAnalyzerRegistry.HasAnalyzerForLanguage(language))
         {
             _logger.LogWarning(
-                "No analyzer found for language code {LanguageCode}. Defaulting to English analyzer.", 
+                "No analyzer found for language code {LanguageCode}. Defaulting to Swedish analyzer.", 
                 languageCode
             );
-            return _languageAnalyzerRegistry.GetAnalyzerForLanguage("English");    
+            return _languageAnalyzerRegistry.GetAnalyzerForLanguage("Swedish");    
         }
 
         return _languageAnalyzerRegistry.GetAnalyzerForLanguage(language);
