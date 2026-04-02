@@ -4,7 +4,7 @@ namespace LTU.SearchEngine.Backend.Core.TextNormalization;
 
 public class PunctuationFilter : ITextFilter
 {
-    public string? Apply(string rawTerm)
+    public string? Apply(string rawTerm, string languageCode = "en")
     {
         if (string.IsNullOrWhiteSpace(rawTerm))
             return null;

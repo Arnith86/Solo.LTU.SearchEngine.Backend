@@ -1,46 +1,25 @@
-﻿using Lucene.Net.Analysis;
-using Lucene.Net.Analysis.Core;
-using Lucene.Net.Analysis.En;
-using Lucene.Net.Analysis.Snowball;
-using Lucene.Net.Analysis.Standard;
-using Lucene.Net.Analysis.Sv;
-using Lucene.Net.Analysis.TokenAttributes;
-using Lucene.Net.Util;
+﻿using Lucene.Net.Analysis.TokenAttributes;
 
 namespace LTU.SearchEngine.Backend.Core.TextNormalization;
 
 public class LuceneAnalyzerFilter : ITextFilter
 {
-    private readonly Analyzer _analyzer;
+    private readonly LuceneAnalyzerStrategy _luceneAnalyzerStrategy;
 
-    public LuceneAnalyzerFilter()
+    public LuceneAnalyzerFilter(LuceneAnalyzerStrategy luceneAnalyzerStrategy)
     {
-        _analyzer = CreateAnalyzer();
+        _luceneAnalyzerStrategy = luceneAnalyzerStrategy ?? 
+            throw new ArgumentNullException(nameof(luceneAnalyzerStrategy));
     }
 
-    private Analyzer CreateAnalyzer()
-    {
-        return Analyzer.NewAnonymous((fieldName, reader) =>
-        {
-            // LowerCase term
-            var tokenizer = new StandardTokenizer(LuceneVersion.LUCENE_48, reader);
-            TokenStream stream = new LowerCaseFilter(LuceneVersion.LUCENE_48, tokenizer);
-            // stopWords
-            stream = new StopFilter(LuceneVersion.LUCENE_48, stream, EnglishAnalyzer.DefaultStopSet); //EnglishAnalyzer.DefaultStopSet);
-            // Normalize "Running" → "run"
-            // stream = new PorterStemFilter(stream);
-            stream = new SnowballFilter(stream, "English");
-
-            return new TokenStreamComponents(tokenizer, stream);
-        });
-    }
-
-    public string? Apply(string rawTerm)
+    public string? Apply(string rawTerm, string languageCode = "en")
     {
         if (string.IsNullOrWhiteSpace(rawTerm)) return null;
 
+        var analyzer = _luceneAnalyzerStrategy.GetAppropriateAnalyzer(languageCode);
+
         using var reader = new StringReader(rawTerm);
-        using var tokenStream = _analyzer.GetTokenStream("field", reader);
+        using var tokenStream = analyzer.GetTokenStream("field", reader);
 
         tokenStream.Reset();
 
