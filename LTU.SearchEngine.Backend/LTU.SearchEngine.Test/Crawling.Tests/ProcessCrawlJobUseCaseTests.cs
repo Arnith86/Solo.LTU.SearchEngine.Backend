@@ -1,15 +1,11 @@
 ﻿using LTU.SearchEngine.Application;
-using LTU.SearchEngine.Backend.Core;
-using LTU.SearchEngine.Backend.Core.Exceptions;
 using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
-using LTU.SearchEngine.Infrastructure.Configurations;
 using LTU.SearchEngine.Infrastructure.Crawling;
 using LTU.SearchEngine.Test.HelperClasses;
 using Moq;
 using System.Net;
-using System.Text;
 
 namespace LTU.SearchEngine.Test.Crawling.Tests;
 

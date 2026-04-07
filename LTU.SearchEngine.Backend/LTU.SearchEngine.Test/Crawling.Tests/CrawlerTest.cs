@@ -1,5 +1,4 @@
-﻿using Castle.Core.Logging;
-using LTU.SearchEngine.Backend.Core.HelperClasses;
+﻿using LTU.SearchEngine.Backend.Core.HelperClasses;
 using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure.Crawling;
