@@ -294,6 +294,40 @@ public class CrawlerSettingsTests
         ));
     }
 
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(-100)]
+    public void CrawlerSettings_Constructor_CrawlerUpdateInterval_NegativeTime_ThrowsArgumentOutOfRangeException(int input)
+    {
+        // Arrange
+        string userAgent = "LTUSearchCrawler/1.0 (Academic project; contact: some.mail@student.ltu.se)";
+        int maxConcurrencyPerDomain = 5;
+        int minDelayMs = 100;
+        List<TimeSpan> retryIntervals = new List<TimeSpan>
+        {
+            TimeSpan.FromSeconds(3600),    // 1 hour
+            TimeSpan.FromSeconds(86400),   // 1 day
+            TimeSpan.FromSeconds(604800)   // 1 week
+        };
+        TimeSpan crawlUpdateInterval = TimeSpan.FromMilliseconds(input);
+        var validSeedUrls = new List<string> { "ltu.se" };
+        var whiteList = new List<string> { "ltu.se" };
+        
+        // Act & Assert
+        Assert.Throws<ArgumentOutOfRangeException>(() => new CrawlerSettings(
+            userAgent,
+            maxConcurrencyPerDomain,
+            minDelayMs,
+            retryIntervals,       
+            validSeedUrls, 
+            whiteList,
+            crawlUpdateInterval
+        ));
+    }
+
+
     [Theory]
 	[InlineData(1)]
 	[InlineData(2)]
