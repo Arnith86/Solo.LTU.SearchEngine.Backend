@@ -5,6 +5,7 @@ using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.BackgroundServices;
 using LTU.SearchEngine.Infrastructure.Configuration;
 using LTU.SearchEngine.Test.HelperClasses;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.Logging;
 using Moq;
 using System.Net;
@@ -212,7 +213,8 @@ public class TplCrawlJobDispatcherTests
 				gate.Release();
 				
 				return CreateResult();
-			});
+			}
+		);
 
 		using var cts = new CancellationTokenSource();
 		var startTask = _sut.Start(cts.Token);
@@ -233,6 +235,51 @@ public class TplCrawlJobDispatcherTests
 		cts.Cancel();
 		await startTask;
 	}
+
+	[Fact]
+	public async Task HandleUseCaseAsync_SuccessfulCrawl_JobReAddedToQueueWithCorrectNextAttempt()
+	{
+		// Arrange 
+		var job = new CrawlJob
+		{
+			Id = 1,
+			Url = "https://example.com",
+			NextAttempt = DateTime.UtcNow
+		};
+
+		List<DateTime>  dateTimes = new List<DateTime>();
+
+		_mockUseCase.Setup(uc => uc.Execute(It.IsAny<CrawlJob>())).Returns( async () =>
+			{
+				var result = CreateResult();
+				dateTimes.Add(DateTime.UtcNow);
+				return result;
+			}
+		);
+		
+		// Act
+		var cts = new CancellationTokenSource();
+		
+		await _sut.Enqueue(job);
+		Task task = _sut.Start(cts.Token);
+
+		int totalWait = 0;
+		int maxWait = 5000;
+		
+		while (totalWait < maxWait && dateTimes.Count < 2)
+		{
+			totalWait += 100;
+			await Task.Delay(100);
+		}
+
+		cts.Cancel();
+
+		// Assert
+		TimeSpan elapsedTime = dateTimes[1] - dateTimes[0];
+		Assert.InRange(elapsedTime, TimeSpan.FromMilliseconds(500), TimeSpan.FromMilliseconds(560));
+		_mockUseCase.Verify(uc => uc.Execute(It.IsAny<CrawlJob>()), Times.Exactly(2));
+	}
+
 
 	[Fact]
 	public async Task Enqueue_Job_Null_ShouldThrow_ArgumentNullException()
@@ -291,6 +338,7 @@ public class TplCrawlJobDispatcherTests
 		cts.Cancel();
 		await startTask;
 	}
+
 
 	[Fact]
 	public async Task HandleFailedJob_MaxRetryReached_JobIsDropped()
