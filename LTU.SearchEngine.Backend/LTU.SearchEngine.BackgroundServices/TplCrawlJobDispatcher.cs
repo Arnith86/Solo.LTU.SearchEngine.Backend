@@ -127,10 +127,10 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 			return;
 		}
 
-		int index = (job.RetryCount - 1) >= 0 ? job.RetryCount - 1 : 0;
+		//int index = (job.RetryCount - 1) >= 0 ? job.RetryCount - 1 : 0;
 
 		job.NextAttempt = 
-			DateTime.UtcNow + _crawlerSettingsLoader.Load().RetryIntervals[index];
+			DateTime.UtcNow + _crawlerSettingsLoader.Load().GetRetryDelayInterval(job.RetryCount);//   RetryIntervals[index];
 
 		job.RetryCount++;
 		
@@ -177,12 +177,14 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 		_logger.LogInformation(
 			"Crawler Dispatcher started. Effective configuration: " +
 			"UserAgent={UserAgent}, SeedURLs={SeedUrl}, MaxConcurrencyPerDomain={MaxConcurrency}, " +
-			"MinDelayMs={MinDelay}ms, RetryIntervals={RetryIntervals}, WhiteList={WhiteList}",
+			"MinDelayMs={MinDelay}ms, RetryIntervals={RetryIntervals}, CrawlUpdateInterval={CrawlUpdateInterval}, " +
+			"WhiteList={WhiteList}",
 			initialSetting.UserAgent,
 			initialSetting.SeedUrls,
 			initialSetting.MaxConcurrencyPerDomain,
 			initialSetting.MinDelayMs,
 			initialSetting.RetryIntervals,
+			initialSetting.CrawlUpdateInterval,
 			initialSetting.WhiteList
 		);
 		

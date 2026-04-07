@@ -11,6 +11,7 @@ public class CrawlerSettings
 	public int MaxConcurrencyPerDomain { get; } 
 	public int MinDelayMs { get; }
 	public IReadOnlyList<TimeSpan> RetryIntervals { get; }
+	public TimeSpan CrawlUpdateInterval { get; }
     public IReadOnlyList<string> SeedUrls { get; }
     public IReadOnlyList<string> WhiteList { get; } 
     public Dictionary<string, List<string>>? RobotsExceptionRules { get; set; } = new();
@@ -21,6 +22,9 @@ public class CrawlerSettings
     /// <param name="maxConcurrencyPerDomain">Maximum number of concurrent crawl requests allowed per domain. Must be greater than 0.</param>
     /// <param name="minDelayMs">Minimum delay (in milliseconds) between requests to the same domain. Must be 0 or greater.</param>
     /// <param name="retryIntervals">Retry delays used for transient failures. Must contain at least one positive <see cref="TimeSpan"/>.</param>
+	/// <param name="seedUrls">The base urls used to start the crawling process. </param>
+	/// <param name="whiteList">Contains the domains that the crawler is allowed to visit.</param>
+	/// <param name="CrawlUpdateInterval">Specify the time between new crawls of already crawled pages.</param>
     /// <param name="robotsExceptionRules">Optional. A dictionary of domains and their corresponding exception rules for robots.txt. Defaults to null.</param>
 	/// <exception cref="ArgumentException">
     /// Thrown when <paramref name="userAgent"/> is null/empty/whitespace, <br />
@@ -38,6 +42,7 @@ public class CrawlerSettings
 		IReadOnlyList<TimeSpan> retryIntervals,
         IReadOnlyList<string> seedUrls,
 		IReadOnlyList<string> whiteList,
+		TimeSpan crawlUpdateInterval,
 		Dictionary<string, List<string>>? robotsExceptionRules = null
        )
 	{
@@ -58,6 +63,9 @@ public class CrawlerSettings
 		if (retryIntervals.Any(x => x <= TimeSpan.Zero))
 			throw new ArgumentOutOfRangeException(nameof(retryIntervals), " cannot not contain negative values!");
 
+		if (crawlUpdateInterval <= TimeSpan.Zero)
+			throw new ArgumentOutOfRangeException(nameof(crawlUpdateInterval), " cannot not be zero or negative values!");
+
         // Validate that the list exists (FRQ-1003 whitelist)
         if (seedUrls is null || seedUrls.Count == 0)
             throw new ArgumentException("Must provide at least one seed URL/Domain.", nameof(seedUrls));
@@ -72,6 +80,7 @@ public class CrawlerSettings
 		RetryIntervals = retryIntervals;
         SeedUrls = seedUrls;
 		WhiteList = whiteList;
+		CrawlUpdateInterval = crawlUpdateInterval;
 		RobotsExceptionRules = robotsExceptionRules ?? new Dictionary<string, List<string>>();
     }
 
