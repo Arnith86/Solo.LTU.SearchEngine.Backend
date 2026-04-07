@@ -5,7 +5,6 @@ using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.BackgroundServices;
 using LTU.SearchEngine.Infrastructure.Configuration;
 using LTU.SearchEngine.Test.HelperClasses;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.Logging;
 using Moq;
 using System.Net;
@@ -274,7 +273,7 @@ public class TplCrawlJobDispatcherTests
 
 		cts.Cancel();
 
-		// Assert
+		// Assert - CrawlUpdateInterval = 500
 		TimeSpan elapsedTime = dateTimes[1] - dateTimes[0];
 		Assert.InRange(elapsedTime, TimeSpan.FromMilliseconds(500), TimeSpan.FromMilliseconds(560));
 		_mockUseCase.Verify(uc => uc.Execute(It.IsAny<CrawlJob>()), Times.Exactly(2));
@@ -453,7 +452,10 @@ public class TplCrawlJobDispatcherTests
 
 		await Task.Delay(2000);
 
-		Assert.Equal( _mockCrawlerSettingsLoader.Object.Load().MaxConcurrencyPerDomain, maxObserved);
+		Assert.Equal( 
+			_mockCrawlerSettingsLoader.Object.Load().MaxConcurrencyPerDomain, 
+			maxObserved
+		);
 
 		cts.Cancel();
 		await taskStart;
