@@ -1,10 +1,5 @@
 using LTU.SearchEngine.Backend.Core.TextNormalization;
-using Lucene.Net.Analysis;
 using Lucene.Net.Analysis.Core;
-using Lucene.Net.Analysis.En;
-using Lucene.Net.Analysis.Snowball;
-using Lucene.Net.Analysis.Standard;
-using Lucene.Net.Util;
 using Microsoft.Extensions.Logging;
 using Moq;
 

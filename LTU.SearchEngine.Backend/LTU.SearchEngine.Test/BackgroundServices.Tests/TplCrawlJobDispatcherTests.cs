@@ -17,6 +17,7 @@ public class TplCrawlJobDispatcherTests
 	private readonly SemaphoreProvider _semaphoreProvider;
 	private Mock<IProcessCrawlJobUseCase> _mockUseCase;
 	private readonly ICrawlJobDispatcher _sut;
+	private readonly Mock<ILogger<TplCrawlJobDispatcher>> _mockLogger;
 
     private CrawlResult CreateResult()
 	{
@@ -52,13 +53,13 @@ public class TplCrawlJobDispatcherTests
 		
 		_mockCrawlerSettingsLoader = new Mock<ICrawlerSettingsLoader>();
 		_mockCrawlerSettingsLoader.Setup(csl => csl.Load()).Returns(CreateSettings());
-		
+		_mockLogger = new Mock<ILogger<TplCrawlJobDispatcher>>();
 
         _sut = new TplCrawlJobDispatcher(
 		  _mockUseCase.Object,
 		  _semaphoreProvider,
 		  _mockCrawlerSettingsLoader!.Object,
-		  new Mock<ILogger<TplCrawlJobDispatcher>>().Object
+		  _mockLogger.Object
 		);
     }
 
@@ -317,6 +318,16 @@ public class TplCrawlJobDispatcherTests
 
 		// Assert - Retry counter is only incremented before enqueue.
 		Assert.Equal(3, job.RetryCount);
+		_mockLogger.Verify(
+			x => x.Log(
+				LogLevel.Warning,
+				It.IsAny<EventId>(),
+				It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Discarding job")),
+				It.IsAny<Exception>(),
+				It.IsAny<Func<It.IsAnyType, Exception, string>>()!
+			),
+			Times.Once
+		);
 
 		cts.Cancel();
 		await startTask;
