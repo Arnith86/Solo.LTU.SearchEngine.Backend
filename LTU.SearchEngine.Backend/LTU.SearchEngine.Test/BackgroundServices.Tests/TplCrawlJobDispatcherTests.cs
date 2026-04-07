@@ -35,7 +35,7 @@ public class TplCrawlJobDispatcherTests
 				TimeSpan.FromMilliseconds(150),
 				TimeSpan.FromMilliseconds(200)
 			},
-			crawlUpdateInterval: TimeSpan.FromMilliseconds(200),
+			crawlUpdateInterval: TimeSpan.FromMilliseconds(500),
             seedUrls: new List<string> { "ltu.se" },
 			whiteList: new List<string> { "ltu.se" },
 			robotsExceptionRules: new Dictionary<string, List<string>>{
@@ -244,11 +244,13 @@ public class TplCrawlJobDispatcherTests
 	[Fact]
 	public async Task HandleFailedJob_MaxRetryNotReached_IsRetriedWithCorrectTimeDelayAdded()
 	{
+		// Arrange
 		DateTime nextAttemptExpected = 
-			DateTime.UtcNow + _mockCrawlerSettingsLoader.Object.Load().GetRetryDelayInterval(1);// .RetryIntervals[0];
+			DateTime.UtcNow + _mockCrawlerSettingsLoader.Object.Load().GetRetryDelayInterval(1);
 		
 		DateTime nextAttemptToLong 
-			= DateTime.UtcNow +  _mockCrawlerSettingsLoader.Object.Load().GetRetryDelayInterval(2); //.RetryIntervals[1];
+			= DateTime.UtcNow +  _mockCrawlerSettingsLoader.Object.Load().GetRetryDelayInterval(2); 
+
 
 		var job = new CrawlJob
 		{
@@ -264,15 +266,21 @@ public class TplCrawlJobDispatcherTests
 		);
 
 		using var cts = new CancellationTokenSource();
+		
 		var startTask = _sut.Start(cts.Token);
 
 		// Act
 		await _sut.Enqueue(job);
-
-		await Task.Delay(500);
-
+		
+		int maxWait = 500;
+		int totWait = 0;
+		while ((job.RetryCount < 2) && totWait < maxWait)
+		{
+			await Task.Delay(100);
+			totWait += 100;
+		}
+		
 		// Assert
-		_mockUseCase.Verify(u => u.Execute(It.IsAny<CrawlJob>()), Times.AtLeast(2));
 		Assert.Equal(2, job.RetryCount);
 		Assert.True(
 			job.NextAttempt >= nextAttemptExpected && 

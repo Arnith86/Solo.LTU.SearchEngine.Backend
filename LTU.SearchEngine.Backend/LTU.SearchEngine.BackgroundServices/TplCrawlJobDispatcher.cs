@@ -102,6 +102,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 		{
 			CrawlResult result = await _processCrawlJobUseCase.Execute(job);
 			await EnqueueNewJobs(result);
+			await ReAddJobToQueueScheduledUpdateCrawl(job, result.CrawledAt);
 		}
 		catch (ArgumentException ex)
 		{
@@ -127,10 +128,8 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 			return;
 		}
 
-		//int index = (job.RetryCount - 1) >= 0 ? job.RetryCount - 1 : 0;
-
 		job.NextAttempt = 
-			DateTime.UtcNow + _crawlerSettingsLoader.Load().GetRetryDelayInterval(job.RetryCount);//   RetryIntervals[index];
+			DateTime.UtcNow + _crawlerSettingsLoader.Load().GetRetryDelayInterval(job.RetryCount);
 
 		job.RetryCount++;
 		
@@ -149,6 +148,15 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 
 			await Enqueue(newJob);
 		}
+	}
+
+	private async Task ReAddJobToQueueScheduledUpdateCrawl(CrawlJob job, DateTime crawledAt)
+	{
+		if (job.RetryCount > 1) job.RetryCount = 1;
+
+		job.NextAttempt = crawledAt + _crawlerSettingsLoader.Load().CrawlUpdateInterval;
+
+		await Enqueue(job);
 	}
 
 	/// <inheritdoc />
