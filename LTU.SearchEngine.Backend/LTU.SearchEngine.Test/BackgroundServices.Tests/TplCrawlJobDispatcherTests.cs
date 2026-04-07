@@ -25,7 +25,7 @@ public class TplCrawlJobDispatcherTests
 	
 	private static CrawlerSettings CreateSettings()
 	{
-		return new CrawlerSettings(
+		return CrawlerSettingsBuilder.BuildCrawlerSettings(
 			userAgent: "test-agent",
 			maxConcurrencyPerDomain: 2,
 			minDelayMs: 100,
@@ -35,9 +35,13 @@ public class TplCrawlJobDispatcherTests
 				TimeSpan.FromMilliseconds(150),
 				TimeSpan.FromMilliseconds(200)
 			},
+			crawlUpdateInterval: TimeSpan.FromMilliseconds(200),
             seedUrls: new List<string> { "ltu.se" },
-			whiteList: new List<string> { "ltu.se" }
-        );
+			whiteList: new List<string> { "ltu.se" },
+			robotsExceptionRules: new Dictionary<string, List<string>>{
+                { "ltu.se", new List<string> { "/private/" } }
+            }
+		);
 	}
 
 	public TplCrawlJobDispatcherTests()
@@ -45,10 +49,10 @@ public class TplCrawlJobDispatcherTests
 		_semaphoreProvider = new SemaphoreProvider();
 		_mockUseCase = new Mock<IProcessCrawlJobUseCase>();
 		_mockUseCase.Setup(uc => uc.Execute(It.IsAny<CrawlJob>())).ReturnsAsync(CreateResult());
-
+		
 		_mockCrawlerSettingsLoader = new Mock<ICrawlerSettingsLoader>();
 		_mockCrawlerSettingsLoader.Setup(csl => csl.Load()).Returns(CreateSettings());
-
+		
 
         _sut = new TplCrawlJobDispatcher(
 		  _mockUseCase.Object,
@@ -241,16 +245,16 @@ public class TplCrawlJobDispatcherTests
 	public async Task HandleFailedJob_MaxRetryNotReached_IsRetriedWithCorrectTimeDelayAdded()
 	{
 		DateTime nextAttemptExpected = 
-			DateTime.UtcNow + _mockCrawlerSettingsLoader.Object.Load().RetryIntervals[0];
+			DateTime.UtcNow + _mockCrawlerSettingsLoader.Object.Load().GetRetryDelayInterval(1);// .RetryIntervals[0];
 		
 		DateTime nextAttemptToLong 
-			= DateTime.UtcNow +  _mockCrawlerSettingsLoader.Object.Load().RetryIntervals[1];
+			= DateTime.UtcNow +  _mockCrawlerSettingsLoader.Object.Load().GetRetryDelayInterval(2); //.RetryIntervals[1];
 
 		var job = new CrawlJob
 		{
 			Id = 3,
 			Url = "https://fail.com",
-			RetryCount = 0,
+			RetryCount = 1,
 			NextAttempt = DateTime.UtcNow
 		};
 
@@ -269,7 +273,7 @@ public class TplCrawlJobDispatcherTests
 
 		// Assert
 		_mockUseCase.Verify(u => u.Execute(It.IsAny<CrawlJob>()), Times.AtLeast(2));
-		Assert.Equal(1, job.RetryCount);
+		Assert.Equal(2, job.RetryCount);
 		Assert.True(
 			job.NextAttempt >= nextAttemptExpected && 
 			job.NextAttempt <= nextAttemptToLong

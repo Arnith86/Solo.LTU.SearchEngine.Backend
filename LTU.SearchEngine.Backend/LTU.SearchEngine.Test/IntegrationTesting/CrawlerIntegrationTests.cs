@@ -51,6 +51,7 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
                 "MaxConcurrencyPerDomain": {{{maxConcurrencyPerDomain}}},
                 "MinDelayMs": {{{minDelayMs}}},
                 "RetryIntervals": ["00:00:01"],
+                "CrawlUpdateInterval": "7.00:00:00",
                 "SeedUrls": ["{{{seedUrl}}}"],
                 "WhiteList": ["localhost"],
                 "RobotsExceptionRules": {
@@ -406,7 +407,8 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         int ExpectedMaxConcurrencyPerDomain = 2;
         int ExpectedMinDelayMs = 10;
         string expectedRetryInterval = "00:00:01, 1.00:00:00, 7.00:00:00";
-        string ExpectedWhiteList = "localhost";
+        string expectedCrawlUpdateInterval = "7.00:00:00";
+        string expectedWhiteList = "localhost";
 
         var indexerMock = new Mock<IIndexer>();
         var loggerMock = new Mock<ILogger<TplCrawlJobDispatcher>>();
@@ -438,7 +440,8 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
                 v.ToString()!.Contains($"MaxConcurrencyPerDomain={ExpectedMaxConcurrencyPerDomain}") && 
                 v.ToString()!.Contains($"MinDelayMs={ExpectedMinDelayMs}ms") && 
                 v.ToString()!.Contains($"RetryIntervals={expectedRetryInterval}") && 
-                v.ToString()!.Contains($"WhiteList={ExpectedWhiteList}")  
+                v.ToString()!.Contains($"CrawlUpdateInterval={expectedCrawlUpdateInterval}") &&
+                v.ToString()!.Contains($"WhiteList={expectedWhiteList}") 
                 ),  
                 
             exception: null,

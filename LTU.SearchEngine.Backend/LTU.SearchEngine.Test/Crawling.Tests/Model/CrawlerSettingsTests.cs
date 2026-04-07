@@ -1,4 +1,5 @@
 ﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using LTU.SearchEngine.Test.HelperClasses;
 
 namespace LTU.SearchEngine.Test.Crawling.Tests.Model;
 
@@ -20,12 +21,17 @@ public class CrawlerSettingsTests
         string userAgent = "LTUSearchCrawler/1.0 (Academic project; contact: some.mail@student.ltu.se)",
         int maxConcurrencyPerDomain = 5,
         int minDelayMs = 100,
-        List<TimeSpan> retryIntervals = null!, 
+        List<TimeSpan> retryIntervals = null!,
+        TimeSpan crawlUpdateInterval = default, 
         List<string> seedUrls = null!        
     )
     {
       
         var effectiveRetryIntervals = retryIntervals ?? new List<TimeSpan> { TimeSpan.FromSeconds(1) };
+        
+        var effectiveCrawUpdateInterval = crawlUpdateInterval == default 
+            ? TimeSpan.FromMilliseconds(1) : crawlUpdateInterval;
+        
         var effectiveSeedUrls = seedUrls ?? new List<string> { "ltu.se" };
         var whiteList = new List<string>{ "ltu.se" };
         var robotsExceptionRules = new Dictionary<string, List<string>>{
@@ -33,14 +39,15 @@ public class CrawlerSettingsTests
             { "anotherDomain.com", new List<string> { "Disallow: /secret/" } }
         };
 
-        return new CrawlerSettings(
-            userAgent,
-            maxConcurrencyPerDomain,
-            minDelayMs,
-            effectiveRetryIntervals, 
-            effectiveSeedUrls,
-            whiteList,
-            robotsExceptionRules       
+        return CrawlerSettingsBuilder.BuildCrawlerSettings(
+            userAgent: userAgent,
+            maxConcurrencyPerDomain: maxConcurrencyPerDomain,
+            minDelayMs: minDelayMs,
+            retryIntervals: effectiveRetryIntervals,
+            crawlUpdateInterval: effectiveCrawUpdateInterval, 
+            seedUrls: effectiveSeedUrls,
+            whiteList: whiteList,
+            robotsExceptionRules: robotsExceptionRules       
         );
     }
 
@@ -85,7 +92,7 @@ public class CrawlerSettingsTests
         string userAgent = "LTUSearchCrawler/1.0 (Academic project; contact: some.mail@student.ltu.se)";
         int maxConcurrencyPerDomain = 5;
         int minDelayMs = 100;
-       
+        TimeSpan crawlUpdateInterval = TimeSpan.FromMilliseconds(200);      
         var validSeedUrls = new List<string> { "ltu.se" };
         var whiteList = new List<string> { "ltu.se" };
         
@@ -97,6 +104,7 @@ public class CrawlerSettingsTests
             retryIntervals,       
             validSeedUrls, 
             whiteList,
+            crawlUpdateInterval,
             null!
         );
 
@@ -134,7 +142,7 @@ public class CrawlerSettingsTests
         string userAgent = "LTUSearchCrawler/1.0 (Academic project; contact: some.mail@student.ltu.se)";
         int maxConcurrencyPerDomain = 5;
         int minDelayMs = 100;
-       
+        TimeSpan crawlUpdateInterval = TimeSpan.FromMilliseconds(200);
         var validSeedUrls = new List<string> { "ltu.se" };
         
         List<TimeSpan> intervals = new List<TimeSpan>
@@ -151,7 +159,8 @@ public class CrawlerSettingsTests
             minDelayMs,
             intervals,      
             validSeedUrls, 
-            null!
+            null!,
+            crawlUpdateInterval
         ));
     }
 
@@ -163,7 +172,7 @@ public class CrawlerSettingsTests
         string userAgent = "LTUSearchCrawler/1.0 (Academic project; contact: some.mail@student.ltu.se)";
         int maxConcurrencyPerDomain = 5;
         int minDelayMs = 100;
-       
+        TimeSpan crawlUpdateInterval = TimeSpan.FromMilliseconds(200);
         var validSeedUrls = new List<string> { "ltu.se" };
         var whiteList = new List<string>();
 
@@ -181,7 +190,8 @@ public class CrawlerSettingsTests
             minDelayMs,
             intervals,      
             validSeedUrls, 
-            whiteList
+            whiteList,
+            crawlUpdateInterval
         ));
     }
    
@@ -193,7 +203,7 @@ public class CrawlerSettingsTests
         string userAgent = "LTUSearchCrawler/1.0 (Academic project; contact: some.mail@student.ltu.se)";
         int maxConcurrencyPerDomain = 5;
         int minDelayMs = 100;
-       
+        TimeSpan crawlUpdateInterval = TimeSpan.FromMilliseconds(200);
         var validSeedUrls = new List<string> { "ltu.se" };
         var whiteList = new List<string> { "ltu.se" };
         
@@ -204,7 +214,8 @@ public class CrawlerSettingsTests
             minDelayMs,
             null!,       
             validSeedUrls, 
-            whiteList
+            whiteList,
+            crawlUpdateInterval
         ));
     }
 
@@ -225,6 +236,7 @@ public class CrawlerSettingsTests
         };
 
         intervals[index] = TimeSpan.Zero;
+        TimeSpan crawlUpdateInterval = TimeSpan.FromMilliseconds(200);
 
         string userAgent = "LTUSearchCrawler/1.0 (Academic project; contact: some.mail@student.ltu.se)";
         int maxConcurrencyPerDomain = 5;
@@ -240,8 +252,9 @@ public class CrawlerSettingsTests
             minDelayMs,
             intervals,
             validSeedUrls,
-            whiteList) 
-        );
+            whiteList,
+            crawlUpdateInterval        
+        ));
     }
 
     // Tests each index of the retryIntervals list by giving it a negative TimeSpan value.
@@ -265,7 +278,8 @@ public class CrawlerSettingsTests
         int maxConcurrencyPerDomain = 5;
         int minDelayMs = 100;
         var whiteList = new List<string> { "ltu.se" };
-
+        TimeSpan crawlUpdateInterval = TimeSpan.FromMilliseconds(200); 
+        
         var validSeedUrls = new List<string> { "ltu.se" };
 
         // Act & Assert
@@ -275,9 +289,44 @@ public class CrawlerSettingsTests
             minDelayMs,
             intervals,
             whiteList,
-            validSeedUrls) 
-        );
+            validSeedUrls,
+            crawlUpdateInterval
+        ));
     }
+
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(-100)]
+    public void CrawlerSettings_Constructor_CrawlerUpdateInterval_NegativeTime_ThrowsArgumentOutOfRangeException(int input)
+    {
+        // Arrange
+        string userAgent = "LTUSearchCrawler/1.0 (Academic project; contact: some.mail@student.ltu.se)";
+        int maxConcurrencyPerDomain = 5;
+        int minDelayMs = 100;
+        List<TimeSpan> retryIntervals = new List<TimeSpan>
+        {
+            TimeSpan.FromSeconds(3600),    // 1 hour
+            TimeSpan.FromSeconds(86400),   // 1 day
+            TimeSpan.FromSeconds(604800)   // 1 week
+        };
+        TimeSpan crawlUpdateInterval = TimeSpan.FromMilliseconds(input);
+        var validSeedUrls = new List<string> { "ltu.se" };
+        var whiteList = new List<string> { "ltu.se" };
+        
+        // Act & Assert
+        Assert.Throws<ArgumentOutOfRangeException>(() => new CrawlerSettings(
+            userAgent,
+            maxConcurrencyPerDomain,
+            minDelayMs,
+            retryIntervals,       
+            validSeedUrls, 
+            whiteList,
+            crawlUpdateInterval
+        ));
+    }
+
 
     [Theory]
 	[InlineData(1)]

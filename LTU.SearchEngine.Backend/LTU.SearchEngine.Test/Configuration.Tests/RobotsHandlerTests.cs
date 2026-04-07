@@ -1,7 +1,7 @@
-﻿using Castle.Core.Logging;
-using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure.Configuration;
 using LTU.SearchEngine.Infrastructure.Configurations;
+using LTU.SearchEngine.Test.HelperClasses;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
@@ -23,12 +23,13 @@ public class RobotsHandlerTests
         _httpClient = new HttpClient(_httpMessageHandlerMock.Object);
         _settingsLoaderMock = new Mock<ICrawlerSettingsLoader>();
 
-        _settings = new CrawlerSettings(
+        _settings = CrawlerSettingsBuilder.BuildCrawlerSettings(
             userAgent: "TestCrawler",
             maxConcurrencyPerDomain: 5,
             minDelayMs: 0,
-            retryIntervals: new[] { TimeSpan.FromSeconds(1) },
-            seedUrls: new[] { "https://ltu.se" },
+            retryIntervals: new List<TimeSpan> { TimeSpan.FromSeconds(1) },
+            crawlUpdateInterval: TimeSpan.FromMilliseconds(200),
+            seedUrls: new List<string> { "https://ltu.se" },
             whiteList: new List<string> { "ltu.se" },
             robotsExceptionRules: new Dictionary<string, List<string>>{
                 { "ltu.se", new List<string> { "/private/" } }

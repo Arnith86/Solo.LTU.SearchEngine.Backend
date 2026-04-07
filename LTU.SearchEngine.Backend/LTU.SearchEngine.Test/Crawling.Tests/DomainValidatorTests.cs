@@ -1,6 +1,8 @@
+using J2N;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure;
 using LTU.SearchEngine.Infrastructure.Configuration;
+using LTU.SearchEngine.Test.HelperClasses;
 using Moq;
 
 namespace LTU.SearchEngine.Test.Crawling;
@@ -13,14 +15,18 @@ public class DomainValidatorTests
     {
         var mockCrawlerSettingsLoader = new Mock<ICrawlerSettingsLoader>();
 
-        CrawlerSettings crawlerSettings = new CrawlerSettings
+        CrawlerSettings crawlerSettings = CrawlerSettingsBuilder.BuildCrawlerSettings
         (
             userAgent: "TestAgent",
             seedUrls: new List<string> { "ltu.se" },
             whiteList: new List<string> { "ltu.se", "umu.se" },
             maxConcurrencyPerDomain: 1, 
             minDelayMs: 0,
-            retryIntervals: new List<TimeSpan> { TimeSpan.FromSeconds(3600)} 
+            retryIntervals: new List<TimeSpan> { TimeSpan.FromSeconds(3600)}, 
+            crawlUpdateInterval: TimeSpan.FromMilliseconds(200),
+            robotsExceptionRules: new Dictionary<string, List<string>>{
+                { "ltu.se", new List<string> { "/private/" } }
+            }
         );
 
         mockCrawlerSettingsLoader.Setup(csl => csl.Load()).Returns(crawlerSettings);
