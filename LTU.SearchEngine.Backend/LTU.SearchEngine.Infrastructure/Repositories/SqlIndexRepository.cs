@@ -174,9 +174,15 @@ public class SqlIndexRepository : IIndexRepository
 			.ToListAsync();
 	}
 
-	public Task<HashSet<int>> GetDocumentIdsForPhraseAsync(
-    PhraseNode<HashSet<int>> phrase)
+	public Task<HashSet<int>> GetDocumentIdsForPhraseAsync(PhraseNode<HashSet<int>> phrase)
 	{
 		throw new NotImplementedException();
 	}
+
+    public async Task<bool> IsDocumentDuplicateAsync(string hash)
+    {
+        await using var context = await _factory.CreateDbContextAsync();
+        
+        return await context.Pages.AnyAsync(p => p.ContentHash.Equals(hash));
+    }
 }

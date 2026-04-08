@@ -24,4 +24,5 @@ public interface IIndexRepository
 	Task<HashSet<int>> GetDocumentIdsForTermAsync(string term);
 	Task<HashSet<int>> GetDocumentIdsForPhraseAsync(PhraseNode<HashSet<int>> phrase); 
 	Task<List<Page>> GetDocumentsByIdAsync(List<int> pageIds);
+	Task<bool> IsDocumentDuplicateAsync(string hash);
 }
