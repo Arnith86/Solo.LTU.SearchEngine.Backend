@@ -380,13 +380,13 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
         // Assert - Delay
         // Makes sure that execution times are in sequential order.
-        var orderedStamps = timesStamps.OrderBy(ts => ts); 
+        List<DateTime> orderedStamps = timesStamps.OrderBy(ts => ts).ToList(); 
 
-        for (int i = 0; i < timesStamps.Count - 1; i++)
+        for (int i = 0; i < orderedStamps.Count - 1; i++)
         {   
-            if (i + 1 <= timesStamps.Count)
+            if (i + 1 <= orderedStamps.Count)
             {
-                var actualDelay = timesStamps[i + 1] - timesStamps[i];
+                var actualDelay = orderedStamps[i + 1] - orderedStamps[i];
                 Assert.True(
                     actualDelay.TotalMilliseconds >= minDelayMs - 20, // Added small margin 
                     $"Delay between call {i} and {i+1} was to short: expected: {minDelayMs}ms actual: {actualDelay.TotalMilliseconds}ms"

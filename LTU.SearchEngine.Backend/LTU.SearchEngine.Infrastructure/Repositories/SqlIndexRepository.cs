@@ -179,10 +179,23 @@ public class SqlIndexRepository : IIndexRepository
 		throw new NotImplementedException();
 	}
 
-    public async Task<bool> IsDocumentDuplicateAsync(string hash)
+    public async Task<int?> GetExistingDocumentByHashAsync(string hash)
     {
         await using var context = await _factory.CreateDbContextAsync();
         
-        return await context.Pages.AnyAsync(p => p.ContentHash.Equals(hash));
+        return await context.Pages
+            .Where(p => p.ContentHash.Equals(hash))
+            .Select(p => (int?)p.Id)
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task UpdateLastCrawledAsync(int id, DateTime newCrawl)
+    {
+        await using var context = await _factory.CreateDbContextAsync();
+        await context.Pages
+            .Where(p => p.Id.Equals(id))
+            .ExecuteUpdateAsync(setter => 
+                setter.SetProperty(p => p.LastCrawled, newCrawl)
+            );
     }
 }

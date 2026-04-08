@@ -19,9 +19,14 @@ public class TplCrawlJobDispatcherTests
 	private readonly ICrawlJobDispatcher _sut;
 	private readonly Mock<ILogger<TplCrawlJobDispatcher>> _mockLogger;
 
-    private CrawlResult CreateResult()
+    private ProcessJobResponse CreateResponse()
 	{
-		return CrawlResultBuilder.BuildCrawlResult();
+		var result = CrawlResultBuilder.BuildCrawlResult();
+		return CrawlResultBuilder.ProcessJobResponseBuilder(
+			changedContent: true,
+			processedAt: DateTime.UtcNow,
+			crawlResult: result
+		);
 	}
 	
 	private static CrawlerSettings CreateSettings()
@@ -49,7 +54,7 @@ public class TplCrawlJobDispatcherTests
 	{
 		_semaphoreProvider = new SemaphoreProvider();
 		_mockUseCase = new Mock<IProcessCrawlJobUseCase>();
-		_mockUseCase.Setup(uc => uc.Execute(It.IsAny<CrawlJob>())).ReturnsAsync(CreateResult());
+		_mockUseCase.Setup(uc => uc.Execute(It.IsAny<CrawlJob>())).ReturnsAsync(CreateResponse());
 		
 		_mockCrawlerSettingsLoader = new Mock<ICrawlerSettingsLoader>();
 		_mockCrawlerSettingsLoader.Setup(csl => csl.Load()).Returns(CreateSettings());
@@ -116,7 +121,7 @@ public class TplCrawlJobDispatcherTests
 		};
 
 		_mockUseCase.Setup(u => u.Execute(It.IsAny<CrawlJob>()))
-			.ReturnsAsync(CreateResult())
+			.ReturnsAsync(CreateResponse())
 			.Callback(() => tcs.SetResult(true)
 		);
 
@@ -148,7 +153,7 @@ public class TplCrawlJobDispatcherTests
 			.Returns(async () =>
 			{
 				executionSignal.TrySetResult(true);
-				return CreateResult();
+				return CreateResponse();
 			}
 		);
 
@@ -211,7 +216,7 @@ public class TplCrawlJobDispatcherTests
 				lock (executionOrder) executionOrder.Add(j.Id);
 				gate.Release();
 				
-				return CreateResult();
+				return CreateResponse();
 			}
 		);
 
@@ -250,7 +255,7 @@ public class TplCrawlJobDispatcherTests
 
 		_mockUseCase.Setup(uc => uc.Execute(It.IsAny<CrawlJob>())).Returns( async () =>
 			{
-				var result = CreateResult();
+				var result = CreateResponse();
 				dateTimes.Add(DateTime.UtcNow);
 				return result;
 			}
@@ -309,7 +314,7 @@ public class TplCrawlJobDispatcherTests
 
 		_mockUseCase.SetupSequence(u => u.Execute(It.IsAny<CrawlJob>()))
 			.ThrowsAsync(new InvalidOperationException("fetch failed"))
-			.ReturnsAsync(CreateResult()
+			.ReturnsAsync(CreateResponse()
 		);
 
 		using var cts = new CancellationTokenSource();
@@ -352,7 +357,7 @@ public class TplCrawlJobDispatcherTests
 
 		_mockUseCase.SetupSequence(u => u.Execute(It.IsAny<CrawlJob>()))
 			.ThrowsAsync(new InvalidOperationException("fetch failed"))
-			.ReturnsAsync(CreateResult()
+			.ReturnsAsync(CreateResponse()
 		);
 
 		using var cts = new CancellationTokenSource();
@@ -394,10 +399,15 @@ public class TplCrawlJobDispatcherTests
 			statusCode: HttpStatusCode.OK,
 			timeTakenMs: 10
 		);
-		
+
+		var response = CrawlResultBuilder.ProcessJobResponseBuilder(
+			changedContent: true, 
+			processedAt: DateTime.UtcNow, 
+			crawlResult: result
+		);
 
 		_mockUseCase.Setup(u => u.Execute(It.IsAny<CrawlJob>()))
-			.ReturnsAsync(result);
+			.ReturnsAsync(response);
 
 		using var cts = new CancellationTokenSource();
 		var taskStart = _sut.Start(cts.Token);
@@ -433,7 +443,7 @@ public class TplCrawlJobDispatcherTests
 				await Task.Delay(200); // simulate work
 				Interlocked.Decrement(ref active);
 
-				return CreateResult();
+				return CreateResponse();
 			});
 
 		

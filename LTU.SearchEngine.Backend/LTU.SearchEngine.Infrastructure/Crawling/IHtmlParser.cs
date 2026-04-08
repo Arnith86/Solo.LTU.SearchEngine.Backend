@@ -29,6 +29,21 @@ public interface IHtmlParser
 	/// <returns>A plain-text representation of the visible content.</returns>
 	string ExtractRawText(string html);
 
+
+	/// <summary>
+	/// Normalizes raw text to create a stable input for content hashing.
+	/// </summary>
+	/// <remarks>
+	/// This method prepares text for change detection by:
+	/// <list type="bullet">
+	/// 	<item><description>Collapsing all consecutive whitespace (spaces, tabs, newlines) into a single space.</description></item>
+	/// 	<item><description>Trimming leading and trailing whitespace.</description></item>
+	/// 	<item><description>Converting the entire string to lowercase to ensure case-insensitivity.</description></item>
+	/// </list>
+	/// This ensures that minor formatting changes do not trigger a "content changed" state.
+	/// </remarks>
+	/// <param name="text">The raw text extracted from the HTML content.</param>
+	/// <returns>A cleaned, normalized version of the input text.</returns>
 	string CleanRawTextForHashing(string text); 
 
 

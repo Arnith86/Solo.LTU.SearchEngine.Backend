@@ -86,7 +86,8 @@ public class HapHtmlParser : IHtmlParser
         // Return distinct links to avoid processing the same URL multiple times.
         return internalLinks.Distinct().ToList();
     }
-    
+
+
     /// <inheritdoc/>
     public string ExtractRawText(string html)
     {
@@ -107,11 +108,14 @@ public class HapHtmlParser : IHtmlParser
         return HtmlEntity.DeEntitize(plainText).Trim();
     }
 
+
+    /// <inheritdoc/>
     public string CleanRawTextForHashing(string text) => 
         Regex.Replace(text, @"\s+", " ")
             .Trim()
             .ToLowerInvariant();
         
+
 
     /// <inheritdoc/>
     public string ExtractTitle(string html)
@@ -134,7 +138,7 @@ public class HapHtmlParser : IHtmlParser
         return HtmlEntity.DeEntitize(titleText).Trim();
     }
 
-
+    /// <inheritdoc/>
     public string ExtractLanguage(string html)
     {
         string languageCode = "Unknown";

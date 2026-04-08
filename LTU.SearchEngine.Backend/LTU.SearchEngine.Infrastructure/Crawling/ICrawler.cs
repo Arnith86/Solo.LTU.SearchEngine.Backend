@@ -3,45 +3,55 @@
 namespace LTU.SearchEngine.Infrastructure.Crawling;
 
 /// <summary>
-/// Defines functionality for fetching and crawling web resources.
+/// Defines the contract for fetching and processing web content.
+/// Supports incremental crawling by separating raw data retrieval from heavy parsing.
 /// </summary>
 public interface ICrawler
 {
     /// <summary>
-    /// Fetches the content located at the specified URL and performs <br />
-    /// crawling-related processing on the retrieved resource.
+    /// Performs the initial network request to retrieve raw binary data and metadata.
     /// </summary>
-    /// <param name="url">The URL of the resource to fetch.</param>
-    /// <returns>
-    /// A <see cref="CrawlResult"/> containing the fetched content, <br />
-    /// metadata, and any crawl-related information.
+    /// <param name="url">The absolute URL of the resource to fetch.</param>
+    /// <returns> 
+    /// A <see cref="RawCrawlData"/> containing the raw bytes, status code, and encoding information.
     /// </returns>
-    Task<CrawlResult> FetchAsync(string url);
+    /// <exception cref="HttpRequestException">
+    /// Thrown if the network request fails or returns a non-success status code.
+    /// </exception>
+    Task<CrawlResult> FetchAsync(RawCrawlData data, string hashedContent);
 
     /// <summary>
-    /// Retrieves the content from the specified URL and generates a normalized SHA256 hash of its text.
+    /// Generates a cryptographic hash of the content to detect changes.
     /// </summary>
     /// <remarks>
-    /// This method fetches the raw data from the web, identifies the content type, and performs 
-    /// specific extraction logic:
-    /// <list type="bullet">
-    ///     <item>
-    ///         <description>
-    ///             For HTML: Extracts the main body text (removing scripts, styles, etc.) and normalizes 
-    ///             whitespace and casing before hashing.
-    ///         </description>
-    ///     </item>
-    ///     <item>
-    ///         <description>
-    ///             For other formats: Currently defaults to hashing the extracted or raw text representation.
-    ///         </description>
-    ///     </item>
-    /// </list>
+    /// For HTML content, this method typically cleans and extracts raw text before hashing 
+    /// to avoid "noise" (like timestamps) from triggering unnecessary re-indexing.
     /// </remarks>
-    /// <param name="url">The absolute URL of the page or file to be hashed.</param>
-    /// <returns>
-    /// A 64-character hexadecimal string representing the hash of the normalized content.
-    /// </returns>
-    /// <exception cref="HttpRequestException">Thrown if the HTTP request fails.</exception>
-    Task<string> GetContentHash(string url);
+    /// <param name="data">The raw data retrieved from <see cref="FetchRawAsync"/>.</param>
+    /// <returns>A hexadecimal string representing the content hash.</returns>
+    Task<RawCrawlData> FetchRawAsync(string url);
+
+    /// <summary>
+    /// Performs full linguistic and structural parsing of the raw data.
+    /// </summary>
+    /// <remarks>
+    /// This is a heavy operation involving term extraction, link discovery, and title parsing.
+    /// It should only be invoked if the content hash indicates that the page has changed.
+    /// </remarks>
+    /// <param name="data">The raw data to parse.</param>
+    /// <param name="hashedContent">The pre-calculated hash to include in the final result.</param>
+    /// <returns>A comprehensive <see cref="CrawlResult"/> ready for indexing.</returns>
+    Task<string> GetContentHash(RawCrawlData data);
+
+    /// <summary>
+    /// Creates a standardized error result for failed crawl attempts.
+    /// </summary>
+    /// <param name="url">The URL where the error occurred.</param>
+    /// <param name="statusCode">The HTTP status code associated with the failure.</param>
+    /// <param name="timeTaken">The duration of the failed attempt in milliseconds.</param>
+    /// <param name="crawledAt">The timestamp of the attempt.</param>
+    /// <returns>A <see cref="CrawlResult"/> populated with error metadata and empty content.</returns>
+    CrawlResult CreateErrorResult(
+        string url, System.Net.HttpStatusCode statusCode, long timeTaken, DateTime crawledAt
+    );
 }
