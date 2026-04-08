@@ -37,4 +37,12 @@ public class Indexer : IIndexer
 
         await _repository.AddDocumentAsync(document);
     }
+
+    public async Task<bool> IsAlreadyIndexedAsync(string hash)
+    {
+        if (string.IsNullOrWhiteSpace(hash)) 
+            throw new ArgumentException(nameof(hash), " must have a value.");
+
+        return await _repository.IsDocumentDuplicateAsync(hash);
+    }
 }

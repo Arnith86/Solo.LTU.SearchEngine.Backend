@@ -3,4 +3,5 @@
 public interface IIndexer
 {
     Task IndexAsync(CrawlResult crawlResult);
+    Task<bool> IsAlreadyIndexedAsync(string hash);
 }
