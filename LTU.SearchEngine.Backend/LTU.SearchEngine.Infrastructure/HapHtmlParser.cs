@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using HtmlAgilityPack;
 using LTU.SearchEngine.Backend.Core;
 using LTU.SearchEngine.Backend.Core.Exceptions;
@@ -107,6 +106,12 @@ public class HapHtmlParser : IHtmlParser
         string plainText = doc.DocumentNode.InnerText;
         return HtmlEntity.DeEntitize(plainText).Trim();
     }
+
+    public string CleanRawTextForHashing(string text) => 
+        Regex.Replace(text, @"\s+", " ")
+            .Trim()
+            .ToLowerInvariant();
+        
 
     /// <inheritdoc/>
     public string ExtractTitle(string html)
