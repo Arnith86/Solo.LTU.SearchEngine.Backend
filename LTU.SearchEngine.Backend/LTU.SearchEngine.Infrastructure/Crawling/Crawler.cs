@@ -21,35 +21,24 @@ public class Crawler : ICrawler
         _contentHasher = contentHasher;
         _logger = logger;
     }
-
-
-    private bool IsHtmlFormat(string format) => format.Contains("text/html");
-
-    private Encoding SetEncoding(string? charSet)
-    {
-        var encoding = Encoding.UTF8; 
-
-        if (!string.IsNullOrWhiteSpace(charSet))
-        {
-            try
-            {
-                encoding = Encoding.GetEncoding(charSet);
-            }
-            catch (ArgumentException)
-            {
-                _logger.LogWarning("Failed to get encoding for charset: {CharSet}, defaulting to UTF-8.", charSet);
-            }
-        }
-        return encoding;
-    }
-
-    private string GetHtmlString(byte[] content, HttpResponseMessage response)
-    {
-        // If charset was missing or unrecognized, default to UTF-8
-        string? charSet = response.Content.Headers.ContentType?.CharSet; 
-        var encoding = SetEncoding(charSet);
     
-        return encoding.GetString(content);
+    public async Task<string> GetContentHash(string url)
+    {
+        using var response = await _httpClient.GetAsync(url);
+        byte[] content = await response.Content.ReadAsByteArrayAsync();
+
+        var contentType = response.Content.Headers.ContentType;
+        string? format = contentType?.MediaType ?? "text/plain";
+
+        string hashableText = string.Empty;
+
+        if (IsHtmlFormat(format))
+        {
+            string html = GetHtmlString(content, response);
+            hashableText = _htmlParser.CleanRawTextForHashing(_htmlParser.ExtractRawText(html));    
+        }
+        
+        return _contentHasher.CalculateHash(hashableText);
     }
 
     /// <inheritdoc/>
@@ -121,6 +110,37 @@ public class Crawler : ICrawler
             return null!; 
         }
     }
+
+
+    private bool IsHtmlFormat(string format) => format.Contains("text/html");
+
+    private Encoding SetEncoding(string? charSet)
+    {
+        var encoding = Encoding.UTF8; 
+
+        if (!string.IsNullOrWhiteSpace(charSet))
+        {
+            try
+            {
+                encoding = Encoding.GetEncoding(charSet);
+            }
+            catch (ArgumentException)
+            {
+                _logger.LogWarning("Failed to get encoding for charset: {CharSet}, defaulting to UTF-8.", charSet);
+            }
+        }
+        return encoding;
+    }
+
+    private string GetHtmlString(byte[] content, HttpResponseMessage response)
+    {
+        // If charset was missing or unrecognized, default to UTF-8
+        string? charSet = response.Content.Headers.ContentType?.CharSet; 
+        var encoding = SetEncoding(charSet);
+    
+        return encoding.GetString(content);
+    }
+
 
     // Help method for creating a "failed" result
     private CrawlResult CreateErrorResult(
