@@ -53,7 +53,9 @@ public class Crawler : ICrawler
         if (IsHtmlFormat(data.ContentType))
         {
             string html = GetHtmlString(data);
-            hashableText = _htmlParser.CleanRawTextForHashing(_htmlParser.ExtractRawText(html));    
+            hashableText = _htmlParser.CleanRawTextForHashing(
+                _htmlParser.ExtractRawText(html)
+            );    
         }
         
         return _contentHasher.CalculateHash(hashableText);

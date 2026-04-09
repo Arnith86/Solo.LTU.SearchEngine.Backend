@@ -5,8 +5,8 @@ using LTU.SearchEngine.Infrastructure.Crawling;
 using LTU.SearchEngine.Test.HelperClasses;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Moq.Protected;
 using System.Net;
+using System.Text;
 using Xunit.Abstractions;
 
 namespace LTU.SearchEngine.Test.Crawling.Tests;
@@ -102,90 +102,77 @@ public class CrawlerTest
     }
 
 
-    // [Fact]
-    // public async Task FetchAsync_WhenPageIsNotFound_ReturnsResultWith404Status()
-    // {
-    //     // ARRANGE
-    //     var url = "https://ltu.se/finns-inte";
-    //     SetupHttpResponse(HttpStatusCode.NotFound, "");
-
+    [Fact]
+    public async Task FetchRawAsync_WhenUrlIsValid_ReturnsRawDataWithMetadata()
+    {
+        // Arrange
+        var url = "https://ltu.se";
+        var statusCode = HttpStatusCode.OK;
+        var contentType = "text/html";
+        var charSet = "utf-8";
+        var fakeHtml = """<html lang="en"></html>""";
+        byte[] encodedContent = Encoding.UTF8.GetBytes(fakeHtml);
         
-    //     var rawCrawlData = RawCrawlDataBuilder.BuildRawCrawlData(
-    //         url: url,
-    //         httpStatusCode: HttpStatusCode.NotFound
-    //     );
+        HttpResponseHelper.SetupHttpResponse(
+            httpMessageHandlerMock: _handlerMock, 
+            httpStatusCode: statusCode, 
+            content: fakeHtml,
+            contentType: contentType,
+            charSet: charSet
+        );
 
-    //     // ACT
-    //     var result = await _sut.FetchAsync(rawCrawlData, It.IsAny<string>());
+        // Act 
+        var result = await _sut.FetchRawAsync(url);
 
-    //     // ASSERT
-    //     Assert.NotNull(result);
-    //     Assert.Equal(HttpStatusCode.NotFound, result.StatusCode);
-    //     Assert.Null(result.Title);
-    //     Assert.Equal("Unknown", result.Language);
-    //     Assert.Empty(result.IndexedTerms);
-    //     Assert.Empty(result.ExtractedLinks);
+        // Assert 
+        Assert.NotNull(result);
+        Assert.Equal(statusCode, result.HttpStatusCode);
+        Assert.Equal(encodedContent, result.Content);
+        Assert.Equal(contentType, result.ContentType);
+        Assert.Equal(charSet, result.CharSet);
+    }
 
-    //     Assert.Empty(result.Content);
+    [Fact]
+    public async Task GetContentHash_WhenHtml_InvokesParserAndHasher()
+    {
+        // Arrange
+        string fakeHash = "FakeHash";
 
-    //     Assert.True(result.TimeTakenMs >= 0);
-    // }
+        var rawData = RawCrawlDataBuilder.BuildRawCrawlData(
+            url: "https://ltu.se",
+            content: Encoding.UTF8.GetBytes("<html></html>"),
+            contentType: "text/html",
+            timeTaken: 400
+        );
+ 
+        _parserMock.Setup(p => p.ExtractRawText(It.IsAny<string>())).Returns("clean text");
+        _parserMock.Setup(p => p.CleanRawTextForHashing(It.IsAny<string>())).Returns("clean text");
+        _contentHasherMock.Setup(c => c.CalculateHash(It.IsAny<string>())).Returns(fakeHash);
 
-    // [Fact]
-    // public async Task FetchAsync_WhenServerErrorOccurs_ReturnsResultWith500Status()
-    // {
-    //     // ARRANGE
-    //     var url = "https://ltu.se/trasig-sida";
+        // Act 
+        var result = await _sut.GetContentHash(rawData);
 
-    //     SetupHttpResponse(HttpStatusCode.InternalServerError, "Server Error");
+        // Assert    
+        Assert.Equal(fakeHash, result);
+        _parserMock.Verify(p => p.ExtractRawText(It.IsAny<string>()), Times.Once);
+        _parserMock.Verify(p => p.CleanRawTextForHashing(It.IsAny<string>()), Times.Once);
+    }
 
-    //     var rawCrawlData = RawCrawlDataBuilder.BuildRawCrawlData(
-    //         url: url,
-    //         httpStatusCode: HttpStatusCode.InternalServerError
-    //     );
+    [Fact]
+    public void CreateErrorResult_ReturnsPopulatedErrorObject()
+    {
+        // Arrange
+        var url = "https://ltu.se";
+        var time = 100L;
+        var now = DateTime.UtcNow;
 
-    //     // ACT
-    //     var result = await _sut.FetchAsync(rawCrawlData, It.IsAny<string>());
+        // Act
+        var result = _sut.CreateErrorResult(url, HttpStatusCode.NotFound, time, now);
 
-    //     // ASSERT
-    //     Assert.NotNull(result);
-    //     Assert.Equal(HttpStatusCode.InternalServerError, result.StatusCode);
-    //     Assert.Equal("Unknown", result.Language);
-    //     Assert.Empty(result.IndexedTerms);
-
-    //     Assert.Empty(result.Content);
-
-    //     Assert.True(result.TimeTakenMs >= 0);
-    // }
-
-    // [Fact]
-    // public async Task FetchAsync_WhenNetworkIsDown_ReturnsErrorResult()
-    // {
-    //     // ARRANGE
-    //     var url = "https://ltu.se";
-
-    //     _handlerMock
-    //         .Protected()
-    //         .Setup<Task<HttpResponseMessage>>(
-    //             "SendAsync",
-    //             ItExpr.IsAny<HttpRequestMessage>(),
-    //             ItExpr.IsAny<CancellationToken>()
-    //         )
-    //         .ThrowsAsync(new HttpRequestException("No internet connection"));
-
-    //     var rawCrawlData = RawCrawlDataBuilder.BuildRawCrawlData(
-    //         url: url,
-    //         httpStatusCode: HttpStatusCode.NotFound
-    //     );
-
-    //     // ACT
-    //     var result = await _sut.FetchAsync(url);
-
-    //     // ASSERT
-    //     Assert.NotNull(result); 
-    //     Assert.Equal(System.Net.HttpStatusCode.ServiceUnavailable, result.StatusCode);
-    //     Assert.Contains("Error", result.Type);
-    //     Assert.Equal(url, result.Url);
-    //     Assert.Empty(result.IndexedTerms);
-    // }
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, result.StatusCode);
+        Assert.Equal(url, result.Url);
+        Assert.Empty(result.IndexedTerms);
+        Assert.Equal("Unknown", result.Language);
+    }
 }
