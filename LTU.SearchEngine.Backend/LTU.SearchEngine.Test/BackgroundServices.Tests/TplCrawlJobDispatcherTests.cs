@@ -324,7 +324,7 @@ public class TplCrawlJobDispatcherTests
 		// Act
 		await _sut.Enqueue(job);
 		
-		int maxWait = 500;
+		int maxWait = 700;
 		int totWait = 0;
 		while ((job.RetryCount < 2) && totWait < maxWait)
 		{

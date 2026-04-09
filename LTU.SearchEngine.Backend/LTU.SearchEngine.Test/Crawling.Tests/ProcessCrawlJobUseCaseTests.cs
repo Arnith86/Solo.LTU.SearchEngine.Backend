@@ -4,6 +4,7 @@ using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure.Crawling;
 using LTU.SearchEngine.Test.HelperClasses;
+using Microsoft.AspNetCore.Components.Forms;
 using Moq;
 using System.Net;
 
@@ -14,6 +15,22 @@ public class ProcessCrawlJobUseCaseTests
 	private readonly Mock<ICrawler> _crawlerMock;
 	private readonly Mock<IIndexer> _indexerMock;
 	private readonly CrawlJob _crawlJob; 
+	private readonly Mock<HttpMessageHandler> _handlerMock;
+
+	private const string _c_ExpectedHash = "FakeHash";
+	private const string _c_html = 
+	"""
+		<!DOCTYPE html>
+		<html>
+		<head>
+			<title>How Search Engines Work</title>
+		</head>
+		<body>
+			<h1>Search Engines</h1>
+			<p>Search engines use crawlers, indexers, and ranking algorithms.</p>
+		</body>
+		</html>
+	""";
 
 	private readonly ProcessCrawlJobUseCase _sut;
 
@@ -21,7 +38,9 @@ public class ProcessCrawlJobUseCaseTests
 	{
 		_crawlerMock = new Mock<ICrawler>();
 		_indexerMock = new Mock<IIndexer>();
-		
+		_handlerMock = new Mock<HttpMessageHandler>();
+
+	
 		_crawlJob = new CrawlJob
 		{
 			Url = "http://www.testsite.com",
@@ -36,66 +55,137 @@ public class ProcessCrawlJobUseCaseTests
 	}
 
 
-	// [Fact]
-	// public async Task Execute_ShouldReturnCrawlResult_WhenJobIsValidAndFetchSucceeds()
-	// {
-	// 	// Arrange 
-	// 	var indexedTerms = new List<IndexedTerm>
-	// 	{
-	// 		new IndexedTerm("engine", TermSource.Header),
-	// 		new IndexedTerm("indexing", TermSource.Body),
-	// 		new IndexedTerm("ranking", TermSource.Title)
-	// 	};
+	[Fact]
+	public async Task Execute_ShouldReturnProcessJobResponse_WhenJobIsValidAndFetchSucceeds()
+	{
+		// Arrange 
+		var indexedTerms = new List<IndexedTerm>
+		{
+			new IndexedTerm("engine", TermSource.Header),
+			new IndexedTerm("indexing", TermSource.Body),
+			new IndexedTerm("ranking", TermSource.Title)
+		};
 
-	// 	var html = """
-	// 		<!DOCTYPE html>
-	// 		<html>
-	// 		<head>
-	// 			<title>How Search Engines Work</title>
-	// 		</head>
-	// 		<body>
-	// 			<h1>Search Engines</h1>
-	// 			<p>Search engines use crawlers, indexers, and ranking algorithms.</p>
-	// 		</body>
-	// 		</html>
-	// 	""";
+		var extractedLinks = new List<string>{"https://example.com/about"};
+		var expectedContent = System.Text.Encoding.UTF8.GetBytes(_c_html);
+		var fakeHash = "FakeHash";
+		var processedAt = DateTime.UtcNow;
 
-	// 	var extractedLinks = new List<string>
-	// 	{
-	// 		"https://example.com/about",
-	// 	};
+		var expectedResult = CrawlResultBuilder.BuildCrawlResult(
+			url: _crawlJob.Url,
+			title: "title",
+			language: "sv",
+			indexedTerms: indexedTerms,
+			type: "text/html",
+			content: _c_html,
+			hashContent: fakeHash,
+			extractedLinks: extractedLinks,
+			statusCode: HttpStatusCode.OK,
+			timeTakenMs: 342
+		);
 
-	// 	var expectedResult = CrawlResultBuilder.BuildCrawlResult(
-	// 		url: _crawlJob.Url,
-	// 		title: "title",
-	// 		language: "sv",
-	// 		indexedTerms: indexedTerms,
-	// 		type: "text/html",
-	// 		content: html,
-	// 		extractedLinks: extractedLinks,
-	// 		statusCode: HttpStatusCode.OK,
-	// 		timeTakenMs: 342
-	// 	);
+		var rawCrawlData = RawCrawlDataBuilder.BuildRawCrawlData(
+			url: _crawlJob.Url,
+			content: expectedContent,
+			timeTaken: 342
+		);
 
-	// 	var responseResult = CrawlResultBuilder.ProcessJobResponseBuilder(
-	// 		changedContent: true, 
-	// 		processedAt: DateTime.UtcNow,
-	// 		crawlResult: expectedResult
-	// 	);
+		var expectedResponse = CrawlResultBuilder.ProcessJobResponseBuilder(
+			changedContent: true, 
+			processedAt: processedAt,
+			crawlResult: expectedResult
+		);
 
-	// 	_crawlerMock
-	// 		.Setup(c => c.FetchAsync(_crawlJob.Url))
-	// 		.ReturnsAsync(expectedResult);
 
+		_crawlerMock.Setup(c => c.FetchRawAsync(_crawlJob.Url)).ReturnsAsync(rawCrawlData);
+		_crawlerMock.Setup(c => c.GetContentHash(rawCrawlData)).ReturnsAsync(fakeHash);
+		_crawlerMock.Setup(c => c.FetchAsync(rawCrawlData, fakeHash)).ReturnsAsync(expectedResult);
+
+		HttpResponseHelper.SetupHttpResponse(_handlerMock, HttpStatusCode.OK, _c_html);
+
+		// Act 
+		ProcessJobResponse response = await _sut.Execute(_crawlJob);
 		
-	// 	// Act 
-	// 	ProcessJobResponse response = await _sut.Execute(_crawlJob);
+		// Assert
+		// Also checks to make sure that the `Indexer`method `index`, was executed. 
+		Assert.InRange<DateTime>(response.ProcessedAt, processedAt, processedAt+TimeSpan.FromMilliseconds(30));
+		Assert.Equal(expectedResponse.ChangedContent, response.ChangedContent);
+		Assert.Equal(expectedResult, expectedResponse.CrawlResult);
+		_indexerMock.Verify(im => im.IndexAsync(expectedResult), Times.Once);
+	}
+
+
+	[Fact]
+	public async Task Execute_ShouldReturnUnchangedResponse_WhenHashAlreadyExists()
+	{
+		// Arrange
+		int existingId = 1; 
+		var fakeHash = "FakeHash";
+		var processedAt = DateTime.UtcNow;
+
+		_crawlerMock.Setup(c => c.FetchRawAsync(It.IsAny<string>())).ReturnsAsync(It.IsAny<RawCrawlData>());
+		_crawlerMock.Setup(c => c.GetContentHash(It.IsAny<RawCrawlData>())).ReturnsAsync(fakeHash);
+		_indexerMock.Setup(i => i.GetExistingDocumentIdAsync(fakeHash)).ReturnsAsync(existingId);
+
+		var expectedProcessJobResponse = CrawlResultBuilder.ProcessJobResponseBuilder(
+			changedContent: false, 
+			processedAt: It.IsAny<DateTime>(),
+			crawlResult: null
+		);
+
+		// Act 
 		
-	// 	// Assert
-	// 	// Also checks to make sure that the `Indexer`method `index`, was executed. 
-	// 	Assert.Equal(expectedResult, responseResult.CrawlResult);
-	// 	_indexerMock.Verify(im => im.IndexAsync(expectedResult), Times.Once);
-	// }
+		ProcessJobResponse response = await _sut.Execute(_crawlJob);
+		// Assert 
+
+		Assert.False(response.ChangedContent);
+		Assert.InRange(response.ProcessedAt, processedAt, processedAt+TimeSpan.FromMilliseconds(30));
+		Assert.Null(response.CrawlResult);
+	}
+
+
+	[Theory]
+	[InlineData(HttpStatusCode.NotFound)]
+	[InlineData(HttpStatusCode.BadGateway)]
+	[InlineData(HttpStatusCode.Forbidden)]
+	[InlineData(HttpStatusCode.Gone)]
+	public async Task Execute_ShouldReturnErrorResponse_WhenFetchRawThrowsHttpRequestException(HttpStatusCode input)
+	{
+		// Arrange
+		var expectedStatusCode = input;
+		var processedAt = DateTime.UtcNow;
+
+
+		var expectedResult = CrawlResultBuilder.BuildCrawlResult(
+			url: _crawlJob.Url,
+			statusCode: input
+		);
+		
+		_crawlerMock
+			.Setup(c => c.FetchRawAsync(_crawlJob.Url))
+			.ThrowsAsync(new HttpRequestException("", null, input));
+			
+		_crawlerMock
+			.Setup(c => c.CreateErrorResult(
+				_crawlJob.Url, 
+				input, 
+				It.IsAny<long>(), 
+				It.IsAny<DateTime>()
+			)).Returns(expectedResult);
+		
+		
+		// Act 
+		
+		ProcessJobResponse response = await _sut.Execute(_crawlJob);
+
+		// Assert 
+		Assert.False(response.ChangedContent);
+		Assert.NotNull(response.CrawlResult);
+		Assert.Equal(input, response.CrawlResult.StatusCode);
+		_indexerMock.Verify(i => i.IndexAsync(It.IsAny<CrawlResult>()), Times.Never);
+	}
+
+
 
 	[Fact]
 	public async Task Execute_ShouldThrowArgumentNullException_WhenJobIsNull()
@@ -120,19 +210,27 @@ public class ProcessCrawlJobUseCaseTests
 	}
 
 
-	// [Fact]
-	// public async Task Execute_ShouldThrowInvalidOperationException_WhenCrawlerReturnsNull()
-	// {
-	// 	// Arrange
-	// 	_crawlerMock
-	// 		.Setup(c => c.FetchAsync(_crawlJob.Url))!
-	// 		.ReturnsAsync((CrawlResult?)null);
+	[Fact]
+	public async Task Execute_ShouldThrowInvalidOperationException_WhenCrawlerReturnsNull()
+	{
+		// Arrange
+		var rawData = RawCrawlDataBuilder.BuildRawCrawlData(_crawlJob.Url);
+		var fakeHash = "SomeHash";
 
-	// 	// Act & Assert
-	// 	var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.Execute(_crawlJob));
-	// 	Assert.Contains("Failed to fetch URL", ex.Message);
-	// 	Assert.Contains(_crawlJob.Url, ex.Message);
-	// }
+		_crawlerMock.Setup(c => c.FetchRawAsync(_crawlJob.Url)).ReturnsAsync(rawData);
+		_crawlerMock.Setup(c => c.GetContentHash(rawData)).ReturnsAsync(fakeHash);
+		_indexerMock.Setup(i => i.GetExistingDocumentIdAsync(fakeHash)).ReturnsAsync((int?)null);
+
+		_crawlerMock
+			.Setup(c => c.FetchAsync(rawData, fakeHash))!
+			.ReturnsAsync((CrawlResult?)null);
+
+		// Act & Assert
+		var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _sut.Execute(_crawlJob));
+		
+		Assert.Contains("Failed to fetch URL", ex.Message);
+		Assert.Contains(_crawlJob.Url, ex.Message);
+	}
 
 
 	[Fact]
