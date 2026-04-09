@@ -79,7 +79,7 @@ public class CrawlerTest
         _parserMock.Setup(p => p.ExtractLanguage(It.IsAny<string>()))
             .Returns("en");
         
-        SetupHttpResponse(HttpStatusCode.OK, fakeHtml);
+        HttpResponseHelper.SetupHttpResponse(_handlerMock, HttpStatusCode.OK, fakeHtml);
 
         var rawCrawlData = RawCrawlDataBuilder.BuildRawCrawlData(
             url: url,
@@ -188,21 +188,4 @@ public class CrawlerTest
     //     Assert.Equal(url, result.Url);
     //     Assert.Empty(result.IndexedTerms);
     // }
-
-    // --- Help method for moq HttpClient ---
-    private void SetupHttpResponse(HttpStatusCode code, string content)
-    {
-        _handlerMock
-            .Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.IsAny<HttpRequestMessage>(),
-                ItExpr.IsAny<CancellationToken>()
-            )
-            .ReturnsAsync(new HttpResponseMessage
-            {
-                StatusCode = code,
-                Content = new StringContent(content, System.Text.Encoding.UTF8, "text/html")
-            });
-    }
 }
