@@ -2,10 +2,11 @@
 using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure.Crawling;
+using LTU.SearchEngine.Test.HelperClasses;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Moq.Protected;
 using System.Net;
+using System.Text;
 using Xunit.Abstractions;
 
 namespace LTU.SearchEngine.Test.Crawling.Tests;
@@ -63,6 +64,7 @@ public class CrawlerTest
         var expectedTerms = new List<IndexedTerm> { new IndexedTerm("Welcome", TermSource.Header) };
         var expectedLinks = new List<string> { "https://ltu.se/contact" };
         var expectedTitle = "Test Page Title";
+        var expectedHash = "TestHash";
 
         // Configure Moq
         _parserMock.Setup(p => p.ExtractTerms(It.IsAny<string>()))
@@ -77,10 +79,16 @@ public class CrawlerTest
         _parserMock.Setup(p => p.ExtractLanguage(It.IsAny<string>()))
             .Returns("en");
         
-        SetupHttpResponse(HttpStatusCode.OK, fakeHtml);
+        HttpResponseHelper.SetupHttpResponse(_handlerMock, HttpStatusCode.OK, fakeHtml);
+
+        var rawCrawlData = RawCrawlDataBuilder.BuildRawCrawlData(
+            url: url,
+            content: expectedContent,
+            timeTaken: 1000
+        );
 
         // ACT
-        var result = await _sut.FetchAsync(url);
+        var result = await _sut.FetchAsync(rawCrawlData, expectedHash);
 
 
         // ASSERT
@@ -93,91 +101,78 @@ public class CrawlerTest
         Assert.True(result.TimeTakenMs >= 0);
     }
 
-    [Fact]
-    public async Task FetchAsync_WhenPageIsNotFound_ReturnsResultWith404Status()
-    {
-        // ARRANGE
-        var url = "https://ltu.se/finns-inte";
-        SetupHttpResponse(HttpStatusCode.NotFound, "");
-
-        // ACT
-        var result = await _sut.FetchAsync(url);
-
-        // ASSERT
-        Assert.NotNull(result);
-        Assert.Equal(HttpStatusCode.NotFound, result.StatusCode);
-        Assert.Null(result.Title);
-        Assert.Equal("Unknown", result.Language);
-        Assert.Empty(result.IndexedTerms);
-        Assert.Empty(result.ExtractedLinks);
-
-        Assert.Empty(result.Content);
-
-        Assert.True(result.TimeTakenMs >= 0);
-    }
 
     [Fact]
-    public async Task FetchAsync_WhenServerErrorOccurs_ReturnsResultWith500Status()
+    public async Task FetchRawAsync_WhenUrlIsValid_ReturnsRawDataWithMetadata()
     {
-        // ARRANGE
-        var url = "https://ltu.se/trasig-sida";
-
-        SetupHttpResponse(HttpStatusCode.InternalServerError, "Server Error");
-
-        // ACT
-        var result = await _sut.FetchAsync(url);
-
-        // ASSERT
-        Assert.NotNull(result);
-        Assert.Equal(HttpStatusCode.InternalServerError, result.StatusCode);
-        Assert.Equal("Unknown", result.Language);
-        Assert.Empty(result.IndexedTerms);
-
-        Assert.Empty(result.Content);
-
-        Assert.True(result.TimeTakenMs >= 0);
-    }
-
-    [Fact]
-    public async Task FetchAsync_WhenNetworkIsDown_ReturnsErrorResult()
-    {
-        // ARRANGE
+        // Arrange
         var url = "https://ltu.se";
+        var statusCode = HttpStatusCode.OK;
+        var contentType = "text/html";
+        var charSet = "utf-8";
+        var fakeHtml = """<html lang="en"></html>""";
+        byte[] encodedContent = Encoding.UTF8.GetBytes(fakeHtml);
+        
+        HttpResponseHelper.SetupHttpResponse(
+            httpMessageHandlerMock: _handlerMock, 
+            httpStatusCode: statusCode, 
+            content: fakeHtml,
+            contentType: contentType,
+            charSet: charSet
+        );
 
-        _handlerMock
-            .Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.IsAny<HttpRequestMessage>(),
-                ItExpr.IsAny<CancellationToken>()
-            )
-            .ThrowsAsync(new HttpRequestException("No internet connection"));
+        // Act 
+        var result = await _sut.FetchRawAsync(url);
 
-        // ACT
-        var result = await _sut.FetchAsync(url);
+        // Assert 
+        Assert.NotNull(result);
+        Assert.Equal(statusCode, result.HttpStatusCode);
+        Assert.Equal(encodedContent, result.Content);
+        Assert.Equal(contentType, result.ContentType);
+        Assert.Equal(charSet, result.CharSet);
+    }
 
-        // ASSERT
-        Assert.NotNull(result); 
-        Assert.Equal(System.Net.HttpStatusCode.ServiceUnavailable, result.StatusCode);
-        Assert.Contains("Error", result.Type);
+    [Fact]
+    public async Task GetContentHash_WhenHtml_InvokesParserAndHasher()
+    {
+        // Arrange
+        string fakeHash = "FakeHash";
+
+        var rawData = RawCrawlDataBuilder.BuildRawCrawlData(
+            url: "https://ltu.se",
+            content: Encoding.UTF8.GetBytes("<html></html>"),
+            contentType: "text/html",
+            timeTaken: 400
+        );
+ 
+        _parserMock.Setup(p => p.ExtractRawText(It.IsAny<string>())).Returns("clean text");
+        _parserMock.Setup(p => p.CleanRawTextForHashing(It.IsAny<string>())).Returns("clean text");
+        _contentHasherMock.Setup(c => c.CalculateHash(It.IsAny<string>())).Returns(fakeHash);
+
+        // Act 
+        var result = await _sut.GetContentHash(rawData);
+
+        // Assert    
+        Assert.Equal(fakeHash, result);
+        _parserMock.Verify(p => p.ExtractRawText(It.IsAny<string>()), Times.Once);
+        _parserMock.Verify(p => p.CleanRawTextForHashing(It.IsAny<string>()), Times.Once);
+    }
+
+    [Fact]
+    public void CreateErrorResult_ReturnsPopulatedErrorObject()
+    {
+        // Arrange
+        var url = "https://ltu.se";
+        var time = 100L;
+        var now = DateTime.UtcNow;
+
+        // Act
+        var result = _sut.CreateErrorResult(url, HttpStatusCode.NotFound, time, now);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, result.StatusCode);
         Assert.Equal(url, result.Url);
         Assert.Empty(result.IndexedTerms);
-    }
-
-    // --- Help method for moq HttpClient ---
-    private void SetupHttpResponse(HttpStatusCode code, string content)
-    {
-        _handlerMock
-            .Protected()
-            .Setup<Task<HttpResponseMessage>>(
-                "SendAsync",
-                ItExpr.IsAny<HttpRequestMessage>(),
-                ItExpr.IsAny<CancellationToken>()
-            )
-            .ReturnsAsync(new HttpResponseMessage
-            {
-                StatusCode = code,
-                Content = new StringContent(content, System.Text.Encoding.UTF8, "text/html")
-            });
+        Assert.Equal("Unknown", result.Language);
     }
 }

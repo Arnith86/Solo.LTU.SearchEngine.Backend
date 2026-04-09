@@ -140,6 +140,7 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
         await ASecondsWait();
 
+
         cts.Cancel();
 
 

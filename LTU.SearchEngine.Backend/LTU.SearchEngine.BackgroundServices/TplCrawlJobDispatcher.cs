@@ -100,9 +100,11 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 	{
 		try
 		{
-			CrawlResult result = await _processCrawlJobUseCase.Execute(job);
-			await EnqueueNewJobs(result);
-			await ReAddJobToQueueScheduledUpdateCrawl(job, result.CrawledAt);
+			ProcessJobResponse jobResponse = await _processCrawlJobUseCase.Execute(job);
+			
+			if (jobResponse.CrawlResult is not null) await EnqueueNewJobs(jobResponse.CrawlResult);
+			
+			await ReAddJobToQueueScheduledUpdateCrawl(job, jobResponse.ProcessedAt);
 		}
 		catch (ArgumentException ex)
 		{

@@ -15,14 +15,14 @@ namespace LTU.SearchEngine.Application;
 public interface IProcessCrawlJobUseCase
 {
 	/// <summary>
-	/// Processes a given crawl job by fetching the URL, validating the domain, extracts the contents, <br />
-	/// and returning the result of the crawl.
+	/// Executes the crawl process for a specific job, coordinating fetching, change detection, and indexing.
 	/// </summary>
-	/// <param name="job">The <see cref="CrawlJob"/> to be processed. Must not be <c>null</c> and must contain a valid URL.</param>
-	/// <returns>A <see cref="CrawlResult"/> representing the fetched and processed content.</returns>
-	/// <exception cref="ArgumentNullException">Thrown if <paramref name="job"/> is <c>null</c>.</exception>
-	/// <exception cref="ArgumentException">Thrown if <paramref name="job"/> contains an invalid URL.</exception>
-	/// <exception cref="DomainNotWhitelistedException">Thrown if the URL of <paramref name="job"/> is not allowed by the domain validator.</exception>
-	/// <exception cref="InvalidOperationException">Thrown if the crawler fails to fetch content for the URL.</exception>
-	public Task<CrawlResult> Execute(CrawlJob job);  
+	/// <param name="job">The crawl job containing the target URL and scheduling metadata.</param>
+	/// <returns>
+	/// A <see cref="ProcessJobResponse"/> indicating whether content was updated 
+	/// and containing the result of the crawl attempt.
+	/// </returns>
+	/// <exception cref="ArgumentException">Thrown if the job or URL is invalid.</exception>
+	/// <exception cref="InvalidOperationException">Thrown if the fetch attempt fails to produce a result.</exception>
+	public Task<ProcessJobResponse> Execute(CrawlJob job);  
 }

@@ -65,4 +65,17 @@ public class CrawlResultBuilder
 			crawledAt: crawledAt
 		);
     }
+
+	public static ProcessJobResponse ProcessJobResponseBuilder(
+		bool changedContent, 
+		DateTime processedAt, 
+		CrawlResult? crawlResult
+		)
+	{
+		return new ProcessJobResponse(
+			ChangedContent: changedContent,
+			ProcessedAt: processedAt, 
+			CrawlResult: crawlResult
+		);
+	}
 }

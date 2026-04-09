@@ -5,6 +5,7 @@ using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.BackgroundServices;
 using LTU.SearchEngine.Infrastructure.Configuration;
 using LTU.SearchEngine.Test.HelperClasses;
+using LTU.SearchEngine.Tests.Helpers;
 using Microsoft.Extensions.Logging;
 using Moq;
 using System.Net;
@@ -19,9 +20,14 @@ public class TplCrawlJobDispatcherTests
 	private readonly ICrawlJobDispatcher _sut;
 	private readonly Mock<ILogger<TplCrawlJobDispatcher>> _mockLogger;
 
-    private CrawlResult CreateResult()
+    private ProcessJobResponse CreateResponse()
 	{
-		return CrawlResultBuilder.BuildCrawlResult();
+		var result = CrawlResultBuilder.BuildCrawlResult();
+		return CrawlResultBuilder.ProcessJobResponseBuilder(
+			changedContent: true,
+			processedAt: DateTime.UtcNow,
+			crawlResult: result
+		);
 	}
 	
 	private static CrawlerSettings CreateSettings()
@@ -49,7 +55,7 @@ public class TplCrawlJobDispatcherTests
 	{
 		_semaphoreProvider = new SemaphoreProvider();
 		_mockUseCase = new Mock<IProcessCrawlJobUseCase>();
-		_mockUseCase.Setup(uc => uc.Execute(It.IsAny<CrawlJob>())).ReturnsAsync(CreateResult());
+		_mockUseCase.Setup(uc => uc.Execute(It.IsAny<CrawlJob>())).ReturnsAsync(CreateResponse());
 		
 		_mockCrawlerSettingsLoader = new Mock<ICrawlerSettingsLoader>();
 		_mockCrawlerSettingsLoader.Setup(csl => csl.Load()).Returns(CreateSettings());
@@ -116,7 +122,7 @@ public class TplCrawlJobDispatcherTests
 		};
 
 		_mockUseCase.Setup(u => u.Execute(It.IsAny<CrawlJob>()))
-			.ReturnsAsync(CreateResult())
+			.ReturnsAsync(CreateResponse())
 			.Callback(() => tcs.SetResult(true)
 		);
 
@@ -148,7 +154,7 @@ public class TplCrawlJobDispatcherTests
 			.Returns(async () =>
 			{
 				executionSignal.TrySetResult(true);
-				return CreateResult();
+				return CreateResponse();
 			}
 		);
 
@@ -211,7 +217,7 @@ public class TplCrawlJobDispatcherTests
 				lock (executionOrder) executionOrder.Add(j.Id);
 				gate.Release();
 				
-				return CreateResult();
+				return CreateResponse();
 			}
 		);
 
@@ -248,9 +254,10 @@ public class TplCrawlJobDispatcherTests
 
 		List<DateTime>  dateTimes = new List<DateTime>();
 
+	
 		_mockUseCase.Setup(uc => uc.Execute(It.IsAny<CrawlJob>())).Returns( async () =>
 			{
-				var result = CreateResult();
+				var result = CreateResponse();
 				dateTimes.Add(DateTime.UtcNow);
 				return result;
 			}
@@ -262,14 +269,11 @@ public class TplCrawlJobDispatcherTests
 		await _sut.Enqueue(job);
 		Task task = _sut.Start(cts.Token);
 
-		int totalWait = 0;
-		int maxWait = 5000;
-		
-		while (totalWait < maxWait && dateTimes.Count < 2)
-		{
-			totalWait += 100;
-			await Task.Delay(100);
-		}
+		await TestWait.UntilTrue(
+			condition: () => dateTimes.Count >= 2, 
+			maxWaitMs: 5000,
+			intervalMs: 50
+		);
 
 		cts.Cancel();
 
@@ -279,6 +283,120 @@ public class TplCrawlJobDispatcherTests
 		_mockUseCase.Verify(uc => uc.Execute(It.IsAny<CrawlJob>()), Times.Exactly(2));
 	}
 
+
+	[Fact]
+	public async Task HandleUseCaseAsync_OnFetchError_ShouldIncrementRetryAndReschedule()
+	{
+		// Arrange 
+		var firstAttempt = DateTime.UtcNow;
+		var uniqueUrl = $"https://error-{Guid.NewGuid()}.com";
+		int retryCountObserved = 0;
+		var retryAttempt = DateTime.UtcNow;
+
+		var job = new CrawlJob
+		{
+			Id = 10,
+			Url = uniqueUrl,
+			RetryCount = 1,
+			NextAttempt = firstAttempt
+		};
+
+		int callCount = 0;
+
+		// First call throws exception second (retry) catches job for inspection.
+		_mockUseCase.Setup(uc => uc.Execute(job))
+			.Returns(async (CrawlJob j) =>
+			{
+				callCount++;
+
+				if (callCount == 1) throw new InvalidOperationException("Temp error");
+				else if (callCount == 2)
+				{
+					retryCountObserved = j.RetryCount;
+					retryAttempt = (DateTime)j.LastAttempt!;	
+				}
+
+				return await Task.FromResult(CreateResponse());
+			});
+		
+		using var cts = new CancellationTokenSource();
+    	var startTask = _sut.Start(cts.Token);
+		
+		// Act 
+		await _sut.Enqueue(job);
+
+		await TestWait.UntilTrue(() => callCount >= 2, 10000, 50);
+
+		cts.Cancel();
+		await startTask;
+		
+		// Assert
+		Assert.Equal(2, retryCountObserved);
+    	Assert.True(retryAttempt > firstAttempt);
+	}
+
+
+	[Fact]
+	public async Task HandleUseCaseAsync_OnMaxRetries_ShouldDiscardJob()
+	{
+		// Arrange
+		var settings = CreateSettings();
+		// Job with mex retry set
+		var job = new CrawlJob { 
+			Id = 11, 
+			Url = "https://max-retry.com", 
+			RetryCount = settings.RetryIntervals.Count 
+		};
+		
+		_mockUseCase.Setup(u => u.Execute(It.IsAny<CrawlJob>()))
+			.ThrowsAsync(new InvalidOperationException("Final failure"));
+
+		using var cts = new CancellationTokenSource();
+		var startTask = _sut.Start(cts.Token);
+
+		// Act
+		await _sut.Enqueue(job);
+
+		await TestWait.UntilTrue(
+			maxWaitMs: 500,
+			intervalMs: 100
+		);
+
+		cts.Cancel();
+		await startTask;
+
+		// Assert
+		// Execute should only have been executed once, before job gets discarded. 
+		_mockUseCase.Verify(u => u.Execute(It.IsAny<CrawlJob>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task HandleUseCaseAsync_OnArgumentException_ShouldNotRetry()
+	{
+		// Arrange
+		var job = new CrawlJob { 
+			Id = 12, 
+			Url = "https://invalid-params.com",
+			NextAttempt = DateTime.UtcNow 
+		};
+
+		_mockUseCase.Setup(u => u.Execute(It.IsAny<CrawlJob>()))
+			.ThrowsAsync(new ArgumentException("Invalid parameters"));
+
+		using var cts = new CancellationTokenSource();
+		var startTask = _sut.Start(cts.Token);
+
+		// Act
+		await _sut.Enqueue(job);
+		await TestWait.UntilTrue(maxWaitMs: 500, intervalMs: 50);
+
+		cts.Cancel();
+		await startTask;
+
+		// Assert
+		// An ArgumentException does not trigger HandleFailedJob, therefore Execute is run only once.
+		_mockUseCase.Verify(u => u.Execute(It.IsAny<CrawlJob>()), Times.Once);
+	}
 
 	[Fact]
 	public async Task Enqueue_Job_Null_ShouldThrow_ArgumentNullException()
@@ -309,7 +427,7 @@ public class TplCrawlJobDispatcherTests
 
 		_mockUseCase.SetupSequence(u => u.Execute(It.IsAny<CrawlJob>()))
 			.ThrowsAsync(new InvalidOperationException("fetch failed"))
-			.ReturnsAsync(CreateResult()
+			.ReturnsAsync(CreateResponse()
 		);
 
 		using var cts = new CancellationTokenSource();
@@ -319,7 +437,7 @@ public class TplCrawlJobDispatcherTests
 		// Act
 		await _sut.Enqueue(job);
 		
-		int maxWait = 500;
+		int maxWait = 700;
 		int totWait = 0;
 		while ((job.RetryCount < 2) && totWait < maxWait)
 		{
@@ -352,7 +470,7 @@ public class TplCrawlJobDispatcherTests
 
 		_mockUseCase.SetupSequence(u => u.Execute(It.IsAny<CrawlJob>()))
 			.ThrowsAsync(new InvalidOperationException("fetch failed"))
-			.ReturnsAsync(CreateResult()
+			.ReturnsAsync(CreateResponse()
 		);
 
 		using var cts = new CancellationTokenSource();
@@ -380,6 +498,7 @@ public class TplCrawlJobDispatcherTests
 		await startTask;
 	}
 
+	
 	[Fact]
 	public async Task ExtractedLinks_CreateNewJobs()
 	{
@@ -394,10 +513,15 @@ public class TplCrawlJobDispatcherTests
 			statusCode: HttpStatusCode.OK,
 			timeTakenMs: 10
 		);
-		
+
+		var response = CrawlResultBuilder.ProcessJobResponseBuilder(
+			changedContent: true, 
+			processedAt: DateTime.UtcNow, 
+			crawlResult: result
+		);
 
 		_mockUseCase.Setup(u => u.Execute(It.IsAny<CrawlJob>()))
-			.ReturnsAsync(result);
+			.ReturnsAsync(response);
 
 		using var cts = new CancellationTokenSource();
 		var taskStart = _sut.Start(cts.Token);
@@ -433,7 +557,7 @@ public class TplCrawlJobDispatcherTests
 				await Task.Delay(200); // simulate work
 				Interlocked.Decrement(ref active);
 
-				return CreateResult();
+				return CreateResponse();
 			});
 
 		

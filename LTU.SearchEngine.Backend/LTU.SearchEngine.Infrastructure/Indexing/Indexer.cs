@@ -5,18 +5,17 @@ using LTU.SearchEngine.Infrastructure.Repositories;
 namespace LTU.SearchEngine.Infrastructure.Indexing;
 
 /// <summary>
-/// Orchestrates the indexing flow for crawl results.
+/// Orchestrates the indexing flow for crawl results and manages document metadata.
 /// </summary>
 /// <remarks>
-/// <para>
-/// The indexer is responsible for receiving <see cref="CrawlResult"/> instances,
-/// validating whether indexing should occur, invoking the indexing pipeline,
-/// and persisting the resulting index documents via a repository.
-/// </para>
-/// <para>
-/// This class coordinates the indexing process but does not perform text normalization,
-/// term frequency calculation, or direct storage operations.
-/// </para>
+///     <para>
+///         The indexer acts as a coordinator between the transformation logic (<see cref="IIndexingPipeline"/>) 
+///         and the persistence layer (<see cref="IIndexRepository"/>).
+///     </para>
+///     <para>
+///         Beyond initial indexing, it provides functionality to support incremental crawling by 
+///         identifying existing documents through content hashes and updating crawl timestamps.
+/// <   /para>
 /// </remarks>
 public class Indexer : IIndexer
 {
@@ -28,6 +27,7 @@ public class Indexer : IIndexer
         _pipeline = pipeline;
     }
 
+    /// <inheritdoc/>
     public async Task IndexAsync(CrawlResult crawlResult)
     {
         if (crawlResult is null)
@@ -37,4 +37,17 @@ public class Indexer : IIndexer
 
         await _repository.AddDocumentAsync(document);
     }
+
+    /// <inheritdoc/>
+    public async Task<int?> GetExistingDocumentIdAsync(string hash)
+    {
+        if (string.IsNullOrWhiteSpace(hash)) 
+            throw new ArgumentException(nameof(hash), " must have a value.");
+
+        return await _repository.GetExistingDocumentByHashAsync(hash);
+    }
+
+    /// <inheritdoc/>
+    public async Task UpdateIndexCrawlTimeAsync(int documentId, DateTime newCrawl) =>
+        await _repository.UpdateLastCrawledAsync(documentId, newCrawl);
 }

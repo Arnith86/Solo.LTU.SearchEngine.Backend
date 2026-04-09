@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using HtmlAgilityPack;
 using LTU.SearchEngine.Backend.Core;
 using LTU.SearchEngine.Backend.Core.Exceptions;
@@ -87,7 +86,8 @@ public class HapHtmlParser : IHtmlParser
         // Return distinct links to avoid processing the same URL multiple times.
         return internalLinks.Distinct().ToList();
     }
-    
+
+
     /// <inheritdoc/>
     public string ExtractRawText(string html)
     {
@@ -107,6 +107,15 @@ public class HapHtmlParser : IHtmlParser
         string plainText = doc.DocumentNode.InnerText;
         return HtmlEntity.DeEntitize(plainText).Trim();
     }
+
+
+    /// <inheritdoc/>
+    public string CleanRawTextForHashing(string text) => 
+        Regex.Replace(text, @"\s+", " ")
+            .Trim()
+            .ToLowerInvariant();
+        
+
 
     /// <inheritdoc/>
     public string ExtractTitle(string html)
@@ -129,7 +138,7 @@ public class HapHtmlParser : IHtmlParser
         return HtmlEntity.DeEntitize(titleText).Trim();
     }
 
-
+    /// <inheritdoc/>
     public string ExtractLanguage(string html)
     {
         string languageCode = "Unknown";

@@ -1,5 +1,4 @@
-﻿
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Text;
 using LTU.SearchEngine.Backend.Core.HelperClasses;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
@@ -21,10 +20,108 @@ public class Crawler : ICrawler
         _contentHasher = contentHasher;
         _logger = logger;
     }
+    
+    
+    /// <inheritdoc/>
+    public async Task<RawCrawlData> FetchRawAsync(string url)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        using var response = await _httpClient.GetAsync(url);
+        stopwatch.Stop();
+
+        response.EnsureSuccessStatusCode();
+
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+        var contentType = response.Content.Headers.ContentType;
+
+        return new RawCrawlData(
+            Url: url, 
+            TimeTaken: stopwatch.ElapsedMilliseconds,
+            HttpStatusCode: response.StatusCode,
+            Content: bytes, 
+            ContentType: contentType?.MediaType ?? "text/plain", 
+            CharSet: contentType?.CharSet
+        );
+    }
 
 
+    /// <inheritdoc/>
+    public async Task<string> GetContentHash(RawCrawlData data)
+    {
+        string hashableText = string.Empty;
+
+        if (IsHtmlFormat(data.ContentType))
+        {
+            string html = GetHtmlString(data);
+            hashableText = _htmlParser.CleanRawTextForHashing(
+                _htmlParser.ExtractRawText(html)
+            );    
+        }
+        
+        return _contentHasher.CalculateHash(hashableText);
+    }
+
+
+    /// <inheritdoc/>
+    public async Task<CrawlResult> FetchAsync(RawCrawlData data, string hashedContent)
+    {
+        var crawledAt = DateTime.UtcNow;
+
+        var terms = Enumerable.Empty<IndexedTerm>();
+        var links = Enumerable.Empty<string>();
+        string title = null!;
+        string languageCode = "Unknown";
+
+        if (IsHtmlFormat(data.ContentType))
+        {
+            var htmlString = GetHtmlString(data);
+
+            languageCode = _htmlParser.ExtractLanguage(htmlString);
+            title = _htmlParser.ExtractTitle(htmlString);
+            links = await _htmlParser.ExtractInternalLinks(htmlString, data.Url);
+            terms = _htmlParser.ExtractTerms(htmlString);
+        }
+
+        return new CrawlResult(
+            url: data.Url,
+            title: title,
+            language: languageCode,
+            indexedTerms: terms,
+            type: data.ContentType,
+            content: data.Content,
+            extractedLinks: links,
+            statusCode: data.HttpStatusCode,
+            timeTakenMs: data.TimeTaken,
+            contentHash: hashedContent,
+            crawledAt: crawledAt
+        );
+    }
+
+
+
+    /// <inheritdoc/>
+    public CrawlResult CreateErrorResult(
+        string url, System.Net.HttpStatusCode statusCode, long timeTaken, DateTime crawledAt)
+    {
+        return new CrawlResult(
+            url: url,
+            title: null,
+            language: "Unknown",
+            indexedTerms: Enumerable.Empty<IndexedTerm>(),
+            type: "Unknown",
+            content: Array.Empty<byte>(),
+            extractedLinks: Enumerable.Empty<string>(),
+            statusCode: statusCode,
+            timeTakenMs: timeTaken,
+            contentHash: _contentHasher.CalculateHash(Array.Empty<byte>()), 
+            crawledAt: crawledAt
+        );
+    }
+   
+   
     private bool IsHtmlFormat(string format) => format.Contains("text/html");
 
+   
     private Encoding SetEncoding(string? charSet)
     {
         var encoding = Encoding.UTF8; 
@@ -42,102 +139,13 @@ public class Crawler : ICrawler
         }
         return encoding;
     }
-
-    private string GetHtmlString(byte[] content, HttpResponseMessage response)
+    
+   
+    private string GetHtmlString(RawCrawlData data)
     {
         // If charset was missing or unrecognized, default to UTF-8
-        string? charSet = response.Content.Headers.ContentType?.CharSet; 
-        var encoding = SetEncoding(charSet);
+        var encoding = SetEncoding(data.CharSet);
     
-        return encoding.GetString(content);
-    }
-
-    /// <inheritdoc/>
-    public async Task<CrawlResult> FetchAsync(string url)
-    {
-        var stopwatch = Stopwatch.StartNew();
-        var crawledAt = DateTime.UtcNow;
-
-        try
-        {
-            using var response = await _httpClient.GetAsync(url);
-            stopwatch.Stop();
-
-            // Handle 404/500 errors per Acceptance Criteria: 
-            // Return status code without body content.
-            if (!response.IsSuccessStatusCode)
-                return CreateErrorResult(url, response.StatusCode, stopwatch.ElapsedMilliseconds, "None", crawledAt);
-            
-
-            //if call successful get the data
-            byte[] content = await response.Content.ReadAsByteArrayAsync();
-            var contentType = response.Content.Headers.ContentType;
-
-            string? format = contentType?.MediaType ?? "text/plain";
-
-            var terms = Enumerable.Empty<IndexedTerm>();
-            var links = Enumerable.Empty<string>();
-            string title = null!;
-            string languageCode = "Unknown";
-
-            if (IsHtmlFormat(format))
-            {
-                var htmlString = GetHtmlString(content, response);
-
-                languageCode = _htmlParser.ExtractLanguage(htmlString);
-                title = _htmlParser.ExtractTitle(htmlString);
-                links = await _htmlParser.ExtractInternalLinks(htmlString, url);
-                terms = _htmlParser.ExtractTerms(htmlString);
-            }
-
-            return new CrawlResult(
-                url: url,
-                title: title,
-                language: languageCode,
-                indexedTerms: terms,
-                type: format,
-                content: content,
-                extractedLinks: links,
-                statusCode: response.StatusCode,
-                timeTakenMs: stopwatch.ElapsedMilliseconds,
-                contentHash: _contentHasher.CalculateHash(content),
-                crawledAt: crawledAt
-            );
-        }
-        catch (HttpRequestException ex) 
-        {
-            stopwatch.Stop();
-            return CreateErrorResult(
-                url, 
-                System.Net.HttpStatusCode.ServiceUnavailable,
-                stopwatch.ElapsedMilliseconds, 
-                $"Error: {ex}",
-                crawledAt
-            );
-        }
-        catch (Exception e) 
-        {   Debug.WriteLine(e);
-            stopwatch.Stop();
-            return null!; 
-        }
-    }
-
-    // Help method for creating a "failed" result
-    private CrawlResult CreateErrorResult(
-        string url, System.Net.HttpStatusCode statusCode, long timeTaken, string type, DateTime crawledAt)
-    {
-        return new CrawlResult(
-            url: url,
-            title: null,
-            language: "Unknown",
-            indexedTerms: Enumerable.Empty<IndexedTerm>(),
-            type: type,
-            content: Array.Empty<byte>(),
-            extractedLinks: Enumerable.Empty<string>(),
-            statusCode: statusCode,
-            timeTakenMs: timeTaken,
-            contentHash: _contentHasher.CalculateHash(Array.Empty<byte>()), 
-            crawledAt: crawledAt
-        );
+        return encoding.GetString(data.Content);
     }
 }
