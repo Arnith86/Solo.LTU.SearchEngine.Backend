@@ -151,6 +151,158 @@ public class SqlIndexRepositoryTests : IDisposable
         Assert.DoesNotContain(resultPages, p => p.Url == "https://test2.com"); // We didn't ask for this one!
     }
 
+
+    [Fact]
+    public async Task GetExistingDocumentByHashAsync_ShouldReturnCorrectId_WhenHashMatches()
+    {
+        // Arrange
+        var hash = "ABC123Hash";
+  
+        await using (var context = await _factory.CreateDbContextAsync())
+        {
+            context.Pages.Add(new Page 
+                { 
+                    Url = "https://hash.se", 
+                    ContentHash = hash, 
+                    Title = "T", 
+                    Language = "sv" 
+                }
+            );
+
+            await context.SaveChangesAsync();
+        }
+
+        // Act
+        var resultId = await _sut.GetExistingDocumentByHashAsync(hash);
+        var noMatch = await _sut.GetExistingDocumentByHashAsync("NON_EXISTENT");
+
+        // Assert
+        Assert.NotNull(resultId);
+        Assert.Null(noMatch);
+        Assert.Equal(resultId, 1);
+    }
+
+
+    [Fact]
+    public async Task UpdateLastCrawledAsync_ShouldOnlyUpdateTimestamp()
+    {
+        // Arrange
+        int pageId;
+        var originalTime = DateTime.UtcNow.AddDays(-1);
+        var newTime = DateTime.UtcNow;
+
+        await using (var context = await _factory.CreateDbContextAsync())
+        {
+            var page = new Page {
+                Url = "https://time.se", 
+                LastCrawled = originalTime, 
+                Title = "T",
+                ContentHash = "X",
+                Language = "sv" 
+            };
+
+            context.Pages.Add(page);
+
+            await context.SaveChangesAsync();
+            
+            pageId = page.Id;
+        }
+
+        // Act
+        await _sut.UpdateLastCrawledAsync(pageId, newTime);
+
+        // Assert
+        await using (var context = await _factory.CreateDbContextAsync())
+        {
+            var updatedPage = await context.Pages.FindAsync(pageId);
+            Assert.Equal(newTime, updatedPage!.LastCrawled);
+            Assert.Equal("T", updatedPage.Title); 
+        }
+    }
+
+
+    [Fact]
+    public async Task AddDocumentAsync_WhenPageExists_ShouldCleanupOldFrequenciesAndLinks()
+    {
+        // Arrange
+        string oldTitle = "oldTitle";
+        string oldHeader = "oldHeader";
+        string oldContent = "oldContent";
+
+        string newTitle = "newTitle";
+
+        var url = "https://update.se";
+        
+        
+        var doc1 = IndexDocumentBuilder.BuildIndexDocument(
+            url: url, 
+            titleTerms: new Dictionary<string, int> { { oldTitle, 1 } },
+            headerTerms: new Dictionary<string, int> { { oldHeader, 1 } },
+            contentTerms: new Dictionary<string, int> { { oldContent, 1 } },
+            outgoingLinks: new List<string> { "dummyLink" }
+        );
+
+        await _sut.AddDocumentAsync(doc1);
+
+        var doc2 = IndexDocumentBuilder.BuildIndexDocument(
+            url: url, 
+            titleTerms: new Dictionary<string, int> { { newTitle, 1 } },
+            headerTerms: new Dictionary<string, int> { { oldHeader, 1 } },
+            contentTerms: new Dictionary<string, int> { { oldContent, 1 } },
+            outgoingLinks: new List<string> { "dummyLink" }
+        );
+
+        // Act
+        await _sut.AddDocumentAsync(doc2);
+
+        // Assert
+        await using var context = await _factory.CreateDbContextAsync();
+        
+        var page = await context.Pages
+            .Include(p => p.WordFrequencies)
+            .ThenInclude(wf => wf.Term)
+            .FirstOrDefaultAsync(p => p.Url == url);
+        
+        // Verify that old words are gone and new have taken their place 
+        Assert.Equal(3, page!.WordFrequencies.Count);
+        Assert.DoesNotContain(page.WordFrequencies, wf => wf.Term.Word.Equals(oldTitle));
+        Assert.Contains(page.WordFrequencies, wf => wf.Term.Word.Equals(newTitle));
+        Assert.Contains(page.WordFrequencies, wf => wf.Term.Word.Equals(oldHeader));
+        Assert.Contains(page.WordFrequencies, wf => wf.Term.Word.Equals(oldContent));
+    }
+
+
+
+    [Fact]
+    public async Task AddDocumentAsync_ShouldCreateStub_WhenOutgoingLinkIsToNewPage()
+    {
+        // Arrange
+        var targetUrl = "https://stub-target.se";
+        
+        var doc = IndexDocumentBuilder.BuildIndexDocument(
+            url: "https://source.se", 
+            titleTerms: new Dictionary<string, int>(),
+            headerTerms: new Dictionary<string, int>(),
+            contentTerms: new Dictionary<string, int>(),
+            outgoingLinks: new List<string> { targetUrl }
+        );
+
+        // Act
+        await _sut.AddDocumentAsync(doc);
+
+        // Assert
+        await using var context = await _factory.CreateDbContextAsync();
+        
+        var stubPage = await context.Pages
+            .FirstOrDefaultAsync(p => p.Url == targetUrl);
+        
+        Assert.NotNull(stubPage);
+        Assert.Equal("pending..", stubPage.Title);
+        Assert.Empty(stubPage.ContentHash);
+    }
+
+
+
     public void Dispose()
     {
         _connection.Close();

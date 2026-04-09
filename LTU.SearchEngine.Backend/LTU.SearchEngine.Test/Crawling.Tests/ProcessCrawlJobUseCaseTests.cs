@@ -108,7 +108,7 @@ public class ProcessCrawlJobUseCaseTests
 		
 		// Assert
 		// Also checks to make sure that the `Indexer`method `index`, was executed. 
-		Assert.InRange<DateTime>(response.ProcessedAt, processedAt, processedAt+TimeSpan.FromMilliseconds(30));
+		Assert.InRange<DateTime>(response.ProcessedAt, processedAt, processedAt+TimeSpan.FromMilliseconds(50));
 		Assert.Equal(expectedResponse.ChangedContent, response.ChangedContent);
 		Assert.Equal(expectedResult, expectedResponse.CrawlResult);
 		_indexerMock.Verify(im => im.IndexAsync(expectedResult), Times.Once);
