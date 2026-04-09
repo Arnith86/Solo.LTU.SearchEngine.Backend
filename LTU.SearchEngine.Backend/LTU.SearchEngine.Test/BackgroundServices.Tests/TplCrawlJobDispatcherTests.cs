@@ -5,6 +5,7 @@ using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.BackgroundServices;
 using LTU.SearchEngine.Infrastructure.Configuration;
 using LTU.SearchEngine.Test.HelperClasses;
+using LTU.SearchEngine.Tests.Helpers;
 using Microsoft.Extensions.Logging;
 using Moq;
 using System.Net;
@@ -253,6 +254,7 @@ public class TplCrawlJobDispatcherTests
 
 		List<DateTime>  dateTimes = new List<DateTime>();
 
+	
 		_mockUseCase.Setup(uc => uc.Execute(It.IsAny<CrawlJob>())).Returns( async () =>
 			{
 				var result = CreateResponse();
@@ -267,14 +269,11 @@ public class TplCrawlJobDispatcherTests
 		await _sut.Enqueue(job);
 		Task task = _sut.Start(cts.Token);
 
-		int totalWait = 0;
-		int maxWait = 5000;
-		
-		while (totalWait < maxWait && dateTimes.Count < 2)
-		{
-			totalWait += 100;
-			await Task.Delay(100);
-		}
+		await TestWait.UntilTrue(
+			condition: () => dateTimes.Count >= 2, 
+			maxWaitMs: 5000,
+			intervalMs: 50
+		);
 
 		cts.Cancel();
 
@@ -284,6 +283,120 @@ public class TplCrawlJobDispatcherTests
 		_mockUseCase.Verify(uc => uc.Execute(It.IsAny<CrawlJob>()), Times.Exactly(2));
 	}
 
+
+	[Fact]
+	public async Task HandleUseCaseAsync_OnFetchError_ShouldIncrementRetryAndReschedule()
+	{
+		// Arrange 
+		var firstAttempt = DateTime.UtcNow;
+		var uniqueUrl = $"https://error-{Guid.NewGuid()}.com";
+		int retryCountObserved = 0;
+		var retryAttempt = DateTime.UtcNow;
+
+		var job = new CrawlJob
+		{
+			Id = 10,
+			Url = uniqueUrl,
+			RetryCount = 1,
+			NextAttempt = firstAttempt
+		};
+
+		int callCount = 0;
+
+		// First call throws exception second (retry) catches job for inspection.
+		_mockUseCase.Setup(uc => uc.Execute(job))
+			.Returns(async (CrawlJob j) =>
+			{
+				callCount++;
+
+				if (callCount == 1) throw new InvalidOperationException("Temp error");
+				else if (callCount == 2)
+				{
+					retryCountObserved = j.RetryCount;
+					retryAttempt = (DateTime)j.LastAttempt!;	
+				}
+
+				return await Task.FromResult(CreateResponse());
+			});
+		
+		using var cts = new CancellationTokenSource();
+    	var startTask = _sut.Start(cts.Token);
+		
+		// Act 
+		await _sut.Enqueue(job);
+
+		await TestWait.UntilTrue(() => callCount >= 2, 10000, 50);
+
+		cts.Cancel();
+		await startTask;
+		
+		// Assert
+		Assert.Equal(2, retryCountObserved);
+    	Assert.True(retryAttempt > firstAttempt);
+	}
+
+
+	[Fact]
+	public async Task HandleUseCaseAsync_OnMaxRetries_ShouldDiscardJob()
+	{
+		// Arrange
+		var settings = CreateSettings();
+		// Job with mex retry set
+		var job = new CrawlJob { 
+			Id = 11, 
+			Url = "https://max-retry.com", 
+			RetryCount = settings.RetryIntervals.Count 
+		};
+		
+		_mockUseCase.Setup(u => u.Execute(It.IsAny<CrawlJob>()))
+			.ThrowsAsync(new InvalidOperationException("Final failure"));
+
+		using var cts = new CancellationTokenSource();
+		var startTask = _sut.Start(cts.Token);
+
+		// Act
+		await _sut.Enqueue(job);
+
+		await TestWait.UntilTrue(
+			maxWaitMs: 500,
+			intervalMs: 100
+		);
+
+		cts.Cancel();
+		await startTask;
+
+		// Assert
+		// Execute should only have been executed once, before job gets discarded. 
+		_mockUseCase.Verify(u => u.Execute(It.IsAny<CrawlJob>()), Times.Once);
+	}
+
+	[Fact]
+	public async Task HandleUseCaseAsync_OnArgumentException_ShouldNotRetry()
+	{
+		// Arrange
+		var job = new CrawlJob { 
+			Id = 12, 
+			Url = "https://invalid-params.com",
+			NextAttempt = DateTime.UtcNow 
+		};
+
+		_mockUseCase.Setup(u => u.Execute(It.IsAny<CrawlJob>()))
+			.ThrowsAsync(new ArgumentException("Invalid parameters"));
+
+		using var cts = new CancellationTokenSource();
+		var startTask = _sut.Start(cts.Token);
+
+		// Act
+		await _sut.Enqueue(job);
+		await TestWait.UntilTrue(maxWaitMs: 500, intervalMs: 50);
+
+		cts.Cancel();
+		await startTask;
+
+		// Assert
+		// An ArgumentException does not trigger HandleFailedJob, therefore Execute is run only once.
+		_mockUseCase.Verify(u => u.Execute(It.IsAny<CrawlJob>()), Times.Once);
+	}
 
 	[Fact]
 	public async Task Enqueue_Job_Null_ShouldThrow_ArgumentNullException()
@@ -385,6 +498,7 @@ public class TplCrawlJobDispatcherTests
 		await startTask;
 	}
 
+	
 	[Fact]
 	public async Task ExtractedLinks_CreateNewJobs()
 	{
