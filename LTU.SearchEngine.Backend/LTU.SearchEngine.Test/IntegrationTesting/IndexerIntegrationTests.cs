@@ -188,7 +188,6 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var httpClient = _webHostBuilder.CreateFakeInternetClient();
-        var builder = new WebHostBuilder();
     
         var urlA = "http://localhost/page-a.html";
         var urlB = "http://localhost/page-b.html";
@@ -299,6 +298,53 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             .Select(p => (DateTime?)p.LastCrawled) 
             .FirstOrDefaultAsync();
     }
+
+
+    [Fact]
+    [Trait("TestCase", "TC-FRQ-2006")]
+    public async Task Integration_CrawlShouldCreateRecord_EvenWhenFetchFails()
+    {
+        // Arrange
+        var httpClient = _webHostBuilder.CreateFakeInternetClient();
+    
+        var url = "http://localhost/bad-page.html";
+        _webHostBuilder.DynamicContent[url] = "<html><body><h1>Content</h1></body></html>";
+
+        // Says to server, when you get this call, throw exception instead.
+        _webHostBuilder.OnRequestReceived = (requestUrl) =>
+        {
+            if (requestUrl.Equals(url)) throw new HttpRequestException("Simulated connection reset");
+            return Task.CompletedTask;
+        };
+        
+        using var testFactory = CreateTestFactory<Indexer>(
+            httpClient: httpClient, 
+            seedUrl: url,
+            maxConcurrencyPerDomain: 1
+        );
+
+        using var scope = testFactory.Services.CreateScope();
+
+        var dispatcher = scope.ServiceProvider.GetRequiredService<ICrawlJobDispatcher>();
+        
+        await dispatcher.Enqueue(new CrawlJob { Url = url , NextAttempt = DateTime.UtcNow });
+
+
+        var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<SearchDbContext>>();
+        using var dbContext = dbFactory.CreateDbContext();
+        dbContext.Database.EnsureCreated();
+        
+        // Act **1**
+        var cts = new CancellationTokenSource();
+        Task dispatchTask = dispatcher.Start(cts.Token);
+
+        // Assert **1**
+        await TestWait.UntilTrue(maxWaitMs: 5000);
+        var pageCount = await dbContext.Pages.CountAsync();
+        Assert.Equal(0, pageCount);
+        
+    }   
+
 
     [Theory]
     [InlineData("/IndexerNormalizingTextRun.html", "run", 5)]

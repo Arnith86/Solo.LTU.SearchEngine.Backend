@@ -66,14 +66,14 @@ public class ProcessCrawlJobUseCase : IProcessCrawlJobUseCase
 
             return response;
         }
-        catch (HttpRequestException ex)
-        {
-            stopwatch.Stop();
-			/// ToDo: LOGG THIS $"HTTP request failed: {ex.Message}"
+        // catch (HttpRequestException ex) // LET THIS BUUBLE 
+        // {
+        //     stopwatch.Stop();
+		// 	/// ToDo: LOGG THIS $"HTTP request failed: {ex.Message}"
         
-            return await CreateFailedRequestResponse(job, fetchStartTime, stopwatch, ex);
-        }
-        finally {stopwatch.Stop();}
+        //     return await CreateFailedRequestResponse(job, fetchStartTime, stopwatch, ex);
+        // }
+        finally { stopwatch.Stop(); } 
 	}
 
 

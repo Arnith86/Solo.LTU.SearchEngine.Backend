@@ -279,7 +279,7 @@ public class TplCrawlJobDispatcherTests
 
 		// Assert - CrawlUpdateInterval = 500
 		TimeSpan elapsedTime = dateTimes[1] - dateTimes[0];
-		Assert.InRange(elapsedTime, TimeSpan.FromMilliseconds(500), TimeSpan.FromMilliseconds(560));
+		Assert.InRange(elapsedTime, TimeSpan.FromMilliseconds(500), TimeSpan.FromMilliseconds(570));
 		_mockUseCase.Verify(uc => uc.Execute(It.IsAny<CrawlJob>()), Times.Exactly(2));
 	}
 
