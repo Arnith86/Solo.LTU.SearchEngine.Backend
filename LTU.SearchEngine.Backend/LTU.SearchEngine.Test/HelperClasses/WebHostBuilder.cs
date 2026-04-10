@@ -4,23 +4,40 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Hosting;
-using System.Diagnostics;
 
 namespace LTU.SearchEngine.Test.HelperClasses;
 
 public class WebHostBuilder
 {
+	public Dictionary<string, string> DynamicContent { get; } = new();
+
 	public HttpClient CreateFakeInternetClient(CallTracker? callTracker = null)
 	{
 		var host = Host.CreateDefaultBuilder().ConfigureWebHostDefaults(webBuilder =>
 		{
 			webBuilder.UseTestServer();
 			webBuilder.ConfigureServices(service => service.AddSingleton(callTracker ?? new CallTracker()));
+			webBuilder.ConfigureServices(service => service.AddSingleton(DynamicContent));
+
 			webBuilder.Configure(app =>
 			{
 				app.UseRouting();
 				app.UseEndpoints(endpoint =>
-				{
+				{	
+					// Dynamic generic page
+					endpoint.MapGet("/{page}.html", ( string page, CallTracker tracker, Dictionary<string, string> content) =>
+					{
+						var url = $"http://localhost/{page}.html";
+						tracker.VisitedUrls.Add(url);
+
+						if (content.TryGetValue(url, out var customHtml))
+						{
+							return Results.Content(customHtml, "text/html");
+						}
+
+						return Results.Content($"<h1>Default content for {page}</h1>", "text/html");
+					});
+
 					endpoint.MapGet("/robots.txt", (CallTracker tracker) =>
 					{
 						tracker.VisitedUrls.Add("/robots.txt");
