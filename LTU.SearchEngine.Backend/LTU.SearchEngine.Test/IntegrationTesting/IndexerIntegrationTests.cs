@@ -1,9 +1,12 @@
+using System.IO.Compression;
 using LTU.SearchEngine.Backend.Api;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.BackgroundServices;
 using LTU.SearchEngine.Infrastructure.Configurations;
 using LTU.SearchEngine.Infrastructure.Data;
 using LTU.SearchEngine.Infrastructure.Indexing;
+using LTU.SearchEngine.Test.HelperClasses;
+using LTU.SearchEngine.Tests.Helpers;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -176,6 +179,125 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
         Assert.Contains("http://localhost/InvertedIndexTestFile1.html", term1PageAssociation);
         Assert.Contains("http://localhost/InvertedIndexTestFile2.html", term1PageAssociation);
+    }
+
+
+    [Fact]
+    [Trait("TestCase", "TC-FRQ-2003")]
+    public async Task IncrementalUpdate_ShouldOnlyUpdateModifiedPages()
+    {
+        // Arrange
+        var httpClient = _webHostBuilder.CreateFakeInternetClient();
+        var builder = new WebHostBuilder();
+    
+        var urlA = "http://localhost/page-a.html";
+        var urlB = "http://localhost/page-b.html";
+
+
+        _webHostBuilder.DynamicContent[urlA] = "<html><body><h1>First Version</h1></body></html>";
+        _webHostBuilder.DynamicContent[urlB] = "<html><body><h1>Page B (static content)</h1></body></html>";
+
+
+        using var testFactory = CreateTestFactory<Indexer>(
+            httpClient: httpClient, 
+            seedUrl: urlA,
+            maxConcurrencyPerDomain: 1
+        );
+
+        using var scope = testFactory.Services.CreateScope();
+
+        var dispatcher = scope.ServiceProvider.GetRequiredService<ICrawlJobDispatcher>();
+        
+        await dispatcher.Enqueue(new CrawlJob { Url = urlA , NextAttempt = DateTime.UtcNow });
+        await dispatcher.Enqueue(new CrawlJob { Url = urlB , NextAttempt = DateTime.UtcNow });
+
+        var cts = new CancellationTokenSource();
+
+        var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<SearchDbContext>>();
+        using var dbContext = dbFactory.CreateDbContext();
+        dbContext.Database.EnsureCreated();
+        
+        // Act **1** 
+        Task dispatchTask = dispatcher.Start(cts.Token);
+
+        await TestWait.UntilTrue(async () =>
+            {
+                using var db = dbFactory.CreateDbContext();
+                
+                return await db.PageWordFrequencies.AnyAsync(pw => 
+                    pw.Page.Url.Equals(urlA) && 
+                    pw.Term.Word.Equals("first")
+                );
+            }, 
+            maxWaitMs: 10000 
+        );
+
+        cts.Cancel();
+
+
+        // Assert **1**
+        var pageATerms1 = await GetTermsForUrlAsync(dbFactory, urlA);
+        var pageAFirstAttempt = await GetLastCrawledAsync(dbFactory, urlA);
+        var pageBFirstAttempt = await GetLastCrawledAsync(dbFactory, urlB);
+        
+        Assert.Contains(pageATerms1, t => t.Word.Equals("first"));
+        Assert.DoesNotContain(pageATerms1, t => t.Word.Equals("second"));
+        
+
+        // Act **2**
+        _webHostBuilder.DynamicContent[urlA] = "<html><body><h1>Second Version</h1></body></html>";
+        await dispatcher.Enqueue(new CrawlJob { Url = urlA , NextAttempt = DateTime.UtcNow });
+
+        var cts2 = new CancellationTokenSource();
+        Task dispatchTask2 = dispatcher.Start(cts2.Token);
+        
+        await TestWait.UntilTrue(async () =>
+            {
+                using var db = dbFactory.CreateDbContext();
+                
+                return await db.PageWordFrequencies.AnyAsync(pw => 
+                    pw.Page.Url.Equals(urlA) && 
+                    pw.Term.Word.Equals("second")
+                );
+            }, 
+            maxWaitMs: 10000 
+        );
+        
+                
+        // Assert **2**
+        var pageATerms2 = await GetTermsForUrlAsync(dbFactory, urlA);
+        var pageASecondAttempt = await GetLastCrawledAsync(dbFactory, urlA);
+        var pageBSecondAttempt = await GetLastCrawledAsync(dbFactory, urlB);
+        
+
+        Assert.DoesNotContain(pageATerms2, t => t.Word.Equals("first"));
+        Assert.Contains(pageATerms2, t => t.Word.Equals("second"));
+        Assert.NotEqual(pageAFirstAttempt, pageASecondAttempt);
+        Assert.Equal(pageBFirstAttempt, pageBSecondAttempt);
+    }
+
+    private async Task<List<Term>> GetTermsForUrlAsync(IDbContextFactory<SearchDbContext> dbFactory, string url)
+    {
+        using var dbContext = dbFactory.CreateDbContext();
+        
+        return await dbContext.PageWordFrequencies
+            .AsNoTracking() 
+            .Include(pw => pw.Term)
+            .Include(pw => pw.Page)
+            .Where(pw => pw.Page.Url == url)
+            .Select(t => t.Term)
+            .ToListAsync();
+    }
+
+    private async Task<DateTime?> GetLastCrawledAsync(IDbContextFactory<SearchDbContext> dbFactory, string url)
+    {
+        using var dbContext = dbFactory.CreateDbContext();
+
+        return await dbContext.Pages
+            .AsNoTracking() 
+            .Where(p => p.Url == url)
+            .Select(p => (DateTime?)p.LastCrawled) 
+            .FirstOrDefaultAsync();
     }
 
     [Theory]
