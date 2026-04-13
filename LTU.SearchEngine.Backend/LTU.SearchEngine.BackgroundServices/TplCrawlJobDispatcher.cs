@@ -1,5 +1,6 @@
 ﻿using LTU.SearchEngine.Application;
 using LTU.SearchEngine.Backend.Core;
+using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure.Configuration;
@@ -100,6 +101,8 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 	{
 		try
 		{
+			job.Status = CrawlJobStatus.InProgress;
+
 			ProcessJobResponse jobResponse = await _processCrawlJobUseCase.Execute(job);
 			
 			if (jobResponse.CrawlResult is not null) await EnqueueNewJobs(jobResponse.CrawlResult);
@@ -110,7 +113,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 		{
 			_logger.LogWarning($"Job {job.Id} skipped: invalid job ({ex.Message})");
 		}
-		catch (InvalidOperationException ex)
+		catch (Exception ex) when (ex is InvalidOperationException || ex is HttpRequestException)
 		{
 			_logger.LogError($"Job {job.Id} failed: fetch error ({ex.Message})");
 			await HandleFailedJob(job);
@@ -127,6 +130,9 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 		if (job.RetryCount >= _crawlerSettingsLoader.Load().RetryIntervals.Count)
 		{
 			_logger.LogWarning($"Job {job.Id} reached max retry count. Discarding job.");
+			
+			job.Status = CrawlJobStatus.Failed;
+
 			return;
 		}
 
@@ -134,6 +140,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 			DateTime.UtcNow + _crawlerSettingsLoader.Load().GetRetryDelayInterval(job.RetryCount);
 
 		job.RetryCount++;
+		job.Status = CrawlJobStatus.Pending;
 		
 		await Enqueue(job);
 	}
@@ -145,6 +152,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 			CrawlJob newJob = new CrawlJob
 			{
 				Url = link,
+				Status = CrawlJobStatus.Pending,
 				NextAttempt = DateTime.UtcNow
 			};
 
@@ -157,6 +165,7 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 		if (job.RetryCount > 1) job.RetryCount = 1;
 
 		job.NextAttempt = crawledAt + _crawlerSettingsLoader.Load().CrawlUpdateInterval;
+		job.Status = CrawlJobStatus.Pending;
 
 		await Enqueue(job);
 	}

@@ -10,9 +10,11 @@ namespace LTU.SearchEngine.Test.HelperClasses;
 public class WebHostBuilder
 {
 	public Dictionary<string, string> DynamicContent { get; } = new();
+	public Func<string, Task>? OnRequestReceived { get; set; }
 
 	public HttpClient CreateFakeInternetClient(CallTracker? callTracker = null)
 	{
+		
 		var host = Host.CreateDefaultBuilder().ConfigureWebHostDefaults(webBuilder =>
 		{
 			webBuilder.UseTestServer();
@@ -25,10 +27,13 @@ public class WebHostBuilder
 				app.UseEndpoints(endpoint =>
 				{	
 					// Dynamic generic page
-					endpoint.MapGet("/{page}.html", ( string page, CallTracker tracker, Dictionary<string, string> content) =>
+					endpoint.MapGet("/{page}.html", async ( string page, CallTracker tracker, Dictionary<string, string> content) =>
 					{
 						var url = $"http://localhost/{page}.html";
 						tracker.VisitedUrls.Add(url);
+
+						// Allows us to "pause" the execution and to some action before continuing.
+						if (OnRequestReceived is not null) await OnRequestReceived(url);
 
 						if (content.TryGetValue(url, out var customHtml))
 						{

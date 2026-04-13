@@ -1,11 +1,11 @@
-using System.IO.Compression;
+
+using System.Diagnostics;
 using LTU.SearchEngine.Backend.Api;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.BackgroundServices;
 using LTU.SearchEngine.Infrastructure.Configurations;
 using LTU.SearchEngine.Infrastructure.Data;
 using LTU.SearchEngine.Infrastructure.Indexing;
-using LTU.SearchEngine.Test.HelperClasses;
 using LTU.SearchEngine.Tests.Helpers;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
@@ -188,7 +188,6 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         var httpClient = _webHostBuilder.CreateFakeInternetClient();
-        var builder = new WebHostBuilder();
     
         var urlA = "http://localhost/page-a.html";
         var urlB = "http://localhost/page-b.html";
@@ -299,6 +298,103 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             .Select(p => (DateTime?)p.LastCrawled) 
             .FirstOrDefaultAsync();
     }
+
+
+    [Fact]
+    [Trait("TestCase", "TC-FRQ-2006")]
+    public async Task Integration_CrawlShouldUpdateJobAndQueue_EvenWhenFetchFails()
+    {
+        // Arrange
+        var loggerMock = new Mock<ILogger<TplCrawlJobDispatcher>>();
+        var httpClient = _webHostBuilder.CreateFakeInternetClient();
+    
+        var url = "http://localhost/bad-page.html";
+        _webHostBuilder.DynamicContent[url] = "<html><body><h1>Content</h1></body></html>";
+
+        int requestCount = 0;
+        // Says to server, when you get this call, throw exception instead.
+        _webHostBuilder.OnRequestReceived = (requestUrl) =>
+        {
+            if (requestUrl.Equals(url)) 
+            {
+                requestCount++;
+                
+                // Crude way of allowing next attempt to succeed.
+                if (requestCount < 2) throw new HttpRequestException("Simulated connection reset");
+            }
+            return Task.CompletedTask;
+        };
+        
+        // CREATE MOCK LOGGER
+
+        using var testFactory = CreateTestFactory<TplCrawlJobDispatcher>(
+            httpClient: httpClient, 
+            seedUrl: url,
+            maxConcurrencyPerDomain: 1,
+            logger: loggerMock
+        );
+
+        using var scope = testFactory.Services.CreateScope();
+
+        var dispatcher = scope.ServiceProvider.GetRequiredService<ICrawlJobDispatcher>();
+        
+        await dispatcher.Enqueue(new CrawlJob { Url = url , NextAttempt = DateTime.UtcNow, RetryCount = 3 });
+
+
+        var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<SearchDbContext>>();
+        using var dbContext = dbFactory.CreateDbContext();
+        dbContext.Database.EnsureCreated();
+        
+        // Act **1**
+        var cts = new CancellationTokenSource();
+        Task dispatchTask = dispatcher.Start(cts.Token);
+        
+        await TestWait.UntilTrue(maxWaitMs: 2000);
+        cts.Cancel();
+
+        // Assert **1**
+        var pageCount = await dbContext.Pages.CountAsync();
+        Assert.Equal(0, pageCount);
+        
+
+        // Verify failed fetch
+        loggerMock.Verify(l => l.Log(
+            logLevel: LogLevel.Error,
+            eventId: It.IsAny<EventId>(),
+            state: It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains($"failed: fetch error")),  
+            exception: It.IsAny<Exception>(),
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+        Times.Once); 
+        
+        // Verify attempt att retry
+        loggerMock.Verify(l => l.Log(
+            logLevel: LogLevel.Warning,
+            eventId: It.IsAny<EventId>(),
+            state: It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains($"reached max retry count")),  
+            exception: It.IsAny<Exception>(),
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+        Times.Once); 
+
+
+        // Act **2**
+        var cts2 = new CancellationTokenSource();
+        
+        await dispatcher.Enqueue(new CrawlJob { Url = url , NextAttempt = DateTime.UtcNow, RetryCount = 1 });
+        Task dispatchTask2 = dispatcher.Start(cts2.Token);
+        
+        await TestWait.UntilTrue(async () =>
+        {
+            using var db = dbFactory.CreateDbContext();
+            return await db.Pages.CountAsync() > 0;
+        }, maxWaitMs: 5000);
+
+        cts2.Cancel();
+
+        // Assert **2**
+        pageCount = await dbContext.Pages.CountAsync();
+        Assert.Equal(1, pageCount);
+    }   
+
 
     [Theory]
     [InlineData("/IndexerNormalizingTextRun.html", "run", 5)]

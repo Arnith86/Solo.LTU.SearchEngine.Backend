@@ -113,7 +113,7 @@ public class Crawler : ICrawler
             extractedLinks: Enumerable.Empty<string>(),
             statusCode: statusCode,
             timeTakenMs: timeTaken,
-            contentHash: _contentHasher.CalculateHash(Array.Empty<byte>()), 
+            contentHash: "noHash",
             crawledAt: crawledAt
         );
     }
