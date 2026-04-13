@@ -30,7 +30,7 @@ public class ParserTests
 	}
 
 	[Fact]
-	public async Task HapHtmlParser_ExtractInternalLinks_FindsAllLinksInDocument()
+	public async Task HapHtmlParser_ExtractInternalLinks_FindsAllRelevantLinksInDocument()
 	{
 		// Arrange
 		var html = await _client.GetStringAsync("/LinksAndPDFDetection.html");
@@ -48,7 +48,9 @@ public class ParserTests
 		Assert.Contains("http://localhost/Linked.html", links);
 		Assert.Contains("http://localhost/HelloWorld.pdf", links);
         Assert.Contains(new Uri("https://google.com").AbsoluteUri, links);
-
+        Assert.DoesNotContain(links, l => l.Equals("http://localhost/style.css"));
+        Assert.DoesNotContain(links, l => l.Equals("http://localhost/image1.jpg"));
+        Assert.DoesNotContain(links, l => l.Equals("http://localhost/image2.png"));
     }
 
    
