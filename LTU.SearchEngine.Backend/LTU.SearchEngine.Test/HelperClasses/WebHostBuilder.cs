@@ -289,6 +289,25 @@ public class WebHostBuilder
 						""";
 						return Results.Content(html, "text/html");
 					});
+
+					endpoint.MapGet("/style.css", (CallTracker tracker) => 
+					{
+						tracker.VisitedUrls.Add("http://localhost/style.css");
+						return Results.Content("body { color: red; }", "text/css");
+					});
+
+					endpoint.MapGet("/script.js", (CallTracker tracker) => 
+					{
+						tracker.VisitedUrls.Add("http://localhost/script.js");
+						return Results.Text("console.log('hello');", "application/javascript");
+					});
+
+					endpoint.MapGet("/image.png", (CallTracker tracker) => 
+					{
+						tracker.VisitedUrls.Add("http://localhost/image.png");
+						// returns a fake image or OK
+						return Results.Bytes(new byte[] { 0x0 }, "image/png");
+					});
 				});
 			});
 		})
