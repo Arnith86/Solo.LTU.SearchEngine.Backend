@@ -1,11 +1,11 @@
-using System.IO.Compression;
+
+using System.Diagnostics;
 using LTU.SearchEngine.Backend.Api;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.BackgroundServices;
 using LTU.SearchEngine.Infrastructure.Configurations;
 using LTU.SearchEngine.Infrastructure.Data;
 using LTU.SearchEngine.Infrastructure.Indexing;
-using LTU.SearchEngine.Test.HelperClasses;
 using LTU.SearchEngine.Tests.Helpers;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
@@ -305,6 +305,7 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     public async Task Integration_CrawlShouldUpdateJobAndQueue_EvenWhenFetchFails()
     {
         // Arrange
+        var loggerMock = new Mock<ILogger<TplCrawlJobDispatcher>>();
         var httpClient = _webHostBuilder.CreateFakeInternetClient();
     
         var url = "http://localhost/bad-page.html";
@@ -324,10 +325,13 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             return Task.CompletedTask;
         };
         
-        using var testFactory = CreateTestFactory<Indexer>(
+        // CREATE MOCK LOGGER
+
+        using var testFactory = CreateTestFactory<TplCrawlJobDispatcher>(
             httpClient: httpClient, 
             seedUrl: url,
-            maxConcurrencyPerDomain: 1
+            maxConcurrencyPerDomain: 1,
+            logger: loggerMock
         );
 
         using var scope = testFactory.Services.CreateScope();
@@ -345,13 +349,32 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         var cts = new CancellationTokenSource();
         Task dispatchTask = dispatcher.Start(cts.Token);
         
-        await TestWait.UntilTrue(maxWaitMs: 1000);
+        await TestWait.UntilTrue(maxWaitMs: 2000);
         cts.Cancel();
 
         // Assert **1**
         var pageCount = await dbContext.Pages.CountAsync();
         Assert.Equal(0, pageCount);
         
+
+        // Verify failed fetch
+        loggerMock.Verify(l => l.Log(
+            logLevel: LogLevel.Error,
+            eventId: It.IsAny<EventId>(),
+            state: It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains($"failed: fetch error")),  
+            exception: It.IsAny<Exception>(),
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+        Times.Once); 
+        
+        // Verify attempt att retry
+        loggerMock.Verify(l => l.Log(
+            logLevel: LogLevel.Warning,
+            eventId: It.IsAny<EventId>(),
+            state: It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains($"reached max retry count")),  
+            exception: It.IsAny<Exception>(),
+            It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+        Times.Once); 
+
 
         // Act **2**
         var cts2 = new CancellationTokenSource();
