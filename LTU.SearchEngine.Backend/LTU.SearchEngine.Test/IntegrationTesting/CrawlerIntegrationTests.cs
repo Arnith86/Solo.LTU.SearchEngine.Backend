@@ -16,6 +16,10 @@ using LTU.SearchEngine.Infrastructure.Configuration;
 using Microsoft.Extensions.Logging;
 using LTU.SearchEngine.Test.HelperClasses;
 using System.Collections.Concurrent;
+using LTU.SearchEngine.Infrastructure.Crawling;
+using Microsoft.EntityFrameworkCore;
+using LTU.SearchEngine.Infrastructure.Data;
+using LTU.SearchEngine.Tests.Helpers;
 
 namespace LTU.SearchEngine.Test.IntegrationTesting;
 
@@ -516,6 +520,86 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
         Times.Once); 
     }    
+
+
+    [Fact]
+    [Trait("TestCase", "TC-FRQ-1007")]
+    public async Task Integration_Crawler_ShouldOnlyQueueHtmlFiles()
+    {
+        // Arrange
+        string seedUrl = "http://localhost/dirtySeed.html";
+        string validPage = "http://localhost/validPage.html";
+        
+        var tracker = new CallTracker();
+        var httpClient = _webHostBuilder.CreateFakeInternetClient(callTracker: tracker);
+
+        _webHostBuilder.DynamicContent[seedUrl] = $"""
+            <html lang="en">
+                <body>
+                    <a href="style.css">CSS-file</a>
+                    <a href="script.js">JS-file</a>
+                    <a href="image.png">Image</a>
+                    <a href="image2.png">jpg</a>
+                    <a href="validPage.html">Valid Link</a>
+                </body>
+            </html>
+        """;
+
+        _webHostBuilder.DynamicContent[validPage] ="<html></html>";
+
+        
+        using var testFactory = CreateTestFactory<Crawler>(
+            httpClientForCrawler: httpClient,
+            seedUrl: seedUrl,
+            indexerMock : new Mock<IIndexer>()
+        );
+
+        using var scope = testFactory.Services.CreateScope();
+        var dispatcher = scope.ServiceProvider.GetRequiredService<ICrawlJobDispatcher>();
+        var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<SearchDbContext>>();
+        
+
+        // Act 
+        var cts = new CancellationTokenSource();
+        await dispatcher.Enqueue( new CrawlJob { Url = seedUrl, NextAttempt = DateTime.UtcNow } );
+        Task dispatcherTask = dispatcher.Start(cts.Token);
+
+        
+        await TestWait.UntilTrue(
+            () => tracker.VisitedUrls.Contains(validPage), 
+            maxWaitMs: 10000
+        );
+        
+        cts.Cancel();
+
+        // Assert
+        using var dbContext = dbFactory.CreateDbContext();
+        var allQueuedUrls = await dbContext.Pages.Select(p => p.Url).ToListAsync();
+        
+        await TestWait.UntilTrue(
+            maxWaitMs: 5000
+        );
+
+        // Correct pages indexed
+        // Assert.Contains(seedUrl, allQueuedUrls);
+        // Assert.Contains(page2, allQueuedUrls);
+
+        // Non-relevant pages ignored
+        // Assert.DoesNotContain("http://localhost/style.css", allQueuedUrls);
+        // Assert.DoesNotContain("http://localhost/script.js", allQueuedUrls);
+        // Assert.DoesNotContain("http://localhost/image.png", allQueuedUrls);
+
+
+        Assert.Contains(seedUrl, tracker.VisitedUrls);
+        Assert.Contains(validPage, tracker.VisitedUrls);
+
+        // Non-relevant pages were not visited
+        Assert.DoesNotContain(tracker.VisitedUrls, u => u.EndsWith(".css"));
+        Assert.DoesNotContain(tracker.VisitedUrls, u => u.EndsWith(".js"));
+        Assert.DoesNotContain(tracker.VisitedUrls, u => u.EndsWith(".png"));
+        Assert.DoesNotContain(tracker.VisitedUrls, u => u.EndsWith(".jpg"));
+    }
+
 
     [Fact]
     [Trait("TestCase", "TC-FRQ-1008")]
