@@ -302,7 +302,7 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
     [Fact]
     [Trait("TestCase", "TC-FRQ-2006")]
-    public async Task Integration_CrawlShouldCreateRecord_EvenWhenFetchFails()
+    public async Task Integration_CrawlShouldUpdateJobAndQueue_EvenWhenFetchFails()
     {
         // Arrange
         var httpClient = _webHostBuilder.CreateFakeInternetClient();
@@ -310,10 +310,17 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         var url = "http://localhost/bad-page.html";
         _webHostBuilder.DynamicContent[url] = "<html><body><h1>Content</h1></body></html>";
 
+        int requestCount = 0;
         // Says to server, when you get this call, throw exception instead.
         _webHostBuilder.OnRequestReceived = (requestUrl) =>
         {
-            if (requestUrl.Equals(url)) throw new HttpRequestException("Simulated connection reset");
+            if (requestUrl.Equals(url)) 
+            {
+                requestCount++;
+                
+                // Crude way of allowing next attempt to succeed.
+                if (requestCount < 2) throw new HttpRequestException("Simulated connection reset");
+            }
             return Task.CompletedTask;
         };
         
@@ -327,7 +334,7 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
         var dispatcher = scope.ServiceProvider.GetRequiredService<ICrawlJobDispatcher>();
         
-        await dispatcher.Enqueue(new CrawlJob { Url = url , NextAttempt = DateTime.UtcNow });
+        await dispatcher.Enqueue(new CrawlJob { Url = url , NextAttempt = DateTime.UtcNow, RetryCount = 3 });
 
 
         var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<SearchDbContext>>();
@@ -337,12 +344,32 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         // Act **1**
         var cts = new CancellationTokenSource();
         Task dispatchTask = dispatcher.Start(cts.Token);
+        
+        await TestWait.UntilTrue(maxWaitMs: 1000);
+        cts.Cancel();
 
         // Assert **1**
-        await TestWait.UntilTrue(maxWaitMs: 5000);
         var pageCount = await dbContext.Pages.CountAsync();
         Assert.Equal(0, pageCount);
         
+
+        // Act **2**
+        var cts2 = new CancellationTokenSource();
+        
+        await dispatcher.Enqueue(new CrawlJob { Url = url , NextAttempt = DateTime.UtcNow, RetryCount = 1 });
+        Task dispatchTask2 = dispatcher.Start(cts2.Token);
+        
+        await TestWait.UntilTrue(async () =>
+        {
+            using var db = dbFactory.CreateDbContext();
+            return await db.Pages.CountAsync() > 0;
+        }, maxWaitMs: 5000);
+
+        cts2.Cancel();
+
+        // Assert **2**
+        pageCount = await dbContext.Pages.CountAsync();
+        Assert.Equal(1, pageCount);
     }   
 
 
