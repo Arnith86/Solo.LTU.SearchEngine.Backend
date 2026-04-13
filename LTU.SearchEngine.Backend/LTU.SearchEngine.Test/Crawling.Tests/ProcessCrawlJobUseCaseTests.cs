@@ -144,49 +144,6 @@ public class ProcessCrawlJobUseCaseTests
 	}
 
 
-	[Theory]
-	[InlineData(HttpStatusCode.NotFound)]
-	[InlineData(HttpStatusCode.BadGateway)]
-	[InlineData(HttpStatusCode.Forbidden)]
-	[InlineData(HttpStatusCode.Gone)]
-	public async Task Execute_ShouldReturnErrorResponse_WhenFetchRawThrowsHttpRequestException(HttpStatusCode input)
-	{
-		// Arrange
-		var expectedStatusCode = input;
-		var processedAt = DateTime.UtcNow;
-
-
-		var expectedResult = CrawlResultBuilder.BuildCrawlResult(
-			url: _crawlJob.Url,
-			statusCode: input
-		);
-		
-		_crawlerMock
-			.Setup(c => c.FetchRawAsync(_crawlJob.Url))
-			.ThrowsAsync(new HttpRequestException("", null, input));
-			
-		_crawlerMock
-			.Setup(c => c.CreateErrorResult(
-				_crawlJob.Url, 
-				input, 
-				It.IsAny<long>(), 
-				It.IsAny<DateTime>()
-			)).Returns(expectedResult);
-		
-		
-		// Act 
-		
-		ProcessJobResponse response = await _sut.Execute(_crawlJob);
-
-		// Assert 
-		Assert.False(response.ChangedContent);
-		Assert.NotNull(response.CrawlResult);
-		Assert.Equal(input, response.CrawlResult.StatusCode);
-		_indexerMock.Verify(i => i.IndexAsync(It.IsAny<CrawlResult>()), Times.Never);
-	}
-
-
-
 	[Fact]
 	public async Task Execute_ShouldThrowArgumentNullException_WhenJobIsNull()
 	{

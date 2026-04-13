@@ -66,35 +66,8 @@ public class ProcessCrawlJobUseCase : IProcessCrawlJobUseCase
 
             return response;
         }
-        // catch (HttpRequestException ex) // LET THIS BUUBLE 
-        // {
-        //     stopwatch.Stop();
-		// 	/// ToDo: LOGG THIS $"HTTP request failed: {ex.Message}"
-        
-        //     return await CreateFailedRequestResponse(job, fetchStartTime, stopwatch, ex);
-        // }
         finally { stopwatch.Stop(); } 
 	}
-
-
-    private async Task<ProcessJobResponse> CreateFailedRequestResponse(
-		CrawlJob job, 
-		DateTime fetchStartTime,
-		Stopwatch stopwatch,
-		HttpRequestException ex
-	)
-    {
-        var statusCode = ex.StatusCode ?? System.Net.HttpStatusCode.ServiceUnavailable;
-
-        CrawlResult crawlResult = _crawler.CreateErrorResult(
-            job.Url,
-            statusCode,
-            stopwatch.ElapsedMilliseconds,
-            fetchStartTime
-        );
-
-        return await CreateProcessJobResponse(changedContent: false, fetchStartTime, crawlResult);
-    }
 
 
     private async Task<ProcessJobResponse> CreateProcessJobResponse(

@@ -370,6 +370,7 @@ public class TplCrawlJobDispatcherTests
 		_mockUseCase.Verify(u => u.Execute(It.IsAny<CrawlJob>()), Times.Once);
 	}
 
+
 	[Fact]
 	public async Task HandleUseCaseAsync_OnArgumentException_ShouldNotRetry()
 	{
@@ -406,9 +407,14 @@ public class TplCrawlJobDispatcherTests
 		await Assert.ThrowsAsync<ArgumentNullException>(async () => await _sut.Enqueue(job));
 	}
 
-	[Fact]
-	public async Task HandleFailedJob_MaxRetryNotReached_IsRetriedWithCorrectTimeDelayAdded()
+	
+	[Theory]
+	[InlineData(typeof(InvalidOperationException))]
+	[InlineData(typeof(HttpRequestException))]
+	public async Task HandleFailedJob_MaxRetryNotReached_IsRetriedWithCorrectTimeDelayAdded(Type exceptionType)
 	{
+		var exception = (Exception)Activator.CreateInstance(exceptionType, "Simulated error")!;
+
 		// Arrange
 		DateTime nextAttemptExpected = 
 			DateTime.UtcNow + _mockCrawlerSettingsLoader.Object.Load().GetRetryDelayInterval(1);
@@ -426,7 +432,7 @@ public class TplCrawlJobDispatcherTests
 		};
 
 		_mockUseCase.SetupSequence(u => u.Execute(It.IsAny<CrawlJob>()))
-			.ThrowsAsync(new InvalidOperationException("fetch failed"))
+			.ThrowsAsync(exception)
 			.ReturnsAsync(CreateResponse()
 		);
 
