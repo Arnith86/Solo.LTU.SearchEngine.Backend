@@ -20,6 +20,7 @@ using LTU.SearchEngine.Infrastructure.Crawling;
 using Microsoft.EntityFrameworkCore;
 using LTU.SearchEngine.Infrastructure.Data;
 using LTU.SearchEngine.Tests.Helpers;
+using Microsoft.Data.Sqlite;
 
 namespace LTU.SearchEngine.Test.IntegrationTesting;
 
@@ -48,6 +49,10 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         Mock<IRobotsHandler>? robotsHandlerMock = null
     ) where T : class
     {
+        // Creates an in-memory SQLite connection for the test database.
+        SqliteConnection sqliteConnection = new SqliteConnection("Filename=:memory:");
+        sqliteConnection.Open();
+
         string fakeAppSettings = $$$"""
         {
             "CrawlerSettings": {
@@ -88,6 +93,20 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
                 var descriptors = services.Where(d => d.ServiceType == typeof(HttpClient)).ToList();
                 foreach (var d in descriptors) services.Remove(d);
+
+                // Removes everything related to the actual database context and replaces it with an in-memory SQLite version.
+                var dbContextDescriptors = services.Where(d => 
+                    d.ServiceType.FullName!.Contains("EntityFrameworkCore")||
+                    d.ServiceType == typeof(SearchDbContext) ||
+                    d.ServiceType.Name.Contains("IDbContextFactory")).ToList();
+
+                foreach (var d in dbContextDescriptors) services.Remove(d);
+
+                services.AddDbContextFactory<SearchDbContext>(options => 
+                {
+                    options.UseSqlite(sqliteConnection);
+                    options.UseInternalServiceProvider(null); // Avoids issues with multiple service providers in tests
+                });
 
                 services.AddSingleton<HttpClient>(httpClientForCrawler); // Replace the HttpClient the client uses to the in-memory webHostBuilder
                 services.AddSingleton(indexerMock.Object);
@@ -580,16 +599,17 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             maxWaitMs: 5000
         );
 
+
         // Correct pages indexed
-        // Assert.Contains(seedUrl, allQueuedUrls);
-        // Assert.Contains(page2, allQueuedUrls);
+        Assert.Contains(seedUrl, allQueuedUrls);
+        Assert.Contains(validPage, allQueuedUrls);
 
         // Non-relevant pages ignored
-        // Assert.DoesNotContain("http://localhost/style.css", allQueuedUrls);
-        // Assert.DoesNotContain("http://localhost/script.js", allQueuedUrls);
-        // Assert.DoesNotContain("http://localhost/image.png", allQueuedUrls);
+        Assert.DoesNotContain("http://localhost/style.css", allQueuedUrls);
+        Assert.DoesNotContain("http://localhost/script.js", allQueuedUrls);
+        Assert.DoesNotContain("http://localhost/image.png", allQueuedUrls);
 
-
+        // Relevant pages were visited
         Assert.Contains(seedUrl, tracker.VisitedUrls);
         Assert.Contains(validPage, tracker.VisitedUrls);
 
