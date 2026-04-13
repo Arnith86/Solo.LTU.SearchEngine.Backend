@@ -12,6 +12,7 @@ namespace LTU.SearchEngine.Infrastructure;
 
 public class HapHtmlParser : IHtmlParser
 {
+    private static readonly string[] AllowedExtensions = { ".html", ".htm", ".pdf", "/" };
     private readonly IDomainValidator _domainValidator;
     private readonly IRobotsHandler _robotsHandler;
     private readonly ILogger _logger;
@@ -63,7 +64,7 @@ public class HapHtmlParser : IHtmlParser
                 // 2. The host (domain) must match the base URL's host to be considered "internal".
                 bool isHttp = resultUri.Scheme == Uri.UriSchemeHttp || resultUri.Scheme == Uri.UriSchemeHttps;
                 
-                if (isHttp)
+                if (isHttp && IsSupportedResourceType(resultUri))
                 {
                     string url = resultUri.AbsoluteUri;
 
@@ -87,7 +88,7 @@ public class HapHtmlParser : IHtmlParser
         return internalLinks.Distinct().ToList();
     }
 
-
+ 
     /// <inheritdoc/>
     public string ExtractRawText(string html)
     {
@@ -172,6 +173,18 @@ public class HapHtmlParser : IHtmlParser
         return terms;
     }
     
+    
+    private bool IsSupportedResourceType(Uri uri)
+    {
+        string path = uri.AbsolutePath;
+        string extension = Path.GetExtension(path);
+
+        // If path == /, regard it as html (i,e,. http://domain.se/)
+        if (string.IsNullOrEmpty(path) || path.Equals("/")) return true;
+
+        return AllowedExtensions.Any(ext => extension.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
+    }
+
 
     private async Task<bool> IsNotRobotsBlockedAndWhitelistedAsync(string url)
     {
