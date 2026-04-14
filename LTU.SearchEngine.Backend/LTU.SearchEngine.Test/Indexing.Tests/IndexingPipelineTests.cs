@@ -340,5 +340,37 @@ public class IndexingPipelineTests
         Assert.Equal("second", document.ContentTermPositions[1]);
         Assert.Equal("third", document.ContentTermPositions[2]);
     }
+
+    [Fact]
+    public void Transform_TermsInDifferentSources_ShouldHaveSeparatePositionLists()
+    {
+        // Arrange 
+        _normalizerMock
+            .Setup(n => n.Normalize(It.IsAny<string>(), "en"))
+            .Returns<string, string>((s, l) => s.ToLower());
+        
+        var crawlResult = CreateCrawlResult(new List<IndexedTerm>
+        {
+            new IndexedTerm("title", TermSource.Title),
+            new IndexedTerm("header", TermSource.Header),
+            new IndexedTerm("body", TermSource.Body)
+        });
+
+        // Act 
+        var document = _pipeline.Transform(crawlResult);
+
+        // Assert
+        Assert.Contains("title", document.TitleTermPositions);
+        Assert.DoesNotContain("header", document.TitleTermPositions);
+        Assert.DoesNotContain("body", document.TitleTermPositions);
+        
+        Assert.Contains("header", document.HeaderTermPositions);
+        Assert.DoesNotContain("title", document.HeaderTermPositions);
+        Assert.DoesNotContain("body", document.HeaderTermPositions);
+        
+        Assert.Contains("body", document.ContentTermPositions);
+        Assert.DoesNotContain("title", document.ContentTermPositions);
+        Assert.DoesNotContain("header", document.ContentTermPositions);
+    }
 }
 
