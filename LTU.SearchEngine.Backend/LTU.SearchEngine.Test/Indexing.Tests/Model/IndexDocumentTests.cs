@@ -9,7 +9,10 @@ public class IndexDocumentTests
         IEnumerable<string> outgoingLinks,
         Dictionary<string, int> titleTerms, 
         Dictionary<string, int> headerTerms, 
-        Dictionary<string, int> contentTerms
+        Dictionary<string, int> contentTerms,
+        List<string> titleTermsPositions, 
+        List<string> headerTermsPositions, 
+        List<string> contentTermPositions
         )
     {
         return IndexDocumentBuilder.BuildIndexDocument(
@@ -20,6 +23,9 @@ public class IndexDocumentTests
             titleTerms: titleTerms,
             headerTerms: headerTerms, 
             contentTerms: contentTerms, 
+            titleTermPositions: titleTermsPositions,
+            headerTermPositions: headerTermsPositions,
+            contentTermPositions: contentTermPositions,
             contentHash: "hash", 
             lastCrawl: DateTime.UtcNow
         );
@@ -36,6 +42,9 @@ public class IndexDocumentTests
         var titleTerms = new Dictionary<string, int> { { "ltu", 1 } };
         var headerTerms = new Dictionary<string, int> { { "fortuning", 2 } };
         var contentTerms = new Dictionary<string, int> { { "student", 5 } };
+        var titleTermPositions = new List<string> { { "ltu" } };
+        var headerTermPositions = new List<string> { { "fortuning" } };
+        var contentTermPositions = new List<string> { { "student" } };
         var hash = "ABC-123";
         var now = DateTime.UtcNow;
 
@@ -47,7 +56,10 @@ public class IndexDocumentTests
             outgoingLinks: links,
             titleTerms: titleTerms, 
             headerTerms: headerTerms, 
-            contentTerms: contentTerms, 
+            contentTerms: contentTerms,
+            titleTermPositions: titleTermPositions,
+            headerTermPositions: headerTermPositions,
+            contentTermPositions: contentTermPositions, 
             contentHash: hash, 
             lastCrawl: now
         );
@@ -70,8 +82,19 @@ public class IndexDocumentTests
         var titleTerms = new Dictionary<string, int> { { "a", 2 }, { "b", 3 } }; // 5 words
         var headerTerms = new Dictionary<string, int> { { "c", 10 } };            // 10 words
         var contentTerms = new Dictionary<string, int> { { "d", 1 }, { "e", 4 } }; // 5 words
+        var titleTermPositions = new List<string> { { "ltu" } };
+        var headerTermPositions = new List<string> { { "fortuning" } };
+        var contentTermPositions = new List<string> { { "student" } };
         
-        var doc = CreateTestDocument(outgoingLinks, titleTerms, headerTerms, contentTerms);
+        var doc = CreateTestDocument(
+            outgoingLinks, 
+            titleTerms, 
+            headerTerms, 
+            contentTerms,
+            titleTermPositions,
+            headerTermPositions,
+            contentTermPositions
+        );
 
         // Act
         var result = doc.TotalWordCount;
@@ -86,8 +109,14 @@ public class IndexDocumentTests
     {
         // Arrange
         var outgoingLinks = new List<string> { "dummyLink" };
-        var empty = new Dictionary<string, int>();
-        var doc = CreateTestDocument(outgoingLinks, empty, empty, empty);
+        var emptyDictionary = new Dictionary<string, int>();
+        var emptyList = new List<string>();
+        
+        var doc = CreateTestDocument(
+            outgoingLinks, 
+            emptyDictionary, emptyDictionary, emptyDictionary, 
+            emptyList, emptyList, emptyList
+        );
 
         // Act
         var result = doc.TotalWordCount;

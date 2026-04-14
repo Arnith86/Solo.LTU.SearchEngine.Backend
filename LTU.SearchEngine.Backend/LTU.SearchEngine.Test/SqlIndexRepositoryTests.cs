@@ -53,7 +53,10 @@ public class SqlIndexRepositoryTests : IDisposable
             title: "LTU Start",
             titleTerms: new Dictionary<string, int>(){{"student", 1},{"ltu", 1}},
             headerTerms: new Dictionary<string, int>(){{"student", 3}},
-            contentTerms: new Dictionary<string, int>(){{"utbildning", 2}}
+            contentTerms: new Dictionary<string, int>(){{"utbildning", 2}},
+            titleTermPositions: new List<string>(){{"student"},{"ltu"}},
+            headerTermPositions: new List<string>(){{"student"}},
+            contentTermPositions: new List<string>(){{"utbildning"}}
         );
 
         // Act
@@ -239,6 +242,9 @@ public class SqlIndexRepositoryTests : IDisposable
             titleTerms: new Dictionary<string, int> { { oldTitle, 1 } },
             headerTerms: new Dictionary<string, int> { { oldHeader, 1 } },
             contentTerms: new Dictionary<string, int> { { oldContent, 1 } },
+            titleTermPositions: new List<string> { "term" },
+            headerTermPositions: new List<string> { "term" },
+            contentTermPositions: new List<string> { "term" },
             outgoingLinks: new List<string> { "dummyLink" }
         );
 
@@ -249,6 +255,9 @@ public class SqlIndexRepositoryTests : IDisposable
             titleTerms: new Dictionary<string, int> { { newTitle, 1 } },
             headerTerms: new Dictionary<string, int> { { oldHeader, 1 } },
             contentTerms: new Dictionary<string, int> { { oldContent, 1 } },
+            titleTermPositions: new List<string> { "term" },
+            headerTermPositions: new List<string> { "term" },
+            contentTermPositions: new List<string> { "term" },
             outgoingLinks: new List<string> { "dummyLink" }
         );
 
@@ -284,6 +293,9 @@ public class SqlIndexRepositoryTests : IDisposable
             titleTerms: new Dictionary<string, int>(),
             headerTerms: new Dictionary<string, int>(),
             contentTerms: new Dictionary<string, int>(),
+            titleTermPositions: new List<string>(),
+            headerTermPositions: new List<string>(),
+            contentTermPositions: new List<string>(),
             outgoingLinks: new List<string> { targetUrl }
         );
 
