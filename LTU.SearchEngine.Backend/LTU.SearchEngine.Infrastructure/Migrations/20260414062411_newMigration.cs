@@ -97,6 +97,31 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "PageWordPosition",
+                columns: table => new
+                {
+                    PageId = table.Column<int>(type: "int", nullable: false),
+                    TermId = table.Column<int>(type: "int", nullable: false),
+                    Position = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PageWordPosition", x => new { x.PageId, x.TermId, x.Position });
+                    table.ForeignKey(
+                        name: "FK_PageWordPosition_Pages_PageId",
+                        column: x => x.PageId,
+                        principalTable: "Pages",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_PageWordPosition_Terms_TermId",
+                        column: x => x.TermId,
+                        principalTable: "Terms",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_PageLinks_ToPageId",
                 table: "PageLinks",
@@ -114,6 +139,11 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                 column: "TermId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_PageWordPosition_TermId",
+                table: "PageWordPosition",
+                column: "TermId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Terms_Word",
                 table: "Terms",
                 column: "Word",
@@ -128,6 +158,9 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "PageWordFrequencies");
+
+            migrationBuilder.DropTable(
+                name: "PageWordPosition");
 
             migrationBuilder.DropTable(
                 name: "Pages");
