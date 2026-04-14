@@ -314,6 +314,51 @@ public class SqlIndexRepositoryTests : IDisposable
     }
 
 
+    [Fact]
+    public async Task AddDocumentAsync_ReIndexing_ShouldCleanupOldPositions()
+    {
+        // Arrange 
+        var url = "http://cleanup-pos.se";
+        
+        var doc1 = IndexDocumentBuilder.BuildIndexDocument(
+            url: url, 
+            titleTerms: new Dictionary<string, int> { {"oldTerm", 1} },
+            headerTerms: new Dictionary<string, int>(),
+            contentTerms: new Dictionary<string, int>(),
+            titleTermPositions: new List<string> { "oldTerm" },
+            headerTermPositions: new List<string>(),
+            contentTermPositions: new List<string>(),
+            outgoingLinks: new List<string>() 
+        );
+
+        var doc2 = IndexDocumentBuilder.BuildIndexDocument(
+            url: url, 
+            titleTerms: new Dictionary<string, int>{ {"newTerm", 1} },
+            headerTerms: new Dictionary<string, int>(),
+            contentTerms: new Dictionary<string, int>(),
+            titleTermPositions: new List<string> { "newTerm" },
+            headerTermPositions: new List<string>(),
+            contentTermPositions: new List<string>(),
+            outgoingLinks: new List<string>() 
+        );
+
+        await _sut.AddDocumentAsync(doc1);
+
+        // Act 
+        await _sut.AddDocumentAsync(doc2);
+
+        // Assert 
+        await using var context = await _factory.CreateDbContextAsync();
+        
+        var positions = await context.PageWordPositions
+            .Include(pwp => pwp.Term)
+            .Where(pwp => pwp.Page.Url.Equals(url))
+            .ToListAsync();
+
+        Assert.Single(positions);
+        Assert.Equal("newTerm", positions[0].Term.Word);
+        Assert.DoesNotContain(positions, pwp => pwp.Term.Word.Equals("oldTerm"));
+    }
 
     public void Dispose()
     {
