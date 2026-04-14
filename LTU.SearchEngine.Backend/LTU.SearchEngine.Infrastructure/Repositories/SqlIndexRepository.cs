@@ -1,4 +1,5 @@
 ﻿using LTU.SearchEngine.Backend.Core.Entities;
+using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 using LTU.SearchEngine.Infrastructure.Data;
@@ -45,10 +46,13 @@ public class SqlIndexRepository : IIndexRepository
         }
         else
         {
-            // Remove old word frequencies and page links for the page before adding new ones to avoid duplicates
-            var oldTermEntries = context.PageWordFrequencies.Where(pwf => pwf.PageId.Equals(page.Id));
-            context.PageWordFrequencies.RemoveRange(oldTermEntries);
-
+            // Remove old word frequencies/positions and page links for the page before adding new ones to avoid duplicates
+            var oldPageWordFrequencies = context.PageWordFrequencies.Where(pwf => pwf.PageId.Equals(page.Id));
+            context.PageWordFrequencies.RemoveRange(oldPageWordFrequencies);
+            
+            var oldPageWordPositions = context.PageWordPositions.Where(pwf => pwf.PageId.Equals(page.Id));
+            context.PageWordPositions.RemoveRange(oldPageWordPositions);
+            
             var oldLinkEntries = context.PageLinks.Where(pl => pl.FromPageId.Equals(page.Id));
             context.PageLinks.RemoveRange(oldLinkEntries);
 
@@ -63,7 +67,7 @@ public class SqlIndexRepository : IIndexRepository
         // Save to get a Page.Id 
         await context.SaveChangesAsync();
 
-        // Handle WordFrequency relation    
+        // -------------------------------- Handle WordFrequency relation --------------------------------------   
         var allUniqueTerms = document.TitleTerms.Keys
             .Union(document.HeaderTerms.Keys)
             .Union(document.ContentTerms.Keys)
@@ -111,7 +115,37 @@ public class SqlIndexRepository : IIndexRepository
             context.PageWordFrequencies.Add(pageWordFrequency);
         }
 
-        // Handle PageLink relation 
+        // -------------------------------- Handle PageWordPosition relation --------------------------------------   
+
+        var sourceTermPosition = new Dictionary<TermSource, IReadOnlyList<string>>();
+        sourceTermPosition[TermSource.Title] = document.TitleTermPositions;
+        sourceTermPosition[TermSource.Header] = document.HeaderTermPositions;
+        sourceTermPosition[TermSource.Body] = document.ContentTermPositions;
+
+        foreach (var source in sourceTermPosition)
+        {
+
+            for (int i = 0; i < source.Value.Count; i++)
+            {
+                var currentTerm = source.Value[i];
+
+                if (existingTerms.TryGetValue(currentTerm, out var termEntity))
+                {
+                    var pageWordPosition = new PageWordPosition
+                    {
+                        PageId = page.Id,
+                        TermId = termEntity.Id,
+                        Position = i,
+                        TermSource = source.Key
+                    };   
+
+                    context.PageWordPositions.Add(pageWordPosition);
+                }
+            }
+        }
+
+
+        // -------------------------------- Handle PageLink relation -------------------------------------------
         if (document.OutgoingLinks is not null && document.OutgoingLinks.Any())
         {
             var targetLinks = document.OutgoingLinks.Distinct().ToList();
