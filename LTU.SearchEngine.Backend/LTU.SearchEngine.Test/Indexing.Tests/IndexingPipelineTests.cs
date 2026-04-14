@@ -293,6 +293,9 @@ public class IndexingPipelineTests
         Assert.Equal(1, document.ContentTerms["run"]);
         Assert.Single(document.ContentTerms);
 
+        Assert.Single(document.ContentTermPositions); 
+        Assert.Equal("run", document.ContentTermPositions[0]);
+
         _normalizerMock.Verify(n => n.Normalize(It.IsAny<string>(), "en"), Times.Exactly(2));
     }
 
@@ -372,5 +375,7 @@ public class IndexingPipelineTests
         Assert.DoesNotContain("title", document.ContentTermPositions);
         Assert.DoesNotContain("header", document.ContentTermPositions);
     }
+
+
 }
 
