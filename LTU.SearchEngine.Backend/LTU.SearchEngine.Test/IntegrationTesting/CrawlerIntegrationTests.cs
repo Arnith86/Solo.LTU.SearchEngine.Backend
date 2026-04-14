@@ -51,7 +51,7 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Creates an in-memory SQLite connection for the test database.
         SqliteConnection sqliteConnection = new SqliteConnection("Filename=:memory:");
-        sqliteConnection.Open();
+        // sqliteConnection.Open();
 
         string fakeAppSettings = $$$"""
         {
@@ -106,7 +106,10 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
                 {
                     options.UseSqlite(sqliteConnection);
                     options.UseInternalServiceProvider(null); // Avoids issues with multiple service providers in tests
+                    sqliteConnection.Open();
                 });
+
+                
 
                 services.AddSingleton<HttpClient>(httpClientForCrawler); // Replace the HttpClient the client uses to the in-memory webHostBuilder
                 services.AddSingleton(indexerMock.Object);
@@ -554,6 +557,7 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
         _webHostBuilder.DynamicContent[seedUrl] = $"""
             <html lang="en">
+                <meta charset="UTF-8">
                 <body>
                     <a href="style.css">CSS-file</a>
                     <a href="script.js">JS-file</a>
@@ -564,20 +568,25 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             </html>
         """;
 
-        _webHostBuilder.DynamicContent[validPage] ="<html></html>";
+        _webHostBuilder.DynamicContent[validPage] ="<html>Valid</html>";
+
+        List<string> indexedPages = new List<string>();
+        var indexerMock = new Mock<IIndexer>();
+        indexerMock
+            .Setup(i => i.IndexAsync(It.IsAny<CrawlResult>()))
+            .Callback<CrawlResult>((i) => indexedPages.Add(i.Url));
 
         
         using var testFactory = CreateTestFactory<Crawler>(
             httpClientForCrawler: httpClient,
             seedUrl: seedUrl,
-            indexerMock : new Mock<IIndexer>()
+            indexerMock : indexerMock
         );
 
         using var scope = testFactory.Services.CreateScope();
         var dispatcher = scope.ServiceProvider.GetRequiredService<ICrawlJobDispatcher>();
-        var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<SearchDbContext>>();
         
-
+        
         // Act 
         var cts = new CancellationTokenSource();
         await dispatcher.Enqueue( new CrawlJob { Url = seedUrl, NextAttempt = DateTime.UtcNow } );
@@ -585,29 +594,22 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
         
         await TestWait.UntilTrue(
-            () => tracker.VisitedUrls.Contains(validPage), 
+            () => indexedPages.Count > 1, 
             maxWaitMs: 10000
         );
+        await TestWait.UntilTrue(maxWaitMs: 1000);
         
         cts.Cancel();
-
-        // Assert
-        using var dbContext = dbFactory.CreateDbContext();
-        var allQueuedUrls = await dbContext.Pages.Select(p => p.Url).ToListAsync();
         
-        await TestWait.UntilTrue(
-            maxWaitMs: 5000
-        );
+        // Relevant pages were visited
+        Assert.Contains(seedUrl, indexedPages);
+        Assert.Contains(validPage, indexedPages);
 
-
-        // Correct pages indexed
-        Assert.Contains(seedUrl, allQueuedUrls);
-        Assert.Contains(validPage, allQueuedUrls);
-
-        // Non-relevant pages ignored
-        Assert.DoesNotContain("http://localhost/style.css", allQueuedUrls);
-        Assert.DoesNotContain("http://localhost/script.js", allQueuedUrls);
-        Assert.DoesNotContain("http://localhost/image.png", allQueuedUrls);
+        // Non-relevant pages were not visited
+        Assert.DoesNotContain(indexedPages, u => u.EndsWith(".css"));
+        Assert.DoesNotContain(indexedPages, u => u.EndsWith(".js"));
+        Assert.DoesNotContain(indexedPages, u => u.EndsWith(".png"));
+        Assert.DoesNotContain(indexedPages, u => u.EndsWith(".jpg"));
 
         // Relevant pages were visited
         Assert.Contains(seedUrl, tracker.VisitedUrls);
