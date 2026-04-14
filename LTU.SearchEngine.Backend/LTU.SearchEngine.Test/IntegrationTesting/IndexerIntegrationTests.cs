@@ -325,8 +325,6 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             return Task.CompletedTask;
         };
         
-        // CREATE MOCK LOGGER
-
         using var testFactory = CreateTestFactory<TplCrawlJobDispatcher>(
             httpClient: httpClient, 
             seedUrl: url,

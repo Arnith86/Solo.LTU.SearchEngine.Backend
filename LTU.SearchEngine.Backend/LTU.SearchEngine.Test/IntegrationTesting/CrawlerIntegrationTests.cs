@@ -16,6 +16,11 @@ using LTU.SearchEngine.Infrastructure.Configuration;
 using Microsoft.Extensions.Logging;
 using LTU.SearchEngine.Test.HelperClasses;
 using System.Collections.Concurrent;
+using LTU.SearchEngine.Infrastructure.Crawling;
+using Microsoft.EntityFrameworkCore;
+using LTU.SearchEngine.Infrastructure.Data;
+using LTU.SearchEngine.Tests.Helpers;
+using Microsoft.Data.Sqlite;
 
 namespace LTU.SearchEngine.Test.IntegrationTesting;
 
@@ -44,6 +49,10 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         Mock<IRobotsHandler>? robotsHandlerMock = null
     ) where T : class
     {
+        // Creates an in-memory SQLite connection for the test database.
+        SqliteConnection sqliteConnection = new SqliteConnection("Filename=:memory:");
+        // sqliteConnection.Open();
+
         string fakeAppSettings = $$$"""
         {
             "CrawlerSettings": {
@@ -84,6 +93,23 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
                 var descriptors = services.Where(d => d.ServiceType == typeof(HttpClient)).ToList();
                 foreach (var d in descriptors) services.Remove(d);
+
+                // Removes everything related to the actual database context and replaces it with an in-memory SQLite version.
+                var dbContextDescriptors = services.Where(d => 
+                    d.ServiceType.FullName!.Contains("EntityFrameworkCore")||
+                    d.ServiceType == typeof(SearchDbContext) ||
+                    d.ServiceType.Name.Contains("IDbContextFactory")).ToList();
+
+                foreach (var d in dbContextDescriptors) services.Remove(d);
+
+                services.AddDbContextFactory<SearchDbContext>(options => 
+                {
+                    options.UseSqlite(sqliteConnection);
+                    options.UseInternalServiceProvider(null); // Avoids issues with multiple service providers in tests
+                    sqliteConnection.Open();
+                });
+
+                
 
                 services.AddSingleton<HttpClient>(httpClientForCrawler); // Replace the HttpClient the client uses to the in-memory webHostBuilder
                 services.AddSingleton(indexerMock.Object);
@@ -516,6 +542,86 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
         Times.Once); 
     }    
+
+
+    [Fact]
+    [Trait("TestCase", "TC-FRQ-1007")]
+    public async Task Integration_Crawler_ShouldOnlyQueueHtmlFiles()
+    {
+        // Arrange
+        string seedUrl = "http://localhost/dirtySeed.html";
+        string validPage = "http://localhost/validPage.html";
+        
+        var tracker = new CallTracker();
+        var httpClient = _webHostBuilder.CreateFakeInternetClient(callTracker: tracker);
+
+        _webHostBuilder.DynamicContent[seedUrl] = $"""
+            <html lang="en">
+                <meta charset="UTF-8">
+                <body>
+                    <a href="style.css">CSS-file</a>
+                    <a href="script.js">JS-file</a>
+                    <a href="image.png">Image</a>
+                    <a href="image2.png">jpg</a>
+                    <a href="validPage.html">Valid Link</a>
+                </body>
+            </html>
+        """;
+
+        _webHostBuilder.DynamicContent[validPage] ="<html>Valid</html>";
+
+        List<string> indexedPages = new List<string>();
+        var indexerMock = new Mock<IIndexer>();
+        indexerMock
+            .Setup(i => i.IndexAsync(It.IsAny<CrawlResult>()))
+            .Callback<CrawlResult>((i) => indexedPages.Add(i.Url));
+
+        
+        using var testFactory = CreateTestFactory<Crawler>(
+            httpClientForCrawler: httpClient,
+            seedUrl: seedUrl,
+            indexerMock : indexerMock
+        );
+
+        using var scope = testFactory.Services.CreateScope();
+        var dispatcher = scope.ServiceProvider.GetRequiredService<ICrawlJobDispatcher>();
+        
+        
+        // Act 
+        var cts = new CancellationTokenSource();
+        await dispatcher.Enqueue( new CrawlJob { Url = seedUrl, NextAttempt = DateTime.UtcNow } );
+        Task dispatcherTask = dispatcher.Start(cts.Token);
+
+        
+        await TestWait.UntilTrue(
+            () => indexedPages.Count > 1, 
+            maxWaitMs: 10000
+        );
+        await TestWait.UntilTrue(maxWaitMs: 1000);
+        
+        cts.Cancel();
+        
+        // Relevant pages were visited
+        Assert.Contains(seedUrl, indexedPages);
+        Assert.Contains(validPage, indexedPages);
+
+        // Non-relevant pages were not visited
+        Assert.DoesNotContain(indexedPages, u => u.EndsWith(".css"));
+        Assert.DoesNotContain(indexedPages, u => u.EndsWith(".js"));
+        Assert.DoesNotContain(indexedPages, u => u.EndsWith(".png"));
+        Assert.DoesNotContain(indexedPages, u => u.EndsWith(".jpg"));
+
+        // Relevant pages were visited
+        Assert.Contains(seedUrl, tracker.VisitedUrls);
+        Assert.Contains(validPage, tracker.VisitedUrls);
+
+        // Non-relevant pages were not visited
+        Assert.DoesNotContain(tracker.VisitedUrls, u => u.EndsWith(".css"));
+        Assert.DoesNotContain(tracker.VisitedUrls, u => u.EndsWith(".js"));
+        Assert.DoesNotContain(tracker.VisitedUrls, u => u.EndsWith(".png"));
+        Assert.DoesNotContain(tracker.VisitedUrls, u => u.EndsWith(".jpg"));
+    }
+
 
     [Fact]
     [Trait("TestCase", "TC-FRQ-1008")]

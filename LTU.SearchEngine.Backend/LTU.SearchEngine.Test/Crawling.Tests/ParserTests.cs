@@ -1,6 +1,4 @@
-﻿using Castle.Core.Logging;
-using LTU.SearchEngine.Backend.Core;
-using LTU.SearchEngine.Backend.Core.Exceptions;
+﻿using LTU.SearchEngine.Backend.Core;
 using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Infrastructure;
 using LTU.SearchEngine.Infrastructure.Configurations;
