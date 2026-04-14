@@ -597,7 +597,7 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             () => indexedPages.Count > 1, 
             maxWaitMs: 10000
         );
-        await TestWait.UntilTrue(maxWaitMs: 1000);
+        //await TestWait.UntilTrue(maxWaitMs: 1000);
         
         cts.Cancel();
         
