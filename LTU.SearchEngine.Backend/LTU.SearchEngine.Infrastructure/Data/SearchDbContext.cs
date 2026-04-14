@@ -2,25 +2,25 @@
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace LTU.SearchEngine.Infrastructure.Data
-{
-    public class SearchDbContext : DbContext
-    {
-        public SearchDbContext(DbContextOptions<SearchDbContext> options)
-         : base(options)
-        {
-        }
-        public DbSet<Page> Pages { get; set; }
-        public DbSet<Term> Terms { get; set; }
-        public DbSet<PageLink> PageLinks { get; set; }
-        public DbSet<PageWordFrequency> PageWordFrequencies { get; set; }
+namespace LTU.SearchEngine.Infrastructure.Data;
 
-        // --- Configuration (Fluent API) ---
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            base.OnModelCreating(modelBuilder);
-            modelBuilder.ApplyConfigurationsFromAssembly(typeof(SearchDbContext).Assembly);
-        }
+public class SearchDbContext : DbContext
+{
+    public SearchDbContext(DbContextOptions<SearchDbContext> options)
+     : base(options)
+    {
+    }
+    public DbSet<Page> Pages { get; set; }
+    public DbSet<Term> Terms { get; set; }
+    public DbSet<PageLink> PageLinks { get; set; }
+    public DbSet<PageWordFrequency> PageWordFrequencies { get; set; }
+    public DbSet<PageWordPosition> PageWordPositions { get; set; }
+
+    // --- Configuration (Fluent API) ---
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(SearchDbContext).Assembly);
     }
 }
-    
+

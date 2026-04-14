@@ -7,6 +7,10 @@
     public IReadOnlyDictionary<string, int> TitleTerms { get; }
     public IReadOnlyDictionary<string, int> HeaderTerms { get; }
     public IReadOnlyDictionary<string, int> ContentTerms { get; }
+    public IReadOnlyList<string> TitleTermPositions { get; } 
+    public IReadOnlyList<string> HeaderTermPositions { get; } 
+    public IReadOnlyList<string> ContentTermPositions { get; } 
+        
     public string ContentHash { get; }
     public DateTime LastCrawl { get; }
 
@@ -18,6 +22,9 @@
         IReadOnlyDictionary<string, int> titleTerms, 
         IReadOnlyDictionary<string, int> headerTerms, 
         IReadOnlyDictionary<string, int> contentTerms,
+        IReadOnlyList<string> titleTermPositions, 
+        IReadOnlyList<string> headerTermPositions, 
+        IReadOnlyList<string> contentTermPositions, 
         string contentHash,
         DateTime lastCrawl
         )
@@ -29,6 +36,9 @@
         TitleTerms = titleTerms;
         HeaderTerms = headerTerms;
         ContentTerms = contentTerms;
+        TitleTermPositions = titleTermPositions;
+        HeaderTermPositions = headerTermPositions;
+        ContentTermPositions = contentTermPositions;
         ContentHash = contentHash;
         LastCrawl = lastCrawl; 
     }

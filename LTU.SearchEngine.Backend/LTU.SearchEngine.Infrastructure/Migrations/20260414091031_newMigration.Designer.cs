@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LTU.SearchEngine.Infrastructure.Migrations
 {
     [DbContext(typeof(SearchDbContext))]
-    [Migration("20260327093606_newMigration")]
+    [Migration("20260414091031_newMigration")]
     partial class newMigration
     {
         /// <inheritdoc />
@@ -111,6 +111,27 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                     b.ToTable("PageWordFrequencies");
                 });
 
+            modelBuilder.Entity("LTU.SearchEngine.Backend.Core.Model.Entities.PageWordPosition", b =>
+                {
+                    b.Property<int>("PageId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TermId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TermSource")
+                        .HasColumnType("int");
+
+                    b.HasKey("PageId", "TermId", "Position", "TermSource");
+
+                    b.HasIndex("TermId");
+
+                    b.ToTable("PageWordPositions");
+                });
+
             modelBuilder.Entity("LTU.SearchEngine.Backend.Core.Model.Entities.Term", b =>
                 {
                     b.Property<int>("Id")
@@ -172,11 +193,32 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                     b.Navigation("Term");
                 });
 
+            modelBuilder.Entity("LTU.SearchEngine.Backend.Core.Model.Entities.PageWordPosition", b =>
+                {
+                    b.HasOne("LTU.SearchEngine.Backend.Core.Entities.Page", "Page")
+                        .WithMany("PagePositions")
+                        .HasForeignKey("PageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("LTU.SearchEngine.Backend.Core.Model.Entities.Term", "Term")
+                        .WithMany("PagePositions")
+                        .HasForeignKey("TermId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Page");
+
+                    b.Navigation("Term");
+                });
+
             modelBuilder.Entity("LTU.SearchEngine.Backend.Core.Entities.Page", b =>
                 {
                     b.Navigation("IncomingLinks");
 
                     b.Navigation("OutgoingLinks");
+
+                    b.Navigation("PagePositions");
 
                     b.Navigation("WordFrequencies");
                 });
@@ -184,6 +226,8 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
             modelBuilder.Entity("LTU.SearchEngine.Backend.Core.Model.Entities.Term", b =>
                 {
                     b.Navigation("PageFrequencies");
+
+                    b.Navigation("PagePositions");
                 });
 #pragma warning restore 612, 618
         }

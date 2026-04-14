@@ -1,4 +1,5 @@
 ﻿using LTU.SearchEngine.Backend.Core.Entities;
+using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Infrastructure.Data;
 using LTU.SearchEngine.Infrastructure.Repositories;
@@ -53,7 +54,10 @@ public class SqlIndexRepositoryTests : IDisposable
             title: "LTU Start",
             titleTerms: new Dictionary<string, int>(){{"student", 1},{"ltu", 1}},
             headerTerms: new Dictionary<string, int>(){{"student", 3}},
-            contentTerms: new Dictionary<string, int>(){{"utbildning", 2}}
+            contentTerms: new Dictionary<string, int>(){{"utbildning", 2}},
+            titleTermPositions: new List<string>(){{"student"},{"ltu"}},
+            headerTermPositions: new List<string>(){{"student"}},
+            contentTermPositions: new List<string>(){{"utbildning"}}
         );
 
         // Act
@@ -239,6 +243,9 @@ public class SqlIndexRepositoryTests : IDisposable
             titleTerms: new Dictionary<string, int> { { oldTitle, 1 } },
             headerTerms: new Dictionary<string, int> { { oldHeader, 1 } },
             contentTerms: new Dictionary<string, int> { { oldContent, 1 } },
+            titleTermPositions: new List<string> { "term" },
+            headerTermPositions: new List<string> { "term" },
+            contentTermPositions: new List<string> { "term" },
             outgoingLinks: new List<string> { "dummyLink" }
         );
 
@@ -249,6 +256,9 @@ public class SqlIndexRepositoryTests : IDisposable
             titleTerms: new Dictionary<string, int> { { newTitle, 1 } },
             headerTerms: new Dictionary<string, int> { { oldHeader, 1 } },
             contentTerms: new Dictionary<string, int> { { oldContent, 1 } },
+            titleTermPositions: new List<string> { "term" },
+            headerTermPositions: new List<string> { "term" },
+            contentTermPositions: new List<string> { "term" },
             outgoingLinks: new List<string> { "dummyLink" }
         );
 
@@ -284,6 +294,9 @@ public class SqlIndexRepositoryTests : IDisposable
             titleTerms: new Dictionary<string, int>(),
             headerTerms: new Dictionary<string, int>(),
             contentTerms: new Dictionary<string, int>(),
+            titleTermPositions: new List<string>(),
+            headerTermPositions: new List<string>(),
+            contentTermPositions: new List<string>(),
             outgoingLinks: new List<string> { targetUrl }
         );
 
@@ -301,6 +314,103 @@ public class SqlIndexRepositoryTests : IDisposable
         Assert.Empty(stubPage.ContentHash);
     }
 
+
+    [Fact]
+    public async Task AddDocumentAsync_ReIndexing_ShouldCleanupOldPositions()
+    {
+        // Arrange 
+        var url = "http://cleanup-pos.se";
+        
+        var doc1 = IndexDocumentBuilder.BuildIndexDocument(
+            url: url, 
+            titleTerms: new Dictionary<string, int> { {"oldTerm", 1} },
+            headerTerms: new Dictionary<string, int>(),
+            contentTerms: new Dictionary<string, int>(),
+            titleTermPositions: new List<string> { "oldTerm" },
+            headerTermPositions: new List<string>(),
+            contentTermPositions: new List<string>(),
+            outgoingLinks: new List<string>() 
+        );
+
+        var doc2 = IndexDocumentBuilder.BuildIndexDocument(
+            url: url, 
+            titleTerms: new Dictionary<string, int>{ {"newTerm", 1} },
+            headerTerms: new Dictionary<string, int>(),
+            contentTerms: new Dictionary<string, int>(),
+            titleTermPositions: new List<string> { "newTerm" },
+            headerTermPositions: new List<string>(),
+            contentTermPositions: new List<string>(),
+            outgoingLinks: new List<string>() 
+        );
+
+        await _sut.AddDocumentAsync(doc1);
+
+        // Act 
+        await _sut.AddDocumentAsync(doc2);
+
+        // Assert 
+        await using var context = await _factory.CreateDbContextAsync();
+        
+        var positions = await context.PageWordPositions
+            .Include(pwp => pwp.Term)
+            .Where(pwp => pwp.Page.Url.Equals(url))
+            .ToListAsync();
+
+        Assert.Single(positions);
+        Assert.Equal("newTerm", positions[0].Term.Word);
+        Assert.DoesNotContain(positions, pwp => pwp.Term.Word.Equals("oldTerm"));
+    }
+
+
+
+    [Fact]
+    public async Task AddDocumentAsync_SameWordAtSamePositionInDifferentSources_ShouldSaveAll()
+    {
+         // Arrange 
+        var url = "http://cleanup-pos.se";
+        
+        var doc1 = IndexDocumentBuilder.BuildIndexDocument(
+            url: url, 
+            titleTerms: new Dictionary<string, int> { {"term", 1} },
+            headerTerms: new Dictionary<string, int> { {"term", 2} },
+            contentTerms: new Dictionary<string, int> { {"term", 1} },
+            titleTermPositions: new List<string> { "term" },
+            headerTermPositions: new List<string> { "term", "term" },
+            contentTermPositions: new List<string> { "term" },
+            outgoingLinks: new List<string>() 
+        );
+
+        // Act 
+        await _sut.AddDocumentAsync(doc1);
+
+        // Assert 
+        await using var context = await _factory.CreateDbContextAsync();
+
+        var positions = await context.PageWordPositions
+            .Where(pwp => pwp.Page.Url.Equals(url) && pwp.Term.Word.Equals("term"))
+            .ToListAsync();
+
+        Assert.Equal(4, positions.Count);
+        Assert.Contains(positions, p => p.TermSource.Equals(TermSource.Title) && p.Position.Equals(0));    
+        Assert.Contains(positions, p => p.TermSource.Equals(TermSource.Header) && p.Position.Equals(1));    
+        Assert.Contains(positions, p => p.TermSource.Equals(TermSource.Body) && p.Position.Equals(0));    
+    }
+
+
+    [Fact]
+    public async Task AddDocumentAsync_WhenErrorOccurs_ShouldRollbackEverything()
+    {
+        // Arrange
+        var invalidDoc = IndexDocumentBuilder.BuildIndexDocument(url: null!);
+
+        // Act & Assert
+        await Assert.ThrowsAnyAsync<Exception>(() => _sut.AddDocumentAsync(invalidDoc));
+
+        await using var context = await _factory.CreateDbContextAsync();
+        var pageCount = await context.Pages.CountAsync();
+        
+        Assert.Equal(0, pageCount);
+    }
 
 
     public void Dispose()

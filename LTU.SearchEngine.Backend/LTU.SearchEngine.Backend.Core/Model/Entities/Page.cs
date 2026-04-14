@@ -14,6 +14,7 @@ public class Page
     public int HttpStatus { get; set; }
     public string Language { get; set; } = string.Empty;
     public ICollection<PageWordFrequency> WordFrequencies { get; set; } = new List<PageWordFrequency>();
+    public ICollection<PageWordPosition> PagePositions { get; set; } = new List<PageWordPosition>();
     public ICollection<PageLink> OutgoingLinks { get; set; } = new List<PageLink>();
     public ICollection<PageLink> IncomingLinks { get; set; } = new List<PageLink>();
 }

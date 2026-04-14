@@ -7,7 +7,7 @@ namespace LTU.SearchEngine.Backend.Core.HelperClasses;
 /// This helper is used during the indexing process to count occurrences of normalized terms 
 /// before they are finalized into a read-only format for the index.
 /// </remarks>
-public class TermFrequencyMap
+public class TermFrequencyMap : ITermMapper<IReadOnlyDictionary<string, int>>//<string, int>
 {
     private readonly Dictionary<string, int> _terms = new();
 

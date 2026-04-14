@@ -293,6 +293,9 @@ public class IndexingPipelineTests
         Assert.Equal(1, document.ContentTerms["run"]);
         Assert.Single(document.ContentTerms);
 
+        Assert.Single(document.ContentTermPositions); 
+        Assert.Equal("run", document.ContentTermPositions[0]);
+
         _normalizerMock.Verify(n => n.Normalize(It.IsAny<string>(), "en"), Times.Exactly(2));
     }
 
@@ -315,5 +318,64 @@ public class IndexingPipelineTests
 
         _normalizerMock.Verify(n => n.Normalize(It.IsAny<string>(), "en"), Times.Never());
     }
+
+    [Fact]
+    public void Transform_GivenMultipleTerms_ShouldPreservePositionOrder()
+    {
+        // Arrange 
+        _normalizerMock
+            .Setup(n => n.Normalize(It.IsAny<string>(), "en"))
+            .Returns<string, string>((s, l) => s.ToLower());
+        
+        var crawlResult = CreateCrawlResult(new List<IndexedTerm>
+        {
+            new IndexedTerm("First", TermSource.Body),
+            new IndexedTerm("Second", TermSource.Body),
+            new IndexedTerm("Third", TermSource.Body)
+        });
+
+        // Act 
+        var document = _pipeline.Transform(crawlResult);
+
+        // Assert
+        Assert.Equal(3, document.ContentTermPositions.Count);
+        Assert.Equal("first", document.ContentTermPositions[0]);
+        Assert.Equal("second", document.ContentTermPositions[1]);
+        Assert.Equal("third", document.ContentTermPositions[2]);
+    }
+
+    [Fact]
+    public void Transform_TermsInDifferentSources_ShouldHaveSeparatePositionLists()
+    {
+        // Arrange 
+        _normalizerMock
+            .Setup(n => n.Normalize(It.IsAny<string>(), "en"))
+            .Returns<string, string>((s, l) => s.ToLower());
+        
+        var crawlResult = CreateCrawlResult(new List<IndexedTerm>
+        {
+            new IndexedTerm("title", TermSource.Title),
+            new IndexedTerm("header", TermSource.Header),
+            new IndexedTerm("body", TermSource.Body)
+        });
+
+        // Act 
+        var document = _pipeline.Transform(crawlResult);
+
+        // Assert
+        Assert.Contains("title", document.TitleTermPositions);
+        Assert.DoesNotContain("header", document.TitleTermPositions);
+        Assert.DoesNotContain("body", document.TitleTermPositions);
+        
+        Assert.Contains("header", document.HeaderTermPositions);
+        Assert.DoesNotContain("title", document.HeaderTermPositions);
+        Assert.DoesNotContain("body", document.HeaderTermPositions);
+        
+        Assert.Contains("body", document.ContentTermPositions);
+        Assert.DoesNotContain("title", document.ContentTermPositions);
+        Assert.DoesNotContain("header", document.ContentTermPositions);
+    }
+
+
 }
 

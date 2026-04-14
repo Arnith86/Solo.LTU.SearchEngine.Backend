@@ -7,6 +7,9 @@ public static class IndexDocumentBuilder
         IReadOnlyDictionary<string, int> titleTerms, 
         IReadOnlyDictionary<string, int> headerTerms, 
         IReadOnlyDictionary<string, int> contentTerms,
+        IReadOnlyList<string> titleTermPositions, 
+        IReadOnlyList<string> headerTermPositions, 
+        IReadOnlyList<string> contentTermPositions,  
         string url = "http://test.html", 
         string title = "Test Title",
         string language = "sv",
@@ -24,6 +27,9 @@ public static class IndexDocumentBuilder
             titleTerms: titleTerms, 
             headerTerms: headerTerms, 
             contentTerms: contentTerms,
+            titleTermPositions: titleTermPositions, 
+            headerTermPositions: headerTermPositions, 
+            contentTermPositions: contentTermPositions,  
             contentHash: contentHash,
             lastCrawl: tempCrawl
         );
@@ -42,6 +48,9 @@ public static class IndexDocumentBuilder
         var dummyTitleTerms = new Dictionary<string, int> { { "titleWord", 1 } };
         var dummyHeaderTerms = new Dictionary<string, int> { { "headerWord", 1 } };
         var dummyContentTerms = new Dictionary<string, int> { { "contentWord", 1 } };
+        var dummyTitleTermPositions = new List<string> { { "titleWord"} };
+        var dummyHeaderTermPositions = new List<string> { { "headerWord" } };
+        var dummyContentTermPositions = new List<string> { { "contentWord" } };
 
         return new IndexDocument(
             url: url, 
@@ -51,6 +60,9 @@ public static class IndexDocumentBuilder
             titleTerms: dummyTitleTerms, 
             headerTerms: dummyHeaderTerms, 
             contentTerms: dummyContentTerms,
+            titleTermPositions: dummyTitleTermPositions, 
+            headerTermPositions: dummyHeaderTermPositions, 
+            contentTermPositions: dummyContentTermPositions, 
             contentHash: contentHash,
             lastCrawl: tempCrawl
         );
