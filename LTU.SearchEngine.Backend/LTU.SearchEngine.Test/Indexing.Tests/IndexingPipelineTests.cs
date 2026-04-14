@@ -315,5 +315,30 @@ public class IndexingPipelineTests
 
         _normalizerMock.Verify(n => n.Normalize(It.IsAny<string>(), "en"), Times.Never());
     }
+
+    [Fact]
+    public void Transform_GivenMultipleTerms_ShouldPreservePositionOrder()
+    {
+        // Arrange 
+        _normalizerMock
+            .Setup(n => n.Normalize(It.IsAny<string>(), "en"))
+            .Returns<string, string>((s, l) => s.ToLower());
+        
+        var crawlResult = CreateCrawlResult(new List<IndexedTerm>
+        {
+            new IndexedTerm("First", TermSource.Body),
+            new IndexedTerm("Second", TermSource.Body),
+            new IndexedTerm("Third", TermSource.Body)
+        });
+
+        // Act 
+        var document = _pipeline.Transform(crawlResult);
+
+        // Assert
+        Assert.Equal(3, document.ContentTermPositions.Count);
+        Assert.Equal("first", document.ContentTermPositions[0]);
+        Assert.Equal("second", document.ContentTermPositions[1]);
+        Assert.Equal("third", document.ContentTermPositions[2]);
+    }
 }
 
