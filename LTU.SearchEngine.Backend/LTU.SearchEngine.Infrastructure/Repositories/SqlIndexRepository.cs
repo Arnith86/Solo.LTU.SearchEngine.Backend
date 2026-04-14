@@ -20,7 +20,6 @@ public class SqlIndexRepository : IIndexRepository
         _factory = factory;
     }
 
-    // ToDo: method AddDocumentAsync needs to be refactored and extract smaller portions of the code into smaller private methods
     // Saves a fully processed document from the pipeline to the database.
     // Merge words from the title, headers and body content.
     public async Task AddDocumentAsync(IndexDocument document)
@@ -30,156 +29,22 @@ public class SqlIndexRepository : IIndexRepository
 
         try
         {
-             // Check if the Page already exists in the database
-            var page = await context.Pages.FirstOrDefaultAsync(p => p.Url.Equals(document.Url));
-
-            if (page is null)
-            {
-                page = new Page
-                {
-                    Url = document.Url,
-                    Title = document.Title,
-                    LastCrawled = document.LastCrawl,
-                    ContentHash = document.ContentHash,
-                    WordCount = document.TotalWordCount,
-                    Language = document.Language
-                };
-
-                context.Pages.Add(page);
-            }
-            else
-            {
-                // Remove old word frequencies/positions and page links for the page before adding new ones to avoid duplicates
-                var oldPageWordFrequencies = context.PageWordFrequencies.Where(pwf => pwf.PageId.Equals(page.Id));
-                context.PageWordFrequencies.RemoveRange(oldPageWordFrequencies);
-                
-                var oldPageWordPositions = context.PageWordPositions.Where(pwf => pwf.PageId.Equals(page.Id));
-                context.PageWordPositions.RemoveRange(oldPageWordPositions);
-                
-                var oldLinkEntries = context.PageLinks.Where(pl => pl.FromPageId.Equals(page.Id));
-                context.PageLinks.RemoveRange(oldLinkEntries);
-
-                // Update page metadata
-                page.Title = document.Title;
-                page.LastCrawled = document.LastCrawl;
-                page.ContentHash = document.ContentHash;
-                page.WordCount = document.TotalWordCount;
-                page.Language = document.Language;            
-            }
+            var page = await GetOrCreatePageAsync(context, document);
 
             // Save to get a Page.Id 
             await context.SaveChangesAsync();
 
-            // -------------------------------- Handle WordFrequency relation --------------------------------------   
             var allUniqueTerms = document.TitleTerms.Keys
                 .Union(document.HeaderTerms.Keys)
                 .Union(document.ContentTerms.Keys)
                 .ToList();
 
             // Retrieve any Terms that already exist in the database.
-            var existingTerms = await context.Terms
-                .Where(t => allUniqueTerms.Contains(t.Word))
-                .ToDictionaryAsync(t => t.Word);
+            var termLookup = await SynchronizeTermsAsync(context, allUniqueTerms);
 
-            bool hasNewTerms = false;
-
-            foreach (var term in allUniqueTerms)
-            {
-                // Creates new Terms if current Term did not exist. 
-                if (!existingTerms.TryGetValue(term, out var termEntity))
-                {
-                    termEntity = new Term { Word = term };
-                    context.Terms.Add(termEntity);
-                    existingTerms[term] = termEntity;
-                    hasNewTerms = true;
-                }
-            }
-
-            if (hasNewTerms) await context.SaveChangesAsync();
-
-
-            foreach (var term in allUniqueTerms)
-            {
-                var termEntity = existingTerms[term];
-
-                document.TitleTerms.TryGetValue(term, out int titleFrequency);
-                document.HeaderTerms.TryGetValue(term, out int headerFrequency);
-                document.ContentTerms.TryGetValue(term, out int contentFrequency);
-
-                var pageWordFrequency = new PageWordFrequency
-                {
-                    PageId = page.Id,
-                    TermId = termEntity.Id,
-                    TitleFrequency = titleFrequency,
-                    HeaderFrequency = headerFrequency,
-                    BodyFrequency = contentFrequency
-                };
-
-                context.PageWordFrequencies.Add(pageWordFrequency);
-            }
-
-            // -------------------------------- Handle PageWordPosition relation --------------------------------------   
-
-            var sourceTermPosition = new Dictionary<TermSource, IReadOnlyList<string>>();
-            sourceTermPosition[TermSource.Title] = document.TitleTermPositions;
-            sourceTermPosition[TermSource.Header] = document.HeaderTermPositions;
-            sourceTermPosition[TermSource.Body] = document.ContentTermPositions;
-
-            foreach (var source in sourceTermPosition)
-            {
-
-                for (int i = 0; i < source.Value.Count; i++)
-                {
-                    var currentTerm = source.Value[i];
-
-                    if (existingTerms.TryGetValue(currentTerm, out var termEntity))
-                    {
-                        var pageWordPosition = new PageWordPosition
-                        {
-                            PageId = page.Id,
-                            TermId = termEntity.Id,
-                            Position = i,
-                            TermSource = source.Key
-                        };   
-
-                        context.PageWordPositions.Add(pageWordPosition);
-                    }
-                }
-            }
-
-
-            // -------------------------------- Handle PageLink relation -------------------------------------------
-            if (document.OutgoingLinks is not null && document.OutgoingLinks.Any())
-            {
-                var targetLinks = document.OutgoingLinks.Distinct().ToList();
-                var existingTargetPages = await context.Pages
-                    .Where(p => targetLinks.Contains(p.Url))
-                    .ToDictionaryAsync(p => p.Url);        
-
-                foreach (var url in targetLinks)
-                {
-                    // If no such page exist yet, create a stub in wait of crawl
-                    if (!existingTargetPages.TryGetValue(url, out var targetStubPage))
-                    {
-                        targetStubPage = new Page
-                        {
-                        Url = url,
-                        Title = "pending..",
-                        ContentHash = string.Empty,
-                        Language = string.Empty
-                        };
-
-                        context.Pages.Add(targetStubPage);
-                        existingTargetPages[url] = targetStubPage;
-                    }
-
-                    context.PageLinks.Add( new PageLink
-                    {
-                        FromPage = page,
-                        ToPage = targetStubPage   
-                    });
-                }
-            }
+            AddWordFrequencies(context, page.Id, document, termLookup);
+            AddWordPositions(context, page.Id, document, termLookup);
+            await AddPageLinksAsync(context, page, document.OutgoingLinks);
 
             // save everything at the same time        
             await context.SaveChangesAsync(); 
@@ -189,6 +54,152 @@ public class SqlIndexRepository : IIndexRepository
         {
             await transaction.RollbackAsync();
             throw;
+        }
+    }
+
+
+    private async Task<Page> GetOrCreatePageAsync(SearchDbContext context, IndexDocument document)
+    {
+        // Check if the Page already exists in the database
+        var page = await context.Pages.FirstOrDefaultAsync(p => p.Url.Equals(document.Url));
+
+        if (page is null)
+        {
+            page = new Page
+            {
+                Url = document.Url,
+                Title = document.Title,
+                LastCrawled = document.LastCrawl,
+                ContentHash = document.ContentHash,
+                WordCount = document.TotalWordCount,
+                Language = document.Language
+            };
+
+            context.Pages.Add(page);
+        }
+        else
+        {
+            // Remove old word frequencies/positions and page links for the page before adding new ones to avoid duplicates
+            var oldPageWordFrequencies = context.PageWordFrequencies.Where(pwf => pwf.PageId.Equals(page.Id));
+            context.PageWordFrequencies.RemoveRange(oldPageWordFrequencies);
+            
+            var oldPageWordPositions = context.PageWordPositions.Where(pwf => pwf.PageId.Equals(page.Id));
+            context.PageWordPositions.RemoveRange(oldPageWordPositions);
+            
+            var oldLinkEntries = context.PageLinks.Where(pl => pl.FromPageId.Equals(page.Id));
+            context.PageLinks.RemoveRange(oldLinkEntries);
+
+            // Update page metadata
+            page.Title = document.Title;
+            page.LastCrawled = document.LastCrawl;
+            page.ContentHash = document.ContentHash;
+            page.WordCount = document.TotalWordCount;
+            page.Language = document.Language;            
+        }
+
+        return page;
+    }
+
+
+    private async Task<Dictionary<string, Term>> SynchronizeTermsAsync(SearchDbContext context, List<string> words)
+    {
+        var existingTerms = await context.Terms
+            .Where(t => words.Contains(t.Word))
+            .ToDictionaryAsync(t => t.Word);
+
+        bool hasNewTerms = false;
+
+        foreach (var term in words)
+        {
+            // Creates new Terms if current Term did not exist. 
+            if (!existingTerms.TryGetValue(term, out var termEntity))
+            {
+                termEntity = new Term { Word = term };
+                context.Terms.Add(termEntity);
+                existingTerms[term] = termEntity;
+                hasNewTerms = true;
+            }
+        }
+
+        if (hasNewTerms) await context.SaveChangesAsync();
+        
+        return existingTerms;
+    }
+
+    private void AddWordFrequencies(
+        SearchDbContext context, 
+        int pageId, IndexDocument doc, 
+        Dictionary<string, Term> terms
+        )
+    {
+        foreach (var word in terms.Keys)
+        {
+            doc.TitleTerms.TryGetValue(word, out int titleFreq);
+            doc.HeaderTerms.TryGetValue(word, out int headerFreq);
+            doc.ContentTerms.TryGetValue(word, out int bodyFreq);
+
+            context.PageWordFrequencies.Add(new PageWordFrequency
+            {
+                PageId = pageId,
+                TermId = terms[word].Id,
+                TitleFrequency = titleFreq,
+                HeaderFrequency = headerFreq,
+                BodyFrequency = bodyFreq
+            });
+        }
+    }
+
+    private void AddWordPositions(
+        SearchDbContext context, 
+        int pageId, 
+        IndexDocument doc, 
+        Dictionary<string, Term> terms
+        )
+    {
+        var sources = new Dictionary<TermSource, IReadOnlyList<string>>
+        {
+            { TermSource.Title, doc.TitleTermPositions },
+            { TermSource.Header, doc.HeaderTermPositions },
+            { TermSource.Body, doc.ContentTermPositions }
+        };
+
+        foreach (var source in sources)
+        {
+            for (int i = 0; i < source.Value.Count; i++)
+            {
+                if (terms.TryGetValue(source.Value[i], out var termEntity))
+                {
+                    context.PageWordPositions.Add(new PageWordPosition
+                    {
+                        PageId = pageId,
+                        TermId = termEntity.Id,
+                        Position = i,
+                        TermSource = source.Key
+                    });
+                }
+            }
+        }
+    }
+
+    private async Task AddPageLinksAsync(SearchDbContext context, Page fromPage, IEnumerable<string> outgoingLinks)
+    {
+        if (outgoingLinks == null || !outgoingLinks.Any()) return;
+
+        var targetUrls = outgoingLinks.Distinct().ToList();
+        var existingPages = await context.Pages
+            .Where(p => targetUrls.Contains(p.Url))
+            .ToDictionaryAsync(p => p.Url);
+
+        foreach (var url in targetUrls)
+        {
+            if (!existingPages.TryGetValue(url, out var targetPage))
+            {
+                targetPage = new Page { Url = url, Title = "pending..", ContentHash = "", Language = "" };
+                context.Pages.Add(targetPage);
+                existingPages[url] = targetPage;
+            }
+
+            context.PageLinks.Add(new PageLink { FromPage = fromPage, ToPage = targetPage });
         }
     }
 
