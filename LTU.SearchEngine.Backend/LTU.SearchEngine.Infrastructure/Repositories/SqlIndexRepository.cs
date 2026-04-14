@@ -26,160 +26,170 @@ public class SqlIndexRepository : IIndexRepository
     public async Task AddDocumentAsync(IndexDocument document)
     {
         await using var context = await _factory.CreateDbContextAsync();
+        await using var transaction = await context.Database.BeginTransactionAsync();
 
-        // Check if the Page already exists in the database
-        var page = await context.Pages.FirstOrDefaultAsync(p => p.Url.Equals(document.Url));
-
-        if (page is null)
+        try
         {
-            page = new Page
+             // Check if the Page already exists in the database
+            var page = await context.Pages.FirstOrDefaultAsync(p => p.Url.Equals(document.Url));
+
+            if (page is null)
             {
-                Url = document.Url,
-                Title = document.Title,
-                LastCrawled = document.LastCrawl,
-                ContentHash = document.ContentHash,
-                WordCount = document.TotalWordCount,
-                Language = document.Language
-            };
-
-            context.Pages.Add(page);
-        }
-        else
-        {
-            // Remove old word frequencies/positions and page links for the page before adding new ones to avoid duplicates
-            var oldPageWordFrequencies = context.PageWordFrequencies.Where(pwf => pwf.PageId.Equals(page.Id));
-            context.PageWordFrequencies.RemoveRange(oldPageWordFrequencies);
-            
-            var oldPageWordPositions = context.PageWordPositions.Where(pwf => pwf.PageId.Equals(page.Id));
-            context.PageWordPositions.RemoveRange(oldPageWordPositions);
-            
-            var oldLinkEntries = context.PageLinks.Where(pl => pl.FromPageId.Equals(page.Id));
-            context.PageLinks.RemoveRange(oldLinkEntries);
-
-            // Update page metadata
-            page.Title = document.Title;
-            page.LastCrawled = document.LastCrawl;
-            page.ContentHash = document.ContentHash;
-            page.WordCount = document.TotalWordCount;
-            page.Language = document.Language;            
-        }
-
-        // Save to get a Page.Id 
-        await context.SaveChangesAsync();
-
-        // -------------------------------- Handle WordFrequency relation --------------------------------------   
-        var allUniqueTerms = document.TitleTerms.Keys
-            .Union(document.HeaderTerms.Keys)
-            .Union(document.ContentTerms.Keys)
-            .ToList();
-
-        // Retrieve any Terms that already exist in the database.
-        var existingTerms = await context.Terms
-            .Where(t => allUniqueTerms.Contains(t.Word))
-            .ToDictionaryAsync(t => t.Word);
-
-        bool hasNewTerms = false;
-
-        foreach (var term in allUniqueTerms)
-        {
-            // Creates new Terms if current Term did not exist. 
-            if (!existingTerms.TryGetValue(term, out var termEntity))
-            {
-                termEntity = new Term { Word = term };
-                context.Terms.Add(termEntity);
-                existingTerms[term] = termEntity;
-                hasNewTerms = true;
-            }
-        }
-
-        if (hasNewTerms) await context.SaveChangesAsync();
-
-
-        foreach (var term in allUniqueTerms)
-        {
-            var termEntity = existingTerms[term];
-
-            document.TitleTerms.TryGetValue(term, out int titleFrequency);
-            document.HeaderTerms.TryGetValue(term, out int headerFrequency);
-            document.ContentTerms.TryGetValue(term, out int contentFrequency);
-
-            var pageWordFrequency = new PageWordFrequency
-            {
-                PageId = page.Id,
-                TermId = termEntity.Id,
-                TitleFrequency = titleFrequency,
-                HeaderFrequency = headerFrequency,
-                BodyFrequency = contentFrequency
-            };
-
-            context.PageWordFrequencies.Add(pageWordFrequency);
-        }
-
-        // -------------------------------- Handle PageWordPosition relation --------------------------------------   
-
-        var sourceTermPosition = new Dictionary<TermSource, IReadOnlyList<string>>();
-        sourceTermPosition[TermSource.Title] = document.TitleTermPositions;
-        sourceTermPosition[TermSource.Header] = document.HeaderTermPositions;
-        sourceTermPosition[TermSource.Body] = document.ContentTermPositions;
-
-        foreach (var source in sourceTermPosition)
-        {
-
-            for (int i = 0; i < source.Value.Count; i++)
-            {
-                var currentTerm = source.Value[i];
-
-                if (existingTerms.TryGetValue(currentTerm, out var termEntity))
+                page = new Page
                 {
-                    var pageWordPosition = new PageWordPosition
-                    {
-                        PageId = page.Id,
-                        TermId = termEntity.Id,
-                        Position = i,
-                        TermSource = source.Key
-                    };   
+                    Url = document.Url,
+                    Title = document.Title,
+                    LastCrawled = document.LastCrawl,
+                    ContentHash = document.ContentHash,
+                    WordCount = document.TotalWordCount,
+                    Language = document.Language
+                };
 
-                    context.PageWordPositions.Add(pageWordPosition);
+                context.Pages.Add(page);
+            }
+            else
+            {
+                // Remove old word frequencies/positions and page links for the page before adding new ones to avoid duplicates
+                var oldPageWordFrequencies = context.PageWordFrequencies.Where(pwf => pwf.PageId.Equals(page.Id));
+                context.PageWordFrequencies.RemoveRange(oldPageWordFrequencies);
+                
+                var oldPageWordPositions = context.PageWordPositions.Where(pwf => pwf.PageId.Equals(page.Id));
+                context.PageWordPositions.RemoveRange(oldPageWordPositions);
+                
+                var oldLinkEntries = context.PageLinks.Where(pl => pl.FromPageId.Equals(page.Id));
+                context.PageLinks.RemoveRange(oldLinkEntries);
+
+                // Update page metadata
+                page.Title = document.Title;
+                page.LastCrawled = document.LastCrawl;
+                page.ContentHash = document.ContentHash;
+                page.WordCount = document.TotalWordCount;
+                page.Language = document.Language;            
+            }
+
+            // Save to get a Page.Id 
+            await context.SaveChangesAsync();
+
+            // -------------------------------- Handle WordFrequency relation --------------------------------------   
+            var allUniqueTerms = document.TitleTerms.Keys
+                .Union(document.HeaderTerms.Keys)
+                .Union(document.ContentTerms.Keys)
+                .ToList();
+
+            // Retrieve any Terms that already exist in the database.
+            var existingTerms = await context.Terms
+                .Where(t => allUniqueTerms.Contains(t.Word))
+                .ToDictionaryAsync(t => t.Word);
+
+            bool hasNewTerms = false;
+
+            foreach (var term in allUniqueTerms)
+            {
+                // Creates new Terms if current Term did not exist. 
+                if (!existingTerms.TryGetValue(term, out var termEntity))
+                {
+                    termEntity = new Term { Word = term };
+                    context.Terms.Add(termEntity);
+                    existingTerms[term] = termEntity;
+                    hasNewTerms = true;
                 }
             }
-        }
+
+            if (hasNewTerms) await context.SaveChangesAsync();
 
 
-        // -------------------------------- Handle PageLink relation -------------------------------------------
-        if (document.OutgoingLinks is not null && document.OutgoingLinks.Any())
-        {
-            var targetLinks = document.OutgoingLinks.Distinct().ToList();
-            var existingTargetPages = await context.Pages
-                .Where(p => targetLinks.Contains(p.Url))
-                .ToDictionaryAsync(p => p.Url);        
-
-            foreach (var url in targetLinks)
+            foreach (var term in allUniqueTerms)
             {
-                // If no such page exist yet, create a stub in wait of crawl
-                if (!existingTargetPages.TryGetValue(url, out var targetStubPage))
-                {
-                    targetStubPage = new Page
-                    {
-                      Url = url,
-                      Title = "pending..",
-                      ContentHash = string.Empty,
-                      Language = string.Empty
-                    };
+                var termEntity = existingTerms[term];
 
-                    context.Pages.Add(targetStubPage);
-                    existingTargetPages[url] = targetStubPage;
-                }
+                document.TitleTerms.TryGetValue(term, out int titleFrequency);
+                document.HeaderTerms.TryGetValue(term, out int headerFrequency);
+                document.ContentTerms.TryGetValue(term, out int contentFrequency);
 
-                context.PageLinks.Add( new PageLink
+                var pageWordFrequency = new PageWordFrequency
                 {
-                    FromPage = page,
-                    ToPage = targetStubPage   
-                });
+                    PageId = page.Id,
+                    TermId = termEntity.Id,
+                    TitleFrequency = titleFrequency,
+                    HeaderFrequency = headerFrequency,
+                    BodyFrequency = contentFrequency
+                };
+
+                context.PageWordFrequencies.Add(pageWordFrequency);
             }
-        }
 
-        // save everything at the same time        
-        await context.SaveChangesAsync(); 
+            // -------------------------------- Handle PageWordPosition relation --------------------------------------   
+
+            var sourceTermPosition = new Dictionary<TermSource, IReadOnlyList<string>>();
+            sourceTermPosition[TermSource.Title] = document.TitleTermPositions;
+            sourceTermPosition[TermSource.Header] = document.HeaderTermPositions;
+            sourceTermPosition[TermSource.Body] = document.ContentTermPositions;
+
+            foreach (var source in sourceTermPosition)
+            {
+
+                for (int i = 0; i < source.Value.Count; i++)
+                {
+                    var currentTerm = source.Value[i];
+
+                    if (existingTerms.TryGetValue(currentTerm, out var termEntity))
+                    {
+                        var pageWordPosition = new PageWordPosition
+                        {
+                            PageId = page.Id,
+                            TermId = termEntity.Id,
+                            Position = i,
+                            TermSource = source.Key
+                        };   
+
+                        context.PageWordPositions.Add(pageWordPosition);
+                    }
+                }
+            }
+
+
+            // -------------------------------- Handle PageLink relation -------------------------------------------
+            if (document.OutgoingLinks is not null && document.OutgoingLinks.Any())
+            {
+                var targetLinks = document.OutgoingLinks.Distinct().ToList();
+                var existingTargetPages = await context.Pages
+                    .Where(p => targetLinks.Contains(p.Url))
+                    .ToDictionaryAsync(p => p.Url);        
+
+                foreach (var url in targetLinks)
+                {
+                    // If no such page exist yet, create a stub in wait of crawl
+                    if (!existingTargetPages.TryGetValue(url, out var targetStubPage))
+                    {
+                        targetStubPage = new Page
+                        {
+                        Url = url,
+                        Title = "pending..",
+                        ContentHash = string.Empty,
+                        Language = string.Empty
+                        };
+
+                        context.Pages.Add(targetStubPage);
+                        existingTargetPages[url] = targetStubPage;
+                    }
+
+                    context.PageLinks.Add( new PageLink
+                    {
+                        FromPage = page,
+                        ToPage = targetStubPage   
+                    });
+                }
+            }
+
+            // save everything at the same time        
+            await context.SaveChangesAsync(); 
+            await transaction.CommitAsync();
+        }
+        catch //(System.Exception)
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
 
