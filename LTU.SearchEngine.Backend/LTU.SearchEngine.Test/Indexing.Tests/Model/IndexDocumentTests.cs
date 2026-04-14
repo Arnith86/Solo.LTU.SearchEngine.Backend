@@ -40,11 +40,11 @@ public class IndexDocumentTests
         var language = "sv";
         var links = new List<string> { "dummyLink" };
         var titleTerms = new Dictionary<string, int> { { "ltu", 1 } };
-        var headerTerms = new Dictionary<string, int> { { "fortuning", 2 } };
-        var contentTerms = new Dictionary<string, int> { { "student", 5 } };
-        var titleTermPositions = new List<string> { { "ltu" } };
-        var headerTermPositions = new List<string> { { "fortuning" } };
-        var contentTermPositions = new List<string> { { "student" } };
+        var headerTerms = new Dictionary<string, int> { { "fortuning", 1 }, { "fun", 1 }, { "fast", 1} };
+        var contentTerms = new Dictionary<string, int> { { "student", 2 }, { "mark", 1 }, { "dark", 1 }};
+        var titleTermPositions = new List<string> { "ltu" };
+        var headerTermPositions = new List<string> {  "fortuning", "fun", "fast" };
+        var contentTermPositions = new List<string> { "student", "mark", "dark", "student" };
         var hash = "ABC-123";
         var now = DateTime.UtcNow;
 
@@ -70,9 +70,39 @@ public class IndexDocumentTests
         Assert.Equal(language, sut.Language);
         Assert.Equal(hash, sut.ContentHash);
         Assert.Equal(now, sut.LastCrawl);
+
         Assert.True(sut.TitleTerms.ContainsKey("ltu"));
         Assert.Equal(1, sut.TitleTerms["ltu"]);
+        Assert.Equal("ltu", titleTermPositions[0]);
+
+        Assert.True(sut.HeaderTerms.ContainsKey("fortuning"));
+        Assert.Equal(1, sut.HeaderTerms["fortuning"]);
+        Assert.Equal("fortuning", headerTermPositions[0]);
+        
+        Assert.True(sut.HeaderTerms.ContainsKey("fun"));
+        Assert.Equal(1, sut.HeaderTerms["fun"]);
+        Assert.Equal("fun", headerTermPositions[1]);
+        
+        Assert.True(sut.HeaderTerms.ContainsKey("fast"));
+        Assert.Equal(1, sut.HeaderTerms["fast"]);
+        Assert.Equal("fast", headerTermPositions[2]);
+
+        Assert.True(sut.ContentTerms.ContainsKey("student"));
+        Assert.Equal(2, sut.ContentTerms["student"]);
+        Assert.Equal("student", contentTermPositions[0]);
+        Assert.Equal("student", contentTermPositions[3]);
+        
+        Assert.True(sut.ContentTerms.ContainsKey("mark"));
+        Assert.Equal(1, sut.ContentTerms["mark"]);
+        Assert.Equal("mark", contentTermPositions[1]);
+        
+        Assert.True(sut.ContentTerms.ContainsKey("dark"));
+        Assert.Equal(1, sut.ContentTerms["dark"]);
+        Assert.Equal("dark", contentTermPositions[2]);
+
+        
     }
+
 
     [Fact]
     public void TotalWordCount_ShouldCalculateSumOfAllFrequencies()
