@@ -8,7 +8,7 @@ public class PageWordPositionConfiguration : IEntityTypeConfiguration<PageWordPo
 {
     public void Configure(EntityTypeBuilder<PageWordPosition> builder)
     {
-        builder.HasKey(pwp => new { pwp.PageId, pwp.TermId, pwp.Position });
+        builder.HasKey(pwp => new { pwp.PageId, pwp.TermId, pwp.Position, pwp.TermSource });
 
         builder.HasOne(pwp => pwp.Page)
             .WithMany(p => p.PagePositions)

@@ -9,5 +9,6 @@ public class PageWordPosition
         public int TermId { get; set; }
         public Term Term { get; set; } = null!;
         public int Position { get; set; }
+        public TermSource TermSource { get; set; }
 }
 

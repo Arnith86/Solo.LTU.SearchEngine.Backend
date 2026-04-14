@@ -98,24 +98,25 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "PageWordPosition",
+                name: "PageWordPositions",
                 columns: table => new
                 {
                     PageId = table.Column<int>(type: "int", nullable: false),
                     TermId = table.Column<int>(type: "int", nullable: false),
-                    Position = table.Column<int>(type: "int", nullable: false)
+                    Position = table.Column<int>(type: "int", nullable: false),
+                    TermSource = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_PageWordPosition", x => new { x.PageId, x.TermId, x.Position });
+                    table.PrimaryKey("PK_PageWordPositions", x => new { x.PageId, x.TermId, x.Position, x.TermSource });
                     table.ForeignKey(
-                        name: "FK_PageWordPosition_Pages_PageId",
+                        name: "FK_PageWordPositions_Pages_PageId",
                         column: x => x.PageId,
                         principalTable: "Pages",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_PageWordPosition_Terms_TermId",
+                        name: "FK_PageWordPositions_Terms_TermId",
                         column: x => x.TermId,
                         principalTable: "Terms",
                         principalColumn: "Id",
@@ -139,8 +140,8 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                 column: "TermId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_PageWordPosition_TermId",
-                table: "PageWordPosition",
+                name: "IX_PageWordPositions_TermId",
+                table: "PageWordPositions",
                 column: "TermId");
 
             migrationBuilder.CreateIndex(
@@ -160,7 +161,7 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                 name: "PageWordFrequencies");
 
             migrationBuilder.DropTable(
-                name: "PageWordPosition");
+                name: "PageWordPositions");
 
             migrationBuilder.DropTable(
                 name: "Pages");

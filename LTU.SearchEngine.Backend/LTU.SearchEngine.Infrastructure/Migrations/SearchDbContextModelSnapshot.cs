@@ -119,11 +119,14 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                     b.Property<int>("Position")
                         .HasColumnType("int");
 
-                    b.HasKey("PageId", "TermId", "Position");
+                    b.Property<int>("TermSource")
+                        .HasColumnType("int");
+
+                    b.HasKey("PageId", "TermId", "Position", "TermSource");
 
                     b.HasIndex("TermId");
 
-                    b.ToTable("PageWordPosition");
+                    b.ToTable("PageWordPositions");
                 });
 
             modelBuilder.Entity("LTU.SearchEngine.Backend.Core.Model.Entities.Term", b =>

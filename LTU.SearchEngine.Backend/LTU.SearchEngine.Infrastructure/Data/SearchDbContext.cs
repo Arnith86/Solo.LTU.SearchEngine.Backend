@@ -14,7 +14,7 @@ public class SearchDbContext : DbContext
     public DbSet<Term> Terms { get; set; }
     public DbSet<PageLink> PageLinks { get; set; }
     public DbSet<PageWordFrequency> PageWordFrequencies { get; set; }
-    public DbSet<PageWordPosition> PageWordPosition { get; set; }
+    public DbSet<PageWordPosition> PageWordPositions { get; set; }
 
     // --- Configuration (Fluent API) ---
     protected override void OnModelCreating(ModelBuilder modelBuilder)
