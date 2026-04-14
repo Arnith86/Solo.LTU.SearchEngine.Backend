@@ -185,7 +185,7 @@ public class SqlIndexRepository : IIndexRepository
             await context.SaveChangesAsync(); 
             await transaction.CommitAsync();
         }
-        catch //(System.Exception)
+        catch 
         {
             await transaction.RollbackAsync();
             throw;

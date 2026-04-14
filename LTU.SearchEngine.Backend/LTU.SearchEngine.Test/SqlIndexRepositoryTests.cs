@@ -397,6 +397,21 @@ public class SqlIndexRepositoryTests : IDisposable
     }
 
 
+    [Fact]
+    public async Task AddDocumentAsync_WhenErrorOccurs_ShouldRollbackEverything()
+    {
+        // Arrange
+        var invalidDoc = IndexDocumentBuilder.BuildIndexDocument(url: null!);
+
+        // Act & Assert
+        await Assert.ThrowsAnyAsync<Exception>(() => _sut.AddDocumentAsync(invalidDoc));
+
+        await using var context = await _factory.CreateDbContextAsync();
+        var pageCount = await context.Pages.CountAsync();
+        
+        Assert.Equal(0, pageCount);
+    }
+
 
     public void Dispose()
     {
