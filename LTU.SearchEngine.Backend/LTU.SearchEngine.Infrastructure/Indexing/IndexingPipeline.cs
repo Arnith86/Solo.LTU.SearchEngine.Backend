@@ -32,11 +32,18 @@ public class IndexingPipeline : IIndexingPipeline
     {
         if (crawlResult == null) throw new ArgumentNullException(nameof(crawlResult));
 
-        Dictionary<TermSource, TermFrequencyMap> sourceMap = new()
+        Dictionary<TermSource, TermFrequencyMap> sourceFrequencyMap = new()
         {
             { TermSource.Title, new TermFrequencyMap() },
             { TermSource.Header, new TermFrequencyMap() },
             { TermSource.Body, new TermFrequencyMap() }  
+        };
+
+        Dictionary<TermSource, TermPositionMap> sourcePositionMap = new()
+        {
+            { TermSource.Title, new TermPositionMap() },
+            { TermSource.Header, new TermPositionMap() },
+            { TermSource.Body, new TermPositionMap() }  
         };
 
         foreach (var indexedTerm in crawlResult.IndexedTerms)
@@ -45,7 +52,8 @@ public class IndexingPipeline : IIndexingPipeline
 
             if (string.IsNullOrWhiteSpace(normalized)) continue;
             
-            sourceMap[indexedTerm.Source].AddTerm(normalized);
+            sourceFrequencyMap[indexedTerm.Source].AddTerm(normalized);
+            sourcePositionMap[indexedTerm.Source].AddTerm(normalized);
         }
 
         return new IndexDocument(
@@ -53,9 +61,12 @@ public class IndexingPipeline : IIndexingPipeline
             title: crawlResult.Title!,
             language: crawlResult.Language,
             outgoingLinks: crawlResult.ExtractedLinks,
-            titleTerms: sourceMap[TermSource.Title].ToReadOnly(), 
-            headerTerms: sourceMap[TermSource.Header].ToReadOnly(),
-            contentTerms: sourceMap[TermSource.Body].ToReadOnly(),
+            titleTerms: sourceFrequencyMap[TermSource.Title].ToReadOnly(), 
+            headerTerms: sourceFrequencyMap[TermSource.Header].ToReadOnly(),
+            contentTerms: sourceFrequencyMap[TermSource.Body].ToReadOnly(),
+            titleTermPositions: sourcePositionMap[TermSource.Title].ToReadOnly(),
+            headerTermPositions: sourcePositionMap[TermSource.Header].ToReadOnly(),
+            contentTermPositions: sourcePositionMap[TermSource.Body].ToReadOnly(),
             contentHash: crawlResult.ContentHash,
             lastCrawl: crawlResult.CrawledAt
         ); 
