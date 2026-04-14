@@ -1,4 +1,5 @@
 ﻿using LTU.SearchEngine.Backend.Core.Entities;
+using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Infrastructure.Data;
 using LTU.SearchEngine.Infrastructure.Repositories;
@@ -359,6 +360,43 @@ public class SqlIndexRepositoryTests : IDisposable
         Assert.Equal("newTerm", positions[0].Term.Word);
         Assert.DoesNotContain(positions, pwp => pwp.Term.Word.Equals("oldTerm"));
     }
+
+
+
+    [Fact]
+    public async Task AddDocumentAsync_SameWordAtSamePositionInDifferentSources_ShouldSaveAll()
+    {
+         // Arrange 
+        var url = "http://cleanup-pos.se";
+        
+        var doc1 = IndexDocumentBuilder.BuildIndexDocument(
+            url: url, 
+            titleTerms: new Dictionary<string, int> { {"term", 1} },
+            headerTerms: new Dictionary<string, int> { {"term", 2} },
+            contentTerms: new Dictionary<string, int> { {"term", 1} },
+            titleTermPositions: new List<string> { "term" },
+            headerTermPositions: new List<string> { "term", "term" },
+            contentTermPositions: new List<string> { "term" },
+            outgoingLinks: new List<string>() 
+        );
+
+        // Act 
+        await _sut.AddDocumentAsync(doc1);
+
+        // Assert 
+        await using var context = await _factory.CreateDbContextAsync();
+
+        var positions = await context.PageWordPositions
+            .Where(pwp => pwp.Page.Url.Equals(url) && pwp.Term.Word.Equals("term"))
+            .ToListAsync();
+
+        Assert.Equal(4, positions.Count);
+        Assert.Contains(positions, p => p.TermSource.Equals(TermSource.Title) && p.Position.Equals(0));    
+        Assert.Contains(positions, p => p.TermSource.Equals(TermSource.Header) && p.Position.Equals(1));    
+        Assert.Contains(positions, p => p.TermSource.Equals(TermSource.Body) && p.Position.Equals(0));    
+    }
+
+
 
     public void Dispose()
     {
