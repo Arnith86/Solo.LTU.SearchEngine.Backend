@@ -99,8 +99,6 @@ public class IndexDocumentTests
         Assert.True(sut.ContentTerms.ContainsKey("dark"));
         Assert.Equal(1, sut.ContentTerms["dark"]);
         Assert.Equal("dark", contentTermPositions[2]);
-
-        
     }
 
 
@@ -154,4 +152,5 @@ public class IndexDocumentTests
         // Assert
         Assert.Equal(0, result);
     }
+    
 }
