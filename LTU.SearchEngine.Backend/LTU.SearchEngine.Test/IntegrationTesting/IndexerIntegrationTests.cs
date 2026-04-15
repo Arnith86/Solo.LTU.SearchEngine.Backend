@@ -1,5 +1,3 @@
-
-using System.Diagnostics;
 using LTU.SearchEngine.Backend.Api;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.BackgroundServices;

@@ -393,5 +393,56 @@ public class QueryTokenizerTests
             n => n.Normalize(It.IsAny<string>(), "en"),
             Times.Never);
     }
+
+	
+	[Theory]
+	[InlineData("en: term1")]
+	[InlineData("en: term1 term2")]
+	[InlineData("en: \"term1 term2\"")]
+	[InlineData("en: term1 term2 term3")]
+	public void Tokenize_IsLanguagePreFix_FindsGlobalLanguage(string input)
+	{
+		// Act 
+		var result = _sut.Tokenize(input, "sv");
+
+		// Assert 
+		var swedishTokens = result.Where(est => est.Language.Equals("sv"));
+
+		Assert.Empty(swedishTokens);
+	}
+	
+	
+	[Theory]
+	[InlineData("en:term1")]
+	[InlineData("sv: term1 en:term2")]
+	[InlineData("en:\"term1 term2\"")]
+	[InlineData("term1 term2 en:term3")]
+	public void Tokenize_IsLanguagePreFix_FindsActiveLanguage(string input)
+	{
+		// Act 
+		var result = _sut.Tokenize(input, "sv");
+
+		// Assert 
+		var englishTokens = result.Where(est => est.Language.Equals("en"));
+
+		Assert.Single(englishTokens);
+	}
+	
+	[Theory]
+	[InlineData("term1", 1)]
+	[InlineData("\"term1 term2\"", 1)]
+	[InlineData("term1 \"term2 term3\"", 2)]
+	[InlineData("term1 en:AND term3", 2)]
+	[InlineData("term1 AND term3", 3)]
+	public void Tokenize_IsLanguagePreFix_FindsNoLanguage_UsesDefault(string input, int instances)
+	{
+		// Act 
+		var result = _sut.Tokenize(input, "sv");
+
+		// Assert 
+		var swedishTokens = result.Where(est => est.Language.Equals("sv"));
+
+		Assert.Equal(instances, swedishTokens.Count());
+	}
 }
 
