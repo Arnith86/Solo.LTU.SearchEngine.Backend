@@ -140,6 +140,10 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                     b.Property<double>("IdfScore")
                         .HasColumnType("float");
 
+                    b.Property<string>("LanguageCode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Word")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
