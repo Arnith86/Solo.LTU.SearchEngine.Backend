@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LTU.SearchEngine.Infrastructure.Migrations
 {
     [DbContext(typeof(SearchDbContext))]
-    [Migration("20260414091031_newMigration")]
+    [Migration("20260415090044_newMigration")]
     partial class newMigration
     {
         /// <inheritdoc />
@@ -142,6 +142,10 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
 
                     b.Property<double>("IdfScore")
                         .HasColumnType("float");
+
+                    b.Property<string>("LanguageCode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Word")
                         .IsRequired()

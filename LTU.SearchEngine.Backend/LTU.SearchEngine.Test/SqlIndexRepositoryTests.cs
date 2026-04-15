@@ -52,6 +52,7 @@ public class SqlIndexRepositoryTests : IDisposable
             outgoingLinks: new List<string> { "dummyLink" },
             url: "https://ltu.se", 
             title: "LTU Start",
+            language: "sv",
             titleTerms: new Dictionary<string, int>(){{"student", 1},{"ltu", 1}},
             headerTerms: new Dictionary<string, int>(){{"student", 3}},
             contentTerms: new Dictionary<string, int>(){{"utbildning", 2}},
@@ -76,6 +77,7 @@ public class SqlIndexRepositoryTests : IDisposable
         // Check that "student" was merged to frequency 4
         var studentTerm = await context.Terms.FirstOrDefaultAsync(t => t.Word == "student");
         Assert.NotNull(studentTerm);
+        Assert.Equal("sv", studentTerm.LanguageCode);
 
         var frequency = await context.PageWordFrequencies
             .FirstOrDefaultAsync(pwf => pwf.PageId == savedPage.Id && pwf.TermId == studentTerm.Id);
