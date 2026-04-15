@@ -40,7 +40,7 @@ public class SqlIndexRepository : IIndexRepository
                 .ToList();
 
             // Retrieve any Terms that already exist in the database.
-            var termLookup = await SynchronizeTermsAsync(context, allUniqueTerms);
+            var termLookup = await SynchronizeTermsAsync(context, allUniqueTerms, page.Language);
 
             AddWordFrequencies(context, page.Id, document, termLookup);
             AddWordPositions(context, page.Id, document, termLookup);
@@ -101,7 +101,11 @@ public class SqlIndexRepository : IIndexRepository
     }
 
 
-    private async Task<Dictionary<string, Term>> SynchronizeTermsAsync(SearchDbContext context, List<string> words)
+    private async Task<Dictionary<string, Term>> SynchronizeTermsAsync(
+        SearchDbContext context, 
+        List<string> words, 
+        string language
+        )
     {
         var existingTerms = await context.Terms
             .Where(t => words.Contains(t.Word))
@@ -114,7 +118,7 @@ public class SqlIndexRepository : IIndexRepository
             // Creates new Terms if current Term did not exist. 
             if (!existingTerms.TryGetValue(term, out var termEntity))
             {
-                termEntity = new Term { Word = term };
+                termEntity = new Term { Word = term, LanguageCode = language };
                 context.Terms.Add(termEntity);
                 existingTerms[term] = termEntity;
                 hasNewTerms = true;
@@ -125,6 +129,7 @@ public class SqlIndexRepository : IIndexRepository
         
         return existingTerms;
     }
+
 
     private void AddWordFrequencies(
         SearchDbContext context, 

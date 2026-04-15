@@ -143,10 +143,7 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
         await ASecondsWait();
 
-
         cts.Cancel();
-
-
 
         // Assert 
         // Each unique term is stored exactly once in the index.
@@ -395,14 +392,15 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
 
     [Theory]
-    [InlineData("/IndexerNormalizingTextRun.html", "run", 5)]
-    [InlineData("/IndexerNormalizingTextSwim.html", "swim", 5)]
-    [InlineData("/IndexerNormalizingTextCat.html", "cat", 5)]
-    [InlineData("/IndexerNormalizingTextHäst.html", "häst", 8)]
-    [InlineData("/IndexerNormalizingTextArt.html", "art", 5)]
-    [InlineData("/IndexerNormalizingTextEat.html", "eat", 5)]
+    [InlineData("/IndexerNormalizingTextRun.html", "run", 5, "en")]
+    [InlineData("/IndexerNormalizingTextSwim.html", "swim", 5, "en")]
+    [InlineData("/IndexerNormalizingTextCat.html", "cat", 5, "en")]
+    [InlineData("/IndexerNormalizingTextEat.html", "eat", 5, "en")]
+    [InlineData("/IndexerNormalizingTextHäst.html", "häst", 8, "sv")]
+    [InlineData("/IndexerNormalizingTextArt.html", "art", 5, "sv")]
     [Trait("TestCase", "TC-FRQ-2007")]
-    public async Task Indexer_TextIsNormalizedOnIndex(string url, string expectedTerm, int expectedFrequency)
+    public async Task Indexer_TextIsNormalizedOnIndex(
+        string url, string expectedTerm, int expectedFrequency, string languageCode)
     {
         // Arrange
         string seedUrl = $"http://localhost{url}";
@@ -435,8 +433,14 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             .Include(pwf => pwf.Term)
             .ToListAsync(); 
 
+        var termLanguage = await dbContext.Terms
+                .Where(t => t.Word.Equals(expectedTerm))
+                .Select(t => t.LanguageCode)
+                .FirstOrDefaultAsync();
+
         Assert.Equal(expectedTerm, termPageWordLink.First().Term.Word);
         Assert.Equal(expectedFrequency, termPageWordLink.First().HeaderFrequency);
+        Assert.Equal(languageCode, termLanguage);
     }
 
     private static async Task ASecondsWait()
