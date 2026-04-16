@@ -106,4 +106,41 @@ public class QueryParserTests
 		// Assert
 		Assert.Equal(expectedNode, result);
 	}
+	
+	
+    [Theory]
+    [InlineData("sv", "sv")]
+    [InlineData("en", "en")]
+    [InlineData("NO_INPUT", "sv")]
+	public void Parse_ShouldUseCorrectLanguageCode(string input, string expected)
+	{
+		// Arrange
+		string query = "cat";
+		var tokens = new List<ExtractedQueryToken>();
+
+		var expectedNode = Mock.Of<QueryNode<HashSet<int>>>();
+
+		_tokenizerMock
+			.Setup(t => t.Tokenize(query, languageCode: expected))
+			.Returns(tokens);
+
+		_treeBuilderMock
+			.Setup(t => t.BuildTree(tokens))
+			.Returns(expectedNode);
+
+		Func<QueryNode<HashSet<int>>> act = input switch
+        {
+            "NO_INPUT"  => () => _parser.Parse(query),
+            _           => () => _parser.Parse(query, languageCode: input)
+        };
+
+		// Act
+		act();
+
+		// Assert
+		_tokenizerMock.Verify(t => t.Tokenize(
+			input: It.IsAny<string>(),
+			languageCode: expected
+		));
+	}
 }
