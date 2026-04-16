@@ -41,7 +41,8 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     ) where T : class
     {
         // Creates an in-memory SQLite connection for the test database.
-        SqliteConnection sqliteConnection = new SqliteConnection("Filename=:memory:");
+        string dbName = Guid.NewGuid().ToString();
+        SqliteConnection sqliteConnection = new SqliteConnection($"Data Source={dbName};Mode=Memory;Cache=Shared");
         sqliteConnection.Open();
 
         string fakeAppSettings = $$$"""
@@ -92,9 +93,16 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
 
                 foreach (var d in dbContextDescriptors) services.Remove(d);
 
-                services.AddDbContextFactory<SearchDbContext>(options => 
+                if (sqliteConnection.State != System.Data.ConnectionState.Open)
                 {
-                    options.UseSqlite(sqliteConnection);
+                    sqliteConnection.Open();
+                }
+                
+                services.AddSingleton(sqliteConnection);
+                services.AddDbContextFactory<SearchDbContext>((container, options) => 
+                {
+                    var conn = container.GetRequiredService<SqliteConnection>();
+                    options.UseSqlite(conn);
                     options.UseInternalServiceProvider(null); // Avoids issues with multiple service providers in tests
                 });
                 
@@ -208,35 +216,51 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         var cts = new CancellationTokenSource();
 
         var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<SearchDbContext>>();
-        using var dbContext = dbFactory.CreateDbContext();
-        dbContext.Database.EnsureCreated();
+        using (var db = dbFactory.CreateDbContext())
+        {
+            await db.Database.EnsureCreatedAsync();
+        }
         
         // Act **1** 
         Task dispatchTask = dispatcher.Start(cts.Token);
 
         await TestWait.UntilTrue(async () =>
             {
-                using var db = dbFactory.CreateDbContext();
-                
-                return await db.PageWordFrequencies.AnyAsync(pw => 
-                    pw.Page.Url.Equals(urlA) && 
-                    pw.Term.Word.Equals("first")
-                );
+                // try catch used to catch concurrency issues because of SQLite in-memory concurrency issues
+                try 
+                {
+                    using var db = dbFactory.CreateDbContext();
+                    return await db.PageWordFrequencies.AnyAsync(pw => 
+                        pw.Page.Url.Equals(urlA) && 
+                        pw.Term.Word.Equals("first")
+                    );
+                }
+                catch (Exception) 
+                {
+                    return false; 
+                }
             }, 
             maxWaitMs: 10000 
         );
 
-        cts.Cancel();
-
 
         // Assert **1**
-        var pageATerms1 = await GetTermsForUrlAsync(dbFactory, urlA);
+        IEnumerable<Term> pageATerms1 = null!;
+        await TestWait.UntilTrue(async () => 
+        {
+            pageATerms1 = await GetTermsForUrlAsync(dbFactory, urlA);
+            return pageATerms1.Any(t => t.Word == "first");
+        }, maxWaitMs: 10000); 
+
+ 
         var pageAFirstAttempt = await GetLastCrawledAsync(dbFactory, urlA);
         var pageBFirstAttempt = await GetLastCrawledAsync(dbFactory, urlB);
         
         Assert.Contains(pageATerms1, t => t.Word.Equals("first"));
         Assert.DoesNotContain(pageATerms1, t => t.Word.Equals("second"));
         
+        cts.Cancel();
+        try { await dispatchTask; } catch (OperationCanceledException) { } 
 
         // Act **2**
         _webHostBuilder.DynamicContent[urlA] = "<html><body><h1>Second Version</h1></body></html>";
@@ -257,12 +281,23 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             maxWaitMs: 10000 
         );
         
-                
+        
         // Assert **2**
-        var pageATerms2 = await GetTermsForUrlAsync(dbFactory, urlA);
+        IEnumerable<Term> pageATerms2 = Array.Empty<Term>();
+
+
+        await TestWait.UntilTrue(async () => 
+        {
+            pageATerms2 = await GetTermsForUrlAsync(dbFactory, urlA);
+            return pageATerms2.Any(); 
+        }, maxWaitMs: 5000);
+
         var pageASecondAttempt = await GetLastCrawledAsync(dbFactory, urlA);
         var pageBSecondAttempt = await GetLastCrawledAsync(dbFactory, urlB);
         
+        cts2.Cancel();
+        try { await dispatchTask2; } catch (OperationCanceledException) { }         
+
 
         Assert.DoesNotContain(pageATerms2, t => t.Word.Equals("first"));
         Assert.Contains(pageATerms2, t => t.Word.Equals("second"));
