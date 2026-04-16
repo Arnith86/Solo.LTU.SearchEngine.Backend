@@ -1,6 +1,4 @@
 
-using System.Runtime.CompilerServices;
-using J2N;
 using LTU.SearchEngine.Backend.Core.Entities;
 using LTU.SearchEngine.Backend.Core.Enums;
 using LTU.SearchEngine.Backend.Core.Model.DTOs;
@@ -33,7 +31,7 @@ public class QueryServiceTests
 
     }
 
-    private Page CreateFakePage()
+    private Page CreateFakePage(string? languageCode)
     {
         return new Page
         {
@@ -45,7 +43,7 @@ public class QueryServiceTests
             ContentHash = "a1b2c3d4e5f6g7h8", 
             WordCount = 1250,
             HttpStatus = 200,
-            Language = "en-US",
+            Language = languageCode ?? "en-US",
             
             WordFrequencies = new List<PageWordFrequency>{},
             
@@ -56,13 +54,14 @@ public class QueryServiceTests
 
     private void SetupMocks(
         string rawQuery, 
+        string languageCode,
         LogicOperationNode<HashSet<int>> fakeOperatorNode, 
         HashSet<int> fakeResultIds,
-         List<Page> fakeDocumentList
+        List<Page> fakeDocumentList
         )
     {
         _mockQueryParser
-            .Setup(p => p.Parse(rawQuery))
+            .Setup(p => p.Parse(rawQuery, languageCode))
             .Returns(fakeOperatorNode);
 
         _mockQueryEvaluatorVisitor
@@ -74,6 +73,7 @@ public class QueryServiceTests
             .ReturnsAsync(fakeDocumentList);
     }
 
+   
     [Fact]
     public async Task GetSearchResultsAsync_ValidQuery_ReturnsMappedSearchResponse()
     {
@@ -85,11 +85,11 @@ public class QueryServiceTests
 
         var fakeResultIds = new HashSet<int> { 101 };
 
-        var fakePage = CreateFakePage();
+        var fakePage = CreateFakePage("sv");
 
         var fakeDocumentList = new List<Page> { fakePage };
 
-        SetupMocks(rawQuery, fakeOperatorNode, fakeResultIds, fakeDocumentList);
+        SetupMocks(rawQuery, "sv", fakeOperatorNode, fakeResultIds, fakeDocumentList);
 
         // Act
         var result = await _sut.GetSearchResultsAsync(rawQuery);
@@ -104,7 +104,8 @@ public class QueryServiceTests
         _mockIndexRepository.Verify(ir => ir.GetDocumentsByIdAsync(fakeResultIds.ToList()), Times.Once);
     }
 
-     [Fact]
+   
+    [Fact]
     public async Task GetSearchResultsAsync_ReturnsMessageWithTiming()
     {
         // Arrange
@@ -115,11 +116,11 @@ public class QueryServiceTests
 
         var fakeResultIds = new HashSet<int> { 101 };
 
-        var fakePage = CreateFakePage();
+        var fakePage = CreateFakePage("sv");
 
         var fakeDocumentList = new List<Page> { fakePage };
 
-        SetupMocks(rawQuery, fakeOperatorNode, fakeResultIds, fakeDocumentList);
+        SetupMocks(rawQuery, "sv", fakeOperatorNode, fakeResultIds, fakeDocumentList);
 
         // Act
         var result = await _sut.GetSearchResultsAsync(rawQuery);
@@ -129,4 +130,34 @@ public class QueryServiceTests
         Assert.Matches(@"Search completed in \d+\.\d{2} ms", result.message);
     }
 
+
+    [Theory]
+    [InlineData("sv", "sv")]
+    [InlineData("en", "en")]
+    [InlineData("NO_INPUT", "sv")]
+    public async Task GetSearchResultsAsync_SetsCorrectLanguage(string input, string expected)
+    {
+        // Arrange 
+        string rawQuery = "Find something";
+        var rightNode = new TermNode<HashSet<int>>("rightNode");
+        var leftNode = new TermNode<HashSet<int>>("leftNode");
+        var fakeOperatorNode = new LogicOperationNode<HashSet<int>>(rightNode, leftNode, LogicalOperators.AND);
+        var fakeResultIds = new HashSet<int> { 101 };
+        var fakePage = CreateFakePage("en");
+        var fakeDocumentList = new List<Page> { fakePage };
+
+        SetupMocks(rawQuery, expected, fakeOperatorNode, fakeResultIds, fakeDocumentList);
+
+        Func<Task<SearchResponseDTO>> act = input switch
+        {
+            "NO_INPUT"  => () => _sut.GetSearchResultsAsync(rawQuery),
+            _           => () => _sut.GetSearchResultsAsync(rawQuery, languageCode: input)
+        };
+
+        // Act 
+        var result = await act();
+            
+        // Assert
+        _mockQueryParser.Verify(qp => qp.Parse(It.IsAny<string>(), expected));    
+    }
 }
