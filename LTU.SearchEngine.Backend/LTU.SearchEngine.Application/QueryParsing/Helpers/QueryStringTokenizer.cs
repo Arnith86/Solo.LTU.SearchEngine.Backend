@@ -69,7 +69,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 		bool isBuildingAPhrase = false;
 
 		string globalLanguage = languageCode;
-		string activeLanguage = null!;
+		string singleTermPhraseLanguage = null!;
 
 		for (int index = 0; index < input.Length; index++)
 		{
@@ -85,7 +85,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 					if (index.Equals(0)) 
 						globalLanguage = detectedLanguage;
 					
-					activeLanguage = detectedLanguage;
+					singleTermPhraseLanguage = detectedLanguage;
 					
 					index += jump;
 					
@@ -95,25 +95,25 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 			
             // Checks implicit OR
             action = TryHandleImplicitOr(
-				input, tokens, stringBuilder, ref isBuildingAPhrase, index, ResolveLanguage(activeLanguage, globalLanguage)
+				input, tokens, stringBuilder, ref isBuildingAPhrase, index, ResolveLanguage(singleTermPhraseLanguage, globalLanguage)
 			);
 
             if (action.Equals(LoopAction.Continue)) 
 			{
-				activeLanguage = null!;
+				singleTermPhraseLanguage = null!;
 				continue;
 			}
 
             // Checks for grouping operators. ( ) [ ] { } 
             action = TryHandleIsGroupingOperator(
-				tokens, stringBuilder, character, ResolveLanguage(activeLanguage, globalLanguage)
+				tokens, stringBuilder, character, ResolveLanguage(singleTermPhraseLanguage, globalLanguage)
 			);
 
 			if (action.Equals(LoopAction.Continue))	continue;
 
 			// AND, OR, NOT, are exceptions and are handled in the next method.
 			(action, indexOut) = TryHandleLogicalOperator(
-				input, tokens, stringBuilder, index, character, ResolveLanguage(activeLanguage, globalLanguage)
+				input, tokens, stringBuilder, index, character, ResolveLanguage(singleTermPhraseLanguage, globalLanguage)
 			);
 
 			if (action.Equals(LoopAction.Continue))
@@ -123,7 +123,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 			}
 
 			(action, indexOut) = TryHandleIsCapitalLetterOperator(
-				input, tokens, stringBuilder, index, ResolveLanguage(activeLanguage, globalLanguage)
+				input, tokens, stringBuilder, index, ResolveLanguage(singleTermPhraseLanguage, globalLanguage)
 			);
 
 			if (action.Equals(LoopAction.Continue))
@@ -141,20 +141,20 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 
 			// Appends phrase characters
 			action = TryHandleIsEdgeOfPhrase(
-				input, tokens, stringBuilder, ref isBuildingAPhrase, index, character, ResolveLanguage(activeLanguage, globalLanguage)
+				input, tokens, stringBuilder, ref isBuildingAPhrase, index, character, ResolveLanguage(singleTermPhraseLanguage, globalLanguage)
 			);
 
 			if (action.Equals(LoopAction.Continue)) 
 			{
-				activeLanguage = null!;
+				singleTermPhraseLanguage = null!;
 				continue;
 			};
 
 			// If this is reached must be term
 			if (IsTokenTerm(character))
 			{
-				Flush(stringBuilder, tokens, QueryTokenType.Term, ResolveLanguage(activeLanguage, globalLanguage));
-				activeLanguage = null!;
+				Flush(stringBuilder, tokens, QueryTokenType.Term, ResolveLanguage(singleTermPhraseLanguage, globalLanguage));
+				singleTermPhraseLanguage = null!;
 				continue;
 			}
 			else
@@ -164,7 +164,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 		}
 
 		// Handles the last term if there is one
-		Flush(stringBuilder, tokens, QueryTokenType.Term, ResolveLanguage(activeLanguage, globalLanguage));
+		Flush(stringBuilder, tokens, QueryTokenType.Term, ResolveLanguage(singleTermPhraseLanguage, globalLanguage));
 		
 		_syntaxHelper.ValidateGrouping(tokens);
 
