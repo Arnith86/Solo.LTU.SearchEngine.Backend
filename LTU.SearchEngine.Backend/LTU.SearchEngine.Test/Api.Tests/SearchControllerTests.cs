@@ -92,6 +92,43 @@ public class SearchControllerTests
     }
 
     [Theory]
+    [InlineData("sv", "sv")]
+    [InlineData("en", "en")]
+    [InlineData("NO_INPUT", "sv")]
+    public async Task GetSearchResponses_ShouldAssignCorrectLanguage(string input, string expected)
+    {
+        // Arrange
+        string query = "zero-results";
+
+        var emptyDto = new SearchResponseDTO(
+            searchResults: new List<DocumentDTO>(),
+            currentPage: 1,
+            pageSize: 0,
+            totalResults: 0,
+            message: "No results found"
+        );
+
+        _mockQueryService
+            .Setup(s => s.GetSearchResultsAsync(query, languageCode: expected))
+            .Returns(Task.FromResult(emptyDto)); 
+
+        Func<Task<ActionResult<SearchResponseDTO>>> act = input switch
+        {
+            "NO_INPUT"  => () => _controller.GetSearchResponses(query: query),
+            _           => () => _controller.GetSearchResponses(query: query, language: input)
+        };
+
+        // Act
+        await act();
+        
+        // Assert
+        _mockQueryService.Verify(qs => qs.GetSearchResultsAsync(
+            query: It.IsAny<string>(),
+            languageCode: expected
+        ));
+    }
+
+    [Theory]
     [InlineData("")]
     [InlineData("    ")]
     [InlineData("NULL_TEST")]
