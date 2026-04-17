@@ -234,11 +234,11 @@ public class SqlIndexRepositoryTests : IDisposable
     public async Task AddDocumentAsync_WhenPageExists_ShouldCleanupOldFrequenciesAndLinks()
     {
         // Arrange
-        string oldTitle = "oldTitle";
-        string oldHeader = "oldHeader";
-        string oldContent = "oldContent";
+        string oldTitle = "oldtitle";
+        string oldHeader = "oldheader";
+        string oldContent = "oldcontent";
 
-        string newTitle = "newTitle";
+        string newTitle = "newtitle";
 
         var url = "https://update.se";
         

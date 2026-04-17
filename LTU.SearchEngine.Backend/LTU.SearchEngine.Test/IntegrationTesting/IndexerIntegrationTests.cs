@@ -181,7 +181,7 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             .Select(pwl => pwl.Page.Url);
 
         Assert.Contains("http://localhost/InvertedIndexTestFile1.html", term1PageAssociation);
-        Assert.Contains("http://localhost/InvertedIndexTestFile2.html", term1PageAssociation);
+        Assert.Contains("http://localhost/invertedindextestfile2.html", term1PageAssociation);
     }
 
 
