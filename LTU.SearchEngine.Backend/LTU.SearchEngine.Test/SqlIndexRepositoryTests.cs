@@ -1,4 +1,5 @@
-﻿using LTU.SearchEngine.Backend.Core.Entities;
+﻿using LTU.SearchEngine.Backend.Core;
+using LTU.SearchEngine.Backend.Core.Entities;
 using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Infrastructure.Data;
@@ -24,16 +25,18 @@ public class SqlIndexRepositoryTests : IDisposable
         var services = new ServiceCollection();
         services.AddDbContextFactory<SearchDbContext>(options =>
             options.UseSqlite(_connection));
+        services.AddSingleton<SemaphoreProvider>();
 
         var provider = services.BuildServiceProvider();
         _factory = provider.GetRequiredService<IDbContextFactory<SearchDbContext>>();
+        var semaphoreProvider = provider.GetRequiredService<SemaphoreProvider>();
 
         using (var context = _factory.CreateDbContext())
         {
             context.Database.EnsureCreated();
         }
 
-        _sut = new SqlIndexRepository(_factory);
+        _sut = new SqlIndexRepository(_factory, semaphoreProvider);
     }
 
     
@@ -277,10 +280,10 @@ public class SqlIndexRepositoryTests : IDisposable
         
         // Verify that old words are gone and new have taken their place 
         Assert.Equal(3, page!.WordFrequencies.Count);
-        Assert.DoesNotContain(page.WordFrequencies, wf => wf.Term.Word.Equals(oldTitle));
-        Assert.Contains(page.WordFrequencies, wf => wf.Term.Word.Equals(newTitle));
-        Assert.Contains(page.WordFrequencies, wf => wf.Term.Word.Equals(oldHeader));
-        Assert.Contains(page.WordFrequencies, wf => wf.Term.Word.Equals(oldContent));
+        Assert.DoesNotContain(page.WordFrequencies, wf => wf.Term.Word.Equals("oldtitle"));
+        Assert.Contains(page.WordFrequencies, wf => wf.Term.Word.Equals("newtitle"));
+        Assert.Contains(page.WordFrequencies, wf => wf.Term.Word.Equals("oldheader"));
+        Assert.Contains(page.WordFrequencies, wf => wf.Term.Word.Equals("oldcontent"));
     }
 
 
@@ -359,8 +362,8 @@ public class SqlIndexRepositoryTests : IDisposable
             .ToListAsync();
 
         Assert.Single(positions);
-        Assert.Equal("newTerm", positions[0].Term.Word);
-        Assert.DoesNotContain(positions, pwp => pwp.Term.Word.Equals("oldTerm"));
+        Assert.Equal("newterm", positions[0].Term.Word);
+        Assert.DoesNotContain(positions, pwp => pwp.Term.Word.Equals("oldterm"));
     }
 
 

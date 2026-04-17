@@ -29,6 +29,8 @@ namespace LTU.SearchEngine.Backend.Core;
 public class SemaphoreProvider
 {
 	private readonly ConcurrentDictionary<string, SemaphoreSlim> _semaphores = new();
+	private readonly SemaphoreSlim _termSyncSemaphore = new SemaphoreSlim(1, 1);
+	private readonly SemaphoreSlim _pageSyncSemaphore = new SemaphoreSlim(1, 1);
 
 	/// <summary>
 	/// Gets an existing semaphore for the specified key, or creates a new one if it does not exist.
@@ -50,4 +52,8 @@ public class SemaphoreProvider
 	/// </remarks>
 	public SemaphoreSlim GetOrAddSemaphore(string key, int maxConcurrency) => 
 		_semaphores.GetOrAdd(key, _ => new SemaphoreSlim(maxConcurrency));
+
+	public SemaphoreSlim GetTermSyncSemaphore() => _termSyncSemaphore;
+
+	public SemaphoreSlim GetPageSyncSemaphore() => _pageSyncSemaphore;
 }
