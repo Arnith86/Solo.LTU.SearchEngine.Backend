@@ -276,11 +276,10 @@ public class SqlIndexRepository : IIndexRepository
     /// </summary>
     public async Task<HashSet<int>> GetDocumentIdsForTermAsync(string term)
     {
-        var normalizedTerm = term;
         await using var context = await _factory.CreateDbContextAsync();
 
         return await context.PageWordFrequencies
-            .Where(pwf => pwf.Term.Word == normalizedTerm)
+            .Where(pwf => pwf.Term.Word == term)
             .Select(pwf => pwf.PageId)
             .ToHashSetAsync();
     }
