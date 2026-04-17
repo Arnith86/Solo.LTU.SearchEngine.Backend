@@ -522,7 +522,7 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             logLevel: LogLevel.Information,
             eventId: It.IsAny<EventId>(),
             state: It.Is<It.IsAnyType>((v, t) => 
-                v.ToString()!.Contains("http://localhost/ignoreThisRule/ignored.html") &&
+                v.ToString()!.Contains("http://localhost/ignorethisrule/ignored.html") &&
                 v.ToString()!.Contains("localhost") 
             ),  
             exception: null,
@@ -550,7 +550,7 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
     {
         // Arrange
         string seedUrl = "http://localhost/dirtySeed.html";
-        string validPage = "http://localhost/validPage.html";
+        string validPage = "http://localhost/validpage.html";
         
         var tracker = new CallTracker();
         var httpClient = _webHostBuilder.CreateFakeInternetClient(callTracker: tracker);
@@ -597,8 +597,7 @@ public class CrawlerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
             () => indexedPages.Count > 1, 
             maxWaitMs: 10000
         );
-        //await TestWait.UntilTrue(maxWaitMs: 1000);
-        
+           
         cts.Cancel();
         
         // Relevant pages were visited

@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Diagnostics;
+using System.Text.RegularExpressions;
 using HtmlAgilityPack;
 using LTU.SearchEngine.Backend.Core;
 using LTU.SearchEngine.Backend.Core.Exceptions;
@@ -66,7 +67,14 @@ public class HapHtmlParser : IHtmlParser
                 
                 if (isHttp && IsSupportedResourceType(resultUri))
                 {
-                    string url = resultUri.AbsoluteUri;
+                    // string url = resultUri.AbsoluteUri;
+                    string url = resultUri.GetLeftPart(UriPartial.Path).ToLowerInvariant();
+
+                    // removes trailing backslashes making /start and /start/ count as the same 
+                    if (url.EndsWith('/') && url.Length > (resultUri.Scheme.Length + 3 + resultUri.Host.Length)) 
+                    {
+                        url = url.TrimEnd('/');
+                    }
 
                     try
                     {
@@ -176,11 +184,11 @@ public class HapHtmlParser : IHtmlParser
     
     private bool IsSupportedResourceType(Uri uri)
     {
-        string path = uri.AbsolutePath;
+        string path = uri.AbsolutePath.ToLowerInvariant();
         string extension = Path.GetExtension(path);
 
-        // If path == /, regard it as html (i,e,. http://domain.se/)
-        if (string.IsNullOrEmpty(path) || path.Equals("/")) return true;
+        // If no path regard it as html (i,e,. http://domain.se/)
+        if (string.IsNullOrEmpty(extension)) return true;
 
         return AllowedExtensions.Any(ext => extension.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
     }

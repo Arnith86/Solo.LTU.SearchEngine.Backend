@@ -142,7 +142,7 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
 
                     b.Property<string>("LanguageCode")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Word")
                         .IsRequired()
@@ -150,7 +150,7 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Word")
+                    b.HasIndex("Word", "LanguageCode")
                         .IsUnique();
 
                     b.ToTable("Terms");

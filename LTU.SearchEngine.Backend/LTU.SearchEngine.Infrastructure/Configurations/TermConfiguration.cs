@@ -8,6 +8,9 @@ public class TermConfiguration : IEntityTypeConfiguration<Term>
 {
     public void Configure(EntityTypeBuilder<Term> builder)
     {
-        builder.HasIndex(t => t.Word).IsUnique();
+        
+        builder
+            .HasIndex(t => new { t.Word, t.LanguageCode })
+            .IsUnique();
     }
 }

@@ -1,9 +1,11 @@
-﻿using LTU.SearchEngine.Backend.Core.Entities;
+﻿using LTU.SearchEngine.Backend.Core;
+using LTU.SearchEngine.Backend.Core.Entities;
 using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 using LTU.SearchEngine.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+
 
 namespace LTU.SearchEngine.Infrastructure.Repositories;
 
@@ -14,17 +16,27 @@ namespace LTU.SearchEngine.Infrastructure.Repositories;
 public class SqlIndexRepository : IIndexRepository
 {
     private readonly IDbContextFactory<SearchDbContext> _factory;
+    private readonly SemaphoreProvider _semaphoreProvider;
 
-    public SqlIndexRepository(IDbContextFactory<SearchDbContext> factory)
+    public SqlIndexRepository(IDbContextFactory<SearchDbContext> factory, SemaphoreProvider semaphoreProvider)
     {
         _factory = factory;
+        _semaphoreProvider = semaphoreProvider;
     }
 
     // Saves a fully processed document from the pipeline to the database.
     // Merge words from the title, headers and body content.
     public async Task AddDocumentAsync(IndexDocument document)
     {
+        var allUniqueTerms = document.TitleTerms.Keys
+            .Union(document.HeaderTerms.Keys)
+            .Union(document.ContentTerms.Keys)
+            .ToList();
+
         await using var context = await _factory.CreateDbContextAsync();
+
+        var termLookup = await SynchronizeTermsAsync(context, allUniqueTerms, document.Language);
+        
         await using var transaction = await context.Database.BeginTransactionAsync();
 
         try
@@ -33,14 +45,6 @@ public class SqlIndexRepository : IIndexRepository
 
             // Save to get a Page.Id 
             await context.SaveChangesAsync();
-
-            var allUniqueTerms = document.TitleTerms.Keys
-                .Union(document.HeaderTerms.Keys)
-                .Union(document.ContentTerms.Keys)
-                .ToList();
-
-            // Retrieve any Terms that already exist in the database.
-            var termLookup = await SynchronizeTermsAsync(context, allUniqueTerms, page.Language);
 
             AddWordFrequencies(context, page.Id, document, termLookup);
             AddWordPositions(context, page.Id, document, termLookup);
@@ -55,6 +59,43 @@ public class SqlIndexRepository : IIndexRepository
             await transaction.RollbackAsync();
             throw;
         }
+    }
+
+
+    // Retrieves a list of documents based on their unique IDs
+	public async Task<List<Page>> GetDocumentsByIdAsync(List<int> pageIds)
+	{
+		//Creates a new database context based on their unique IDs
+		await using var context = await _factory.CreateDbContextAsync();
+
+		return await context.Pages
+			.Where(p => pageIds.Contains(p.Id))
+			.ToListAsync();
+	}
+
+	public Task<HashSet<int>> GetDocumentIdsForPhraseAsync(PhraseNode<HashSet<int>> phrase)
+	{
+		throw new NotImplementedException();
+	}
+
+    public async Task<int?> GetExistingDocumentByHashAsync(string hash)
+    {
+        await using var context = await _factory.CreateDbContextAsync();
+        
+        return await context.Pages
+            .Where(p => p.ContentHash.Equals(hash))
+            .Select(p => (int?)p.Id)
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task UpdateLastCrawledAsync(int id, DateTime newCrawl)
+    {
+        await using var context = await _factory.CreateDbContextAsync();
+        await context.Pages
+            .Where(p => p.Id.Equals(id))
+            .ExecuteUpdateAsync(setter => 
+                setter.SetProperty(p => p.LastCrawled, newCrawl)
+            );
     }
 
 
@@ -107,27 +148,37 @@ public class SqlIndexRepository : IIndexRepository
         string language
         )
     {
-        var existingTerms = await context.Terms
-            .Where(t => words.Contains(t.Word))
+        var cleanWords = words.Distinct().ToList();
+        
+        await _semaphoreProvider.GetTermSyncSemaphore().WaitAsync();
+        try
+        {
+            var existingTerms = await context.Terms
+            .Where(t => cleanWords.Contains(t.Word) && t.LanguageCode == language)
             .ToDictionaryAsync(t => t.Word);
 
-        bool hasNewTerms = false;
+            bool hasNewTerms = false;
 
-        foreach (var term in words)
-        {
-            // Creates new Terms if current Term did not exist. 
-            if (!existingTerms.TryGetValue(term, out var termEntity))
+            foreach (var term in cleanWords)
             {
-                termEntity = new Term { Word = term, LanguageCode = language };
-                context.Terms.Add(termEntity);
-                existingTerms[term] = termEntity;
-                hasNewTerms = true;
+                // Creates new Terms if current Term did not exist. 
+                if (!existingTerms.TryGetValue(term, out var termEntity))
+                {
+                    termEntity = new Term { Word = term, LanguageCode = language };
+                    context.Terms.Add(termEntity);
+                    existingTerms[term] = termEntity;
+                    hasNewTerms = true;
+                }
             }
-        }
 
-        if (hasNewTerms) await context.SaveChangesAsync();
-        
-        return existingTerms;
+            if (hasNewTerms) await context.SaveChangesAsync();    
+                  
+            return existingTerms;   
+        }
+        finally
+        {
+            _semaphoreProvider.GetTermSyncSemaphore().Release();
+        }
     }
 
 
@@ -154,6 +205,7 @@ public class SqlIndexRepository : IIndexRepository
         }
     }
 
+    
     private void AddWordPositions(
         SearchDbContext context, 
         int pageId, 
@@ -186,25 +238,35 @@ public class SqlIndexRepository : IIndexRepository
         }
     }
 
+
     private async Task AddPageLinksAsync(SearchDbContext context, Page fromPage, IEnumerable<string> outgoingLinks)
     {
         if (outgoingLinks == null || !outgoingLinks.Any()) return;
 
         var targetUrls = outgoingLinks.Distinct().ToList();
-        var existingPages = await context.Pages
-            .Where(p => targetUrls.Contains(p.Url))
-            .ToDictionaryAsync(p => p.Url);
 
-        foreach (var url in targetUrls)
+        await _semaphoreProvider.GetPageSyncSemaphore().WaitAsync();
+        try
         {
-            if (!existingPages.TryGetValue(url, out var targetPage))
-            {
-                targetPage = new Page { Url = url, Title = "pending..", ContentHash = "", Language = "" };
-                context.Pages.Add(targetPage);
-                existingPages[url] = targetPage;
-            }
+            var existingPages = await context.Pages
+                .Where(p => targetUrls.Contains(p.Url))
+                .ToDictionaryAsync(p => p.Url);
 
-            context.PageLinks.Add(new PageLink { FromPage = fromPage, ToPage = targetPage });
+            foreach (var url in targetUrls)
+            {
+                if (!existingPages.TryGetValue(url, out var targetPage))
+                {
+                    targetPage = new Page { Url = url, Title = "pending..", ContentHash = "", Language = "" };
+                    context.Pages.Add(targetPage);
+                    existingPages[url] = targetPage;
+                }
+
+                context.PageLinks.Add(new PageLink { FromPage = fromPage, ToPage = targetPage });
+            }
+        }
+        finally
+        {
+            _semaphoreProvider.GetPageSyncSemaphore().Release();
         }
     }
 
@@ -216,46 +278,9 @@ public class SqlIndexRepository : IIndexRepository
     {
         await using var context = await _factory.CreateDbContextAsync();
 
-        // Go through the junction table PageWordFrequency to find matching pages
         return await context.PageWordFrequencies
             .Where(pwf => pwf.Term.Word == term)
             .Select(pwf => pwf.PageId)
             .ToHashSetAsync();
-    }
-
-	// Retrieves a list of documents based on their unique IDs
-	public async Task<List<Page>> GetDocumentsByIdAsync(List<int> pageIds)
-	{
-		//Creates a new database context based on their unique IDs
-		await using var context = await _factory.CreateDbContextAsync();
-
-		return await context.Pages
-			.Where(p => pageIds.Contains(p.Id))
-			.ToListAsync();
-	}
-
-	public Task<HashSet<int>> GetDocumentIdsForPhraseAsync(PhraseNode<HashSet<int>> phrase)
-	{
-		throw new NotImplementedException();
-	}
-
-    public async Task<int?> GetExistingDocumentByHashAsync(string hash)
-    {
-        await using var context = await _factory.CreateDbContextAsync();
-        
-        return await context.Pages
-            .Where(p => p.ContentHash.Equals(hash))
-            .Select(p => (int?)p.Id)
-            .FirstOrDefaultAsync();
-    }
-
-    public async Task UpdateLastCrawledAsync(int id, DateTime newCrawl)
-    {
-        await using var context = await _factory.CreateDbContextAsync();
-        await context.Pages
-            .Where(p => p.Id.Equals(id))
-            .ExecuteUpdateAsync(setter => 
-                setter.SetProperty(p => p.LastCrawled, newCrawl)
-            );
     }
 }
