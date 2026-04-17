@@ -5,7 +5,7 @@ using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 using LTU.SearchEngine.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-using System.Text;
+
 
 namespace LTU.SearchEngine.Infrastructure.Repositories;
 
@@ -18,7 +18,6 @@ public class SqlIndexRepository : IIndexRepository
     private readonly IDbContextFactory<SearchDbContext> _factory;
     private readonly SemaphoreProvider _semaphoreProvider;
 
-    public SqlIndexRepository(IDbContextFactory<SearchDbContext> factory)
     public SqlIndexRepository(IDbContextFactory<SearchDbContext> factory, SemaphoreProvider semaphoreProvider)
     {
         _factory = factory;
@@ -29,33 +28,10 @@ public class SqlIndexRepository : IIndexRepository
     // Merge words from the title, headers and body content.
     public async Task AddDocumentAsync(IndexDocument document)
     {
-
-        // Normalize all terms to ensure consistency
-        var normalizedTitleTerms = document.TitleTerms.ToDictionary(
-            kvp => kvp.Key.ToLowerInvariant().Normalize(NormalizationForm.FormC), 
-            kvp => kvp.Value);
-        var normalizedHeaderTerms = document.HeaderTerms.ToDictionary(
-            kvp => kvp.Key.ToLowerInvariant().Normalize(NormalizationForm.FormC), 
-            kvp => kvp.Value);
-        var normalizedContentTerms = document.ContentTerms.ToDictionary(
-            kvp => kvp.Key.ToLowerInvariant().Normalize(NormalizationForm.FormC), 
-            kvp => kvp.Value);
-        var normalizedTitleTermPositions = document.TitleTermPositions
-            .Select(w => w.ToLowerInvariant().Normalize(NormalizationForm.FormC))
+        var allUniqueTerms = document.TitleTerms.Keys
+            .Union(document.HeaderTerms.Keys)
+            .Union(document.ContentTerms.Keys)
             .ToList();
-        var normalizedHeaderTermPositions = document.HeaderTermPositions
-            .Select(w => w.ToLowerInvariant().Normalize(NormalizationForm.FormC))
-            .ToList();
-        var normalizedContentTermPositions = document.ContentTermPositions
-            .Select(w => w.ToLowerInvariant().Normalize(NormalizationForm.FormC))
-            .ToList();
-
-        var allUniqueTerms = normalizedTitleTerms.Keys
-            .Union(normalizedHeaderTerms.Keys)
-            .Union(normalizedContentTerms.Keys)
-            .ToList();
-
-
 
         await using var context = await _factory.CreateDbContextAsync();
 
@@ -70,18 +46,8 @@ public class SqlIndexRepository : IIndexRepository
             // Save to get a Page.Id 
             await context.SaveChangesAsync();
 
-            var allUniqueTerms = document.TitleTerms.Keys
-                .Union(document.HeaderTerms.Keys)
-                .Union(document.ContentTerms.Keys)
-                .ToList();
-
-            // Retrieve any Terms that already exist in the database.
-            var termLookup = await SynchronizeTermsAsync(context, allUniqueTerms, page.Language);
-
             AddWordFrequencies(context, page.Id, document, termLookup);
             AddWordPositions(context, page.Id, document, termLookup);
-            AddWordFrequencies(context, page.Id, normalizedTitleTerms, normalizedHeaderTerms, normalizedContentTerms, termLookup);
-            AddWordPositions(context, page.Id, normalizedTitleTermPositions, normalizedHeaderTermPositions, normalizedContentTermPositions, termLookup);
             await AddPageLinksAsync(context, page, document.OutgoingLinks);
 
             // save everything at the same time        
@@ -176,17 +142,13 @@ public class SqlIndexRepository : IIndexRepository
     }
 
 
-    private async Task<Dictionary<string, LTU.SearchEngine.Backend.Core.Model.Entities.Term>> SynchronizeTermsAsync(
+    private async Task<Dictionary<string, Term>> SynchronizeTermsAsync(
         SearchDbContext context, 
         List<string> words, 
         string language
         )
     {
-        var cleanWords = words
-        .Distinct()
-        .ToList();
-
-        // using var context = await _factory.CreateDbContextAsync();
+        var cleanWords = words.Distinct().ToList();
         
         await _semaphoreProvider.GetTermSyncSemaphore().WaitAsync();
         try
@@ -222,18 +184,15 @@ public class SqlIndexRepository : IIndexRepository
 
     private void AddWordFrequencies(
         SearchDbContext context, 
-        int pageId, 
-        Dictionary<string, int> normalizedTitleTerms,
-        Dictionary<string, int> normalizedHeaderTerms,
-        Dictionary<string, int> normalizedContentTerms,
-        Dictionary<string, LTU.SearchEngine.Backend.Core.Model.Entities.Term> terms
+        int pageId, IndexDocument doc, 
+        Dictionary<string, Term> terms
         )
     {
         foreach (var word in terms.Keys)
         {
-            normalizedTitleTerms.TryGetValue(word, out int titleFreq);
-            normalizedHeaderTerms.TryGetValue(word, out int headerFreq);
-            normalizedContentTerms.TryGetValue(word, out int bodyFreq);
+            doc.TitleTerms.TryGetValue(word, out int titleFreq);
+            doc.HeaderTerms.TryGetValue(word, out int headerFreq);
+            doc.ContentTerms.TryGetValue(word, out int bodyFreq);
 
             context.PageWordFrequencies.Add(new PageWordFrequency
             {
@@ -246,13 +205,12 @@ public class SqlIndexRepository : IIndexRepository
         }
     }
 
+    
     private void AddWordPositions(
         SearchDbContext context, 
         int pageId, 
-        IReadOnlyList<string> normalizedTitleTermPositions,
-        IReadOnlyList<string> normalizedHeaderTermPositions,
-        IReadOnlyList<string> normalizedContentTermPositions,
-        Dictionary<string, LTU.SearchEngine.Backend.Core.Model.Entities.Term> terms
+        IndexDocument doc, 
+        Dictionary<string, Term> terms
         )
     {
         var sources = new Dictionary<TermSource, IReadOnlyList<string>>
@@ -280,25 +238,35 @@ public class SqlIndexRepository : IIndexRepository
         }
     }
 
+
     private async Task AddPageLinksAsync(SearchDbContext context, Page fromPage, IEnumerable<string> outgoingLinks)
     {
         if (outgoingLinks == null || !outgoingLinks.Any()) return;
 
         var targetUrls = outgoingLinks.Distinct().ToList();
-        var existingPages = await context.Pages
-            .Where(p => targetUrls.Contains(p.Url))
-            .ToDictionaryAsync(p => p.Url);
 
-        foreach (var url in targetUrls)
+        await _semaphoreProvider.GetPageSyncSemaphore().WaitAsync();
+        try
         {
-            if (!existingPages.TryGetValue(url, out var targetPage))
-            {
-                targetPage = new Page { Url = url, Title = "pending..", ContentHash = "", Language = "" };
-                context.Pages.Add(targetPage);
-                existingPages[url] = targetPage;
-            }
+            var existingPages = await context.Pages
+                .Where(p => targetUrls.Contains(p.Url))
+                .ToDictionaryAsync(p => p.Url);
 
-            context.PageLinks.Add(new PageLink { FromPage = fromPage, ToPage = targetPage });
+            foreach (var url in targetUrls)
+            {
+                if (!existingPages.TryGetValue(url, out var targetPage))
+                {
+                    targetPage = new Page { Url = url, Title = "pending..", ContentHash = "", Language = "" };
+                    context.Pages.Add(targetPage);
+                    existingPages[url] = targetPage;
+                }
+
+                context.PageLinks.Add(new PageLink { FromPage = fromPage, ToPage = targetPage });
+            }
+        }
+        finally
+        {
+            _semaphoreProvider.GetPageSyncSemaphore().Release();
         }
     }
 
@@ -308,11 +276,11 @@ public class SqlIndexRepository : IIndexRepository
     /// </summary>
     public async Task<HashSet<int>> GetDocumentIdsForTermAsync(string term)
     {
+        var normalizedTerm = term;
         await using var context = await _factory.CreateDbContextAsync();
 
-        // Go through the junction table PageWordFrequency to find matching pages
         return await context.PageWordFrequencies
-            .Where(pwf => pwf.Term.Word == term)
+            .Where(pwf => pwf.Term.Word == normalizedTerm)
             .Select(pwf => pwf.PageId)
             .ToHashSetAsync();
     }

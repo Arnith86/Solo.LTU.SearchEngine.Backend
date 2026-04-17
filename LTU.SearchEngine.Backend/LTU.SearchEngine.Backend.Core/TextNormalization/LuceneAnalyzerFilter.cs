@@ -27,7 +27,11 @@ public class LuceneAnalyzerFilter : ITextFilter
 
         if (tokenStream.IncrementToken())
         {
-            var result = termAttr.ToString();
+            var result = termAttr
+                .ToString()
+                .ToLowerInvariant()
+                .Normalize(System.Text.NormalizationForm.FormC);
+                
             tokenStream.End();
             return string.IsNullOrWhiteSpace(result) ? null : result;
         }
