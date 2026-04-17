@@ -328,10 +328,10 @@ public class SqlIndexRepositoryTests : IDisposable
         
         var doc1 = IndexDocumentBuilder.BuildIndexDocument(
             url: url, 
-            titleTerms: new Dictionary<string, int> { {"oldTerm", 1} },
+            titleTerms: new Dictionary<string, int> { {"oldterm", 1} },
             headerTerms: new Dictionary<string, int>(),
             contentTerms: new Dictionary<string, int>(),
-            titleTermPositions: new List<string> { "oldTerm" },
+            titleTermPositions: new List<string> { "oldterm" },
             headerTermPositions: new List<string>(),
             contentTermPositions: new List<string>(),
             outgoingLinks: new List<string>() 
@@ -339,10 +339,10 @@ public class SqlIndexRepositoryTests : IDisposable
 
         var doc2 = IndexDocumentBuilder.BuildIndexDocument(
             url: url, 
-            titleTerms: new Dictionary<string, int>{ {"newTerm", 1} },
+            titleTerms: new Dictionary<string, int>{ {"newterm", 1} },
             headerTerms: new Dictionary<string, int>(),
             contentTerms: new Dictionary<string, int>(),
-            titleTermPositions: new List<string> { "newTerm" },
+            titleTermPositions: new List<string> { "newterm" },
             headerTermPositions: new List<string>(),
             contentTermPositions: new List<string>(),
             outgoingLinks: new List<string>() 
