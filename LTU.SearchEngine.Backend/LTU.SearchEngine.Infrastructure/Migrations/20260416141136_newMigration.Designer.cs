@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LTU.SearchEngine.Infrastructure.Migrations
 {
     [DbContext(typeof(SearchDbContext))]
-    [Migration("20260415090044_newMigration")]
+    [Migration("20260416141136_newMigration")]
     partial class newMigration
     {
         /// <inheritdoc />
@@ -145,7 +145,7 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
 
                     b.Property<string>("LanguageCode")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("Word")
                         .IsRequired()
@@ -153,7 +153,7 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Word")
+                    b.HasIndex("Word", "LanguageCode")
                         .IsUnique();
 
                     b.ToTable("Terms");

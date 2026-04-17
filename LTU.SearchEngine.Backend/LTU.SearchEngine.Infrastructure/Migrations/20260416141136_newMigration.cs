@@ -38,7 +38,7 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Word = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    LanguageCode = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    LanguageCode = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     IdfScore = table.Column<double>(type: "float", nullable: false)
                 },
                 constraints: table =>
@@ -146,9 +146,9 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                 column: "TermId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Terms_Word",
+                name: "IX_Terms_Word_LanguageCode",
                 table: "Terms",
-                column: "Word",
+                columns: new[] { "Word", "LanguageCode" },
                 unique: true);
         }
 
