@@ -15,11 +15,8 @@ public class Page
     public string Language { get; set; } = string.Empty;
 
 
-    public int HtmlMetaDataId { get; set; }
-    public int PdfMetaDataId { get; set; }
-
-    public HtmlMetaData HtmlMetaData { get; set; } = null!;
-    public PdfMetaData PdfMetaData { get; set; } = null!;
+    public HtmlMetaData? HtmlMetaData { get; set; } = null;
+    public PdfMetaData? PdfMetaData { get; set; } = null;
 
 
     public ICollection<PageWordFrequency> WordFrequencies { get; set; } = new List<PageWordFrequency>();

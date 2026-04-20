@@ -1,5 +1,4 @@
-﻿using LTU.SearchEngine.Backend.Core.Entities;
-using LTU.SearchEngine.Backend.Core.Model.Entities;
+﻿using LTU.SearchEngine.Backend.Core.Model.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

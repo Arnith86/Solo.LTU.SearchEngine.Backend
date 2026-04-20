@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LTU.SearchEngine.Infrastructure.Migrations
 {
     [DbContext(typeof(SearchDbContext))]
-    [Migration("20260420062650_newMigration")]
+    [Migration("20260420063853_newMigration")]
     partial class newMigration
     {
         /// <inheritdoc />
@@ -37,9 +37,6 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("HtmlMetaDataId")
-                        .HasColumnType("int");
-
                     b.Property<int>("HttpStatus")
                         .HasColumnType("int");
 
@@ -52,9 +49,6 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
 
                     b.Property<double>("PageRankScore")
                         .HasColumnType("float");
-
-                    b.Property<int>("PdfMetaDataId")
-                        .HasColumnType("int");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -282,8 +276,7 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
 
             modelBuilder.Entity("LTU.SearchEngine.Backend.Core.Entities.Page", b =>
                 {
-                    b.Navigation("HtmlMetaData")
-                        .IsRequired();
+                    b.Navigation("HtmlMetaData");
 
                     b.Navigation("IncomingLinks");
 
@@ -291,8 +284,7 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
 
                     b.Navigation("PagePositions");
 
-                    b.Navigation("PdfMetaData")
-                        .IsRequired();
+                    b.Navigation("PdfMetaData");
 
                     b.Navigation("WordFrequencies");
                 });

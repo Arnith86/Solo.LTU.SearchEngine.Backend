@@ -24,9 +24,7 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                     ContentHash = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     WordCount = table.Column<int>(type: "int", nullable: false),
                     HttpStatus = table.Column<int>(type: "int", nullable: false),
-                    Language = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    HtmlMetaDataId = table.Column<int>(type: "int", nullable: false),
-                    PdfMetaDataId = table.Column<int>(type: "int", nullable: false)
+                    Language = table.Column<string>(type: "nvarchar(max)", nullable: false)
                 },
                 constraints: table =>
                 {

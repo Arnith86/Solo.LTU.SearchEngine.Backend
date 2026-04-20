@@ -15,6 +15,8 @@ public class SearchDbContext : DbContext
     public DbSet<PageLink> PageLinks { get; set; }
     public DbSet<PageWordFrequency> PageWordFrequencies { get; set; }
     public DbSet<PageWordPosition> PageWordPositions { get; set; }
+    public DbSet<HtmlMetaData> HtmlMetaEntries { get; set; }
+    public DbSet<PdfMetaData> PdfMetaEntries { get; set; }
 
     // --- Configuration (Fluent API) ---
     protected override void OnModelCreating(ModelBuilder modelBuilder)
