@@ -18,4 +18,5 @@ public class Page
     public ICollection<PageLink> OutgoingLinks { get; set; } = new List<PageLink>();
     public ICollection<PageLink> IncomingLinks { get; set; } = new List<PageLink>();
     public ICollection<HtmlMetaData> HtmlMetaEntries { get; set; } = new List<HtmlMetaData>();
+    public ICollection<PdfMetaData> PdfMetaEntries { get; set; } = new List<PdfMetaData>();
 }
