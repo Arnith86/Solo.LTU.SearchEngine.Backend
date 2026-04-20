@@ -11,7 +11,8 @@ public class PdfMetaDataConfiguration : IEntityTypeConfiguration<PdfMetaData>
         builder.HasKey(pmd => pmd.PageId);
 
         builder.HasOne(pmd =>pmd.Page)
-            .WithMany(p => p.PdfMetaEntries)
-            .HasForeignKey(hmd => hmd.PageId);
+            .WithOne(p => p.PdfMetaData)
+            .HasForeignKey<PdfMetaData>(hmd => hmd.PageId)
+            .OnDelete(DeleteBehavior.Cascade);
    }
 }

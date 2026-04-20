@@ -1,4 +1,5 @@
-﻿using LTU.SearchEngine.Backend.Core.Model.Entities;
+﻿using LTU.SearchEngine.Backend.Core.Entities;
+using LTU.SearchEngine.Backend.Core.Model.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -11,7 +12,8 @@ public class HtmlMetaDataConfiguration : IEntityTypeConfiguration<HtmlMetaData>
         builder.HasKey(hmd => hmd.PageId);
 
         builder.HasOne(hmd => hmd.Page)
-            .WithMany(p => p.HtmlMetaEntries)
-            .HasForeignKey(hmd => hmd.PageId);
+            .WithOne(p => p.HtmlMetaData)
+            .HasForeignKey<HtmlMetaData>(hmd => hmd.PageId)
+            .OnDelete(DeleteBehavior.Cascade);
    }
 }
