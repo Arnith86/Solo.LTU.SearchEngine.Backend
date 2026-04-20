@@ -24,7 +24,9 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                     ContentHash = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     WordCount = table.Column<int>(type: "int", nullable: false),
                     HttpStatus = table.Column<int>(type: "int", nullable: false),
-                    Language = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    Language = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    HtmlMetaDataId = table.Column<int>(type: "int", nullable: false),
+                    PdfMetaDataId = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -44,6 +46,25 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Terms", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "HtmlMetaData",
+                columns: table => new
+                {
+                    PageId = table.Column<int>(type: "int", nullable: false),
+                    CharSet = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Doctype = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_HtmlMetaData", x => x.PageId);
+                    table.ForeignKey(
+                        name: "FK_HtmlMetaData_Pages_PageId",
+                        column: x => x.PageId,
+                        principalTable: "Pages",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -68,6 +89,25 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                         principalTable: "Pages",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "PdfMetaData",
+                columns: table => new
+                {
+                    PageId = table.Column<int>(type: "int", nullable: false),
+                    PdfVersion = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    EncodingType = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PdfMetaData", x => x.PageId);
+                    table.ForeignKey(
+                        name: "FK_PdfMetaData_Pages_PageId",
+                        column: x => x.PageId,
+                        principalTable: "Pages",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -156,6 +196,9 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
+                name: "HtmlMetaData");
+
+            migrationBuilder.DropTable(
                 name: "PageLinks");
 
             migrationBuilder.DropTable(
@@ -165,10 +208,13 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                 name: "PageWordPositions");
 
             migrationBuilder.DropTable(
-                name: "Pages");
+                name: "PdfMetaData");
 
             migrationBuilder.DropTable(
                 name: "Terms");
+
+            migrationBuilder.DropTable(
+                name: "Pages");
         }
     }
 }

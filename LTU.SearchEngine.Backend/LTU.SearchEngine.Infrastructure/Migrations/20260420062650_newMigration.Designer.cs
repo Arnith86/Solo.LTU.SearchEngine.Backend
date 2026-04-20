@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LTU.SearchEngine.Infrastructure.Migrations
 {
     [DbContext(typeof(SearchDbContext))]
-    [Migration("20260416141136_newMigration")]
+    [Migration("20260420062650_newMigration")]
     partial class newMigration
     {
         /// <inheritdoc />
@@ -37,6 +37,9 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("HtmlMetaDataId")
+                        .HasColumnType("int");
+
                     b.Property<int>("HttpStatus")
                         .HasColumnType("int");
 
@@ -49,6 +52,9 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
 
                     b.Property<double>("PageRankScore")
                         .HasColumnType("float");
+
+                    b.Property<int>("PdfMetaDataId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -67,6 +73,24 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Pages");
+                });
+
+            modelBuilder.Entity("LTU.SearchEngine.Backend.Core.Model.Entities.HtmlMetaData", b =>
+                {
+                    b.Property<int>("PageId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CharSet")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Doctype")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("PageId");
+
+                    b.ToTable("HtmlMetaData");
                 });
 
             modelBuilder.Entity("LTU.SearchEngine.Backend.Core.Model.Entities.PageLink", b =>
@@ -132,6 +156,24 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                     b.ToTable("PageWordPositions");
                 });
 
+            modelBuilder.Entity("LTU.SearchEngine.Backend.Core.Model.Entities.PdfMetaData", b =>
+                {
+                    b.Property<int>("PageId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("EncodingType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PdfVersion")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("PageId");
+
+                    b.ToTable("PdfMetaData");
+                });
+
             modelBuilder.Entity("LTU.SearchEngine.Backend.Core.Model.Entities.Term", b =>
                 {
                     b.Property<int>("Id")
@@ -157,6 +199,17 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Terms");
+                });
+
+            modelBuilder.Entity("LTU.SearchEngine.Backend.Core.Model.Entities.HtmlMetaData", b =>
+                {
+                    b.HasOne("LTU.SearchEngine.Backend.Core.Entities.Page", "Page")
+                        .WithOne("HtmlMetaData")
+                        .HasForeignKey("LTU.SearchEngine.Backend.Core.Model.Entities.HtmlMetaData", "PageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Page");
                 });
 
             modelBuilder.Entity("LTU.SearchEngine.Backend.Core.Model.Entities.PageLink", b =>
@@ -216,13 +269,30 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                     b.Navigation("Term");
                 });
 
+            modelBuilder.Entity("LTU.SearchEngine.Backend.Core.Model.Entities.PdfMetaData", b =>
+                {
+                    b.HasOne("LTU.SearchEngine.Backend.Core.Entities.Page", "Page")
+                        .WithOne("PdfMetaData")
+                        .HasForeignKey("LTU.SearchEngine.Backend.Core.Model.Entities.PdfMetaData", "PageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Page");
+                });
+
             modelBuilder.Entity("LTU.SearchEngine.Backend.Core.Entities.Page", b =>
                 {
+                    b.Navigation("HtmlMetaData")
+                        .IsRequired();
+
                     b.Navigation("IncomingLinks");
 
                     b.Navigation("OutgoingLinks");
 
                     b.Navigation("PagePositions");
+
+                    b.Navigation("PdfMetaData")
+                        .IsRequired();
 
                     b.Navigation("WordFrequencies");
                 });
