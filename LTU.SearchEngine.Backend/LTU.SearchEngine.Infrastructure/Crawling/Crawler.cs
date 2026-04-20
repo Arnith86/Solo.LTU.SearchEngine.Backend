@@ -52,7 +52,11 @@ public class Crawler : ICrawler
 
         if (IsHtmlFormat(data.ContentType))
         {
-            string html = GetHtmlString(data);
+            string html = GetHtmlString(
+                data,
+                SetEncoding(data.CharSet)
+            );
+
             hashableText = _htmlParser.CleanRawTextForHashing(
                 _htmlParser.ExtractRawText(html)
             );    
@@ -71,12 +75,18 @@ public class Crawler : ICrawler
         var links = Enumerable.Empty<string>();
         string title = null!;
         string languageCode = "Unknown";
+        DocumentMetaData metaData = null!;
 
         if (IsHtmlFormat(data.ContentType))
         {
-            var htmlString = GetHtmlString(data);
+            // If charset was missing or unrecognized, default to UTF-8
+            var htmlString = GetHtmlString(
+                data, 
+                SetEncoding(data.CharSet)
+            );
 
             languageCode = _htmlParser.ExtractLanguage(htmlString);
+            metaData = _htmlParser.ExtractHtmlMetaData(htmlString);
             title = _htmlParser.ExtractTitle(htmlString);
             links = await _htmlParser.ExtractInternalLinks(htmlString, data.Url);
             terms = _htmlParser.ExtractTerms(htmlString);
@@ -88,6 +98,7 @@ public class Crawler : ICrawler
             language: languageCode,
             indexedTerms: terms,
             type: data.ContentType,
+            metaData: metaData,
             content: data.Content,
             extractedLinks: links,
             statusCode: data.HttpStatusCode,
@@ -109,6 +120,7 @@ public class Crawler : ICrawler
             language: "Unknown",
             indexedTerms: Enumerable.Empty<IndexedTerm>(),
             type: "Unknown",
+            metaData: null,
             content: Array.Empty<byte>(),
             extractedLinks: Enumerable.Empty<string>(),
             statusCode: statusCode,
@@ -141,10 +153,10 @@ public class Crawler : ICrawler
     }
     
    
-    private string GetHtmlString(RawCrawlData data)
+    private string GetHtmlString(RawCrawlData data, Encoding encoding)
     {
-        // If charset was missing or unrecognized, default to UTF-8
-        var encoding = SetEncoding(data.CharSet);
+        // // If charset was missing or unrecognized, default to UTF-8
+        // var encoding = SetEncoding(data.CharSet);
     
         return encoding.GetString(data.Content);
     }

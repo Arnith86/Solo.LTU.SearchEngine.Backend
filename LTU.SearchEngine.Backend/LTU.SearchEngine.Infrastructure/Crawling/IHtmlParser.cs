@@ -77,4 +77,6 @@ public interface IHtmlParser
     /// and its structural source for ranking purposes.
     /// </returns>
     IEnumerable<IndexedTerm> ExtractTerms(string html);
+    
+	HtmlDocumentMetaData ExtractHtmlMetaData(string htmlString);
 }
