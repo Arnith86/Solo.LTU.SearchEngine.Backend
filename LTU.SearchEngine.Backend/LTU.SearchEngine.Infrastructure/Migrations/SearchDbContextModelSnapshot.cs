@@ -81,7 +81,7 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
 
                     b.HasKey("PageId");
 
-                    b.ToTable("HtmlMetaData");
+                    b.ToTable("HtmlMetaEntries");
                 });
 
             modelBuilder.Entity("LTU.SearchEngine.Backend.Core.Model.Entities.PageLink", b =>
@@ -162,7 +162,7 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
 
                     b.HasKey("PageId");
 
-                    b.ToTable("PdfMetaData");
+                    b.ToTable("PdfMetaEntries");
                 });
 
             modelBuilder.Entity("LTU.SearchEngine.Backend.Core.Model.Entities.Term", b =>

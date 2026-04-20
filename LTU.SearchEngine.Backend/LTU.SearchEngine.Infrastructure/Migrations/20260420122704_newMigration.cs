@@ -47,7 +47,7 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "HtmlMetaData",
+                name: "HtmlMetaEntries",
                 columns: table => new
                 {
                     PageId = table.Column<int>(type: "int", nullable: false),
@@ -56,9 +56,9 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_HtmlMetaData", x => x.PageId);
+                    table.PrimaryKey("PK_HtmlMetaEntries", x => x.PageId);
                     table.ForeignKey(
-                        name: "FK_HtmlMetaData_Pages_PageId",
+                        name: "FK_HtmlMetaEntries_Pages_PageId",
                         column: x => x.PageId,
                         principalTable: "Pages",
                         principalColumn: "Id",
@@ -90,7 +90,7 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "PdfMetaData",
+                name: "PdfMetaEntries",
                 columns: table => new
                 {
                     PageId = table.Column<int>(type: "int", nullable: false),
@@ -99,9 +99,9 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_PdfMetaData", x => x.PageId);
+                    table.PrimaryKey("PK_PdfMetaEntries", x => x.PageId);
                     table.ForeignKey(
-                        name: "FK_PdfMetaData_Pages_PageId",
+                        name: "FK_PdfMetaEntries_Pages_PageId",
                         column: x => x.PageId,
                         principalTable: "Pages",
                         principalColumn: "Id",
@@ -194,7 +194,7 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "HtmlMetaData");
+                name: "HtmlMetaEntries");
 
             migrationBuilder.DropTable(
                 name: "PageLinks");
@@ -206,7 +206,7 @@ namespace LTU.SearchEngine.Infrastructure.Migrations
                 name: "PageWordPositions");
 
             migrationBuilder.DropTable(
-                name: "PdfMetaData");
+                name: "PdfMetaEntries");
 
             migrationBuilder.DropTable(
                 name: "Terms");
