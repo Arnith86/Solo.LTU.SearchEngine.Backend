@@ -17,4 +17,5 @@ public class Page
     public ICollection<PageWordPosition> PagePositions { get; set; } = new List<PageWordPosition>();
     public ICollection<PageLink> OutgoingLinks { get; set; } = new List<PageLink>();
     public ICollection<PageLink> IncomingLinks { get; set; } = new List<PageLink>();
+    public ICollection<HtmlMetaData> HtmlMetaEntries { get; set; } = new List<HtmlMetaData>();
 }
