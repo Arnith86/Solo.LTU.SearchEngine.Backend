@@ -1,4 +1,5 @@
-﻿using LTU.SearchEngine.Backend.Core.Model;
+﻿using LTU.SearchEngine.Backend.Core.Enums;
+using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Test.HelperClasses;
 using System.Net;
@@ -48,6 +49,38 @@ public class CrawlResultsTests
 			Assert.Equal(links, sut.ExtractedLinks);
 			Assert.Equal(statusCode, sut.StatusCode);
 			Assert.Equal(timeTakenMs, sut.TimeTakenMs);
+		}
+	
+	
+		[Fact]
+		public void Constructor_ValidHtmlArguments_AssignsMetaDataCorrectly()
+		{
+			// Arrange
+			var charSet = "UTF-8";
+			var docType = "<!DOCTYPE html>";
+			var htmlMetaData = new HtmlDocumentMetaData(charSet, docType);
+			
+			// Act
+			var sut = CrawlResultBuilder.BuildCrawlResult(metaData: htmlMetaData);
+			
+			// Assert
+			Assert.NotNull(sut.MetaData);
+			Assert.Equal(DocumentMetaDataType.Html, sut.MetaData.MetaDataType);
+			
+			var htmlMeta = Assert.IsType<HtmlDocumentMetaData>(sut.MetaData);
+			Assert.Equal(charSet, htmlMeta.CharSet); 
+			Assert.Equal(docType, htmlMeta.DocType);
+		}
+
+		[Fact]
+		public void Constructor_NullMetaData_ThrowsArgumentNullException()
+		{
+			// Act & Assert
+			var ex = Assert.Throws<ArgumentNullException>(() => 
+				CrawlResultBuilder.BuildCrawlResult(metaData: null!)
+			);
+			
+			Assert.Equal("metaData", ex.ParamName);
 		}
 
 		[Theory]

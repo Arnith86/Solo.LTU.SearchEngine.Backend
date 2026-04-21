@@ -77,4 +77,11 @@ public interface IHtmlParser
     /// and its structural source for ranking purposes.
     /// </returns>
     IEnumerable<IndexedTerm> ExtractTerms(string html);
+    
+	/// <summary>
+	/// Parses an HTML string to extract technical metadata required for indexing.
+	/// </summary>
+	/// <param name="htmlString">The raw HTML content of the document.</param>
+	/// <returns>An <see cref="HtmlDocumentMetaData"/> object containing the detected character set and DOCTYPE.</returns>
+	HtmlDocumentMetaData ExtractHtmlMetaData(string htmlString);
 }

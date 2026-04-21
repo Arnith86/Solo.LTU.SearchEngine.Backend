@@ -13,6 +13,12 @@ public class Page
     public int WordCount { get; set; }
     public int HttpStatus { get; set; }
     public string Language { get; set; } = string.Empty;
+
+
+    public HtmlMetaData? HtmlMetaData { get; set; } = null;
+    public PdfMetaData? PdfMetaData { get; set; } = null;
+
+
     public ICollection<PageWordFrequency> WordFrequencies { get; set; } = new List<PageWordFrequency>();
     public ICollection<PageWordPosition> PagePositions { get; set; } = new List<PageWordPosition>();
     public ICollection<PageLink> OutgoingLinks { get; set; } = new List<PageLink>();

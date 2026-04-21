@@ -19,7 +19,8 @@ public sealed class CrawlResult
 	public string? Title { get; }
 	public string Language { get; }
 	public IReadOnlyCollection<IndexedTerm> IndexedTerms { get; }
-	public string Type { get; }
+	public string Type { get; } 
+	public DocumentMetaData MetaData { get; }
 	public byte[] Content { get; }
 	public IReadOnlyList<string> ExtractedLinks { get; }
 	public HttpStatusCode StatusCode { get; }
@@ -33,6 +34,7 @@ public sealed class CrawlResult
 		string language,
 		IEnumerable<IndexedTerm> indexedTerms,
 		string type,
+		DocumentMetaData? metaData,
 		byte[] content,
 		IEnumerable<string> extractedLinks,
 		HttpStatusCode statusCode,
@@ -58,16 +60,20 @@ public sealed class CrawlResult
 			: throw new ArgumentException("ContentHash cannot be null or whitespace.", nameof(contentHash));
 		
 		Content = content ?? throw new ArgumentNullException(nameof(content));
-		
+
 		if (indexedTerms is null)
 			throw new ArgumentNullException(nameof(indexedTerms));
 
+		if (metaData is null)
+			throw new ArgumentNullException(nameof(metaData));
+	
 		if (extractedLinks is null)
 			throw new ArgumentNullException(nameof(extractedLinks));
 
 		if (timeTakenMs < 0)
 			throw new ArgumentOutOfRangeException(nameof(timeTakenMs), timeTakenMs, "TimeTakenMs cannot be negative.");
 
+		MetaData = metaData;
 		IndexedTerms = indexedTerms.ToArray();
 		ExtractedLinks = extractedLinks.ToArray();
 		Title = title;

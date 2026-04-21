@@ -1,8 +1,11 @@
-﻿public class IndexDocument
+﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+
+public class IndexDocument
 {
     public string Url { get; }
     public string Title { get; } 
     public string Language { get; }
+    public DocumentMetaData MetaData { get; }
     public IEnumerable<string> OutgoingLinks { get; }
     public IReadOnlyDictionary<string, int> TitleTerms { get; }
     public IReadOnlyDictionary<string, int> HeaderTerms { get; }
@@ -18,6 +21,7 @@
         string url, 
         string title,
         string language,
+        DocumentMetaData documentMetaData,
         IEnumerable<string> outgoingLinks,
         IReadOnlyDictionary<string, int> titleTerms, 
         IReadOnlyDictionary<string, int> headerTerms, 
@@ -32,6 +36,7 @@
         Url = url;
         Title = title;
         Language = language;
+        MetaData = documentMetaData;
         OutgoingLinks = outgoingLinks;
         TitleTerms = titleTerms;
         HeaderTerms = headerTerms;

@@ -443,7 +443,7 @@ public class IndexerIntegrationTests : IClassFixture<WebApplicationFactory<Progr
         using var scope = testFactory.Services.CreateScope();
         
         var dispatcher = scope.ServiceProvider.GetRequiredService<ICrawlJobDispatcher>();
-        await dispatcher.Enqueue(new CrawlJob{Url = seedUrl, NextAttempt = DateTime.UtcNow});
+        await dispatcher.Enqueue(new CrawlJob{ Url = seedUrl, NextAttempt = DateTime.UtcNow });
 
         var cts = new CancellationTokenSource();
         

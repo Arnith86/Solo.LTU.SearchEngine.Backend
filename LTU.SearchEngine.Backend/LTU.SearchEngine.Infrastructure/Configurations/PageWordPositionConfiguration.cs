@@ -12,10 +12,12 @@ public class PageWordPositionConfiguration : IEntityTypeConfiguration<PageWordPo
 
         builder.HasOne(pwp => pwp.Page)
             .WithMany(p => p.PagePositions)
-            .HasForeignKey(pwp => pwp.PageId);
+            .HasForeignKey(pwp => pwp.PageId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(pwp => pwp.Term)
             .WithMany(t => t.PagePositions)
-            .HasForeignKey(pwp => pwp.TermId);
+            .HasForeignKey(pwp => pwp.TermId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

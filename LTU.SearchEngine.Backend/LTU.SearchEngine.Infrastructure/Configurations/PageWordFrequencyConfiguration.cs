@@ -12,10 +12,12 @@ public class PageWordFrequencyConfiguration : IEntityTypeConfiguration<PageWordF
 
         builder.HasOne(pwf => pwf.Page)
             .WithMany(p => p.WordFrequencies)
-            .HasForeignKey(pwf => pwf.PageId);
+            .HasForeignKey(pwf => pwf.PageId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(pwf => pwf.Term)
             .WithMany(t => t.PageFrequencies)
-            .HasForeignKey(pwf => pwf.TermId);
+            .HasForeignKey(pwf => pwf.TermId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

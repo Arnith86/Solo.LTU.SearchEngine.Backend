@@ -2,6 +2,7 @@
 using LTU.SearchEngine.Backend.Core.Entities;
 using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Infrastructure.Data;
 using LTU.SearchEngine.Infrastructure.Repositories;
 using LTU.SearchEngine.Test.HelperClasses;
@@ -399,6 +400,139 @@ public class SqlIndexRepositoryTests : IDisposable
         Assert.Contains(positions, p => p.TermSource.Equals(TermSource.Title) && p.Position.Equals(0));    
         Assert.Contains(positions, p => p.TermSource.Equals(TermSource.Header) && p.Position.Equals(1));    
         Assert.Contains(positions, p => p.TermSource.Equals(TermSource.Body) && p.Position.Equals(0));    
+    }
+
+    
+    [Fact]
+    public async Task AddDocumentAsync_WithHtmlMetaData_SavesHtmlSpecificFields()
+    {
+        // Arrange
+        var url = "https://html-meta.se";
+        var meta = new HtmlDocumentMetaData("ISO-8859-1", "<!DOCTYPE html>");
+        
+        var doc = IndexDocumentBuilder.BuildIndexDocument(
+            url: url,
+            metaData: meta
+        );
+
+        // Act
+        await _sut.AddDocumentAsync(doc);
+
+        // Assert
+        await using var context = await _factory.CreateDbContextAsync();
+        var page = await context.Pages
+            .Include(p => p.HtmlMetaData)
+            .FirstOrDefaultAsync(p => p.Url == url);
+
+        Assert.NotNull(page!.HtmlMetaData);
+        Assert.Equal("ISO-8859-1", page.HtmlMetaData.CharSet);
+        Assert.Equal("<!DOCTYPE html>", page.HtmlMetaData.Doctype);
+        Assert.Null(page.PdfMetaData);
+    }
+
+
+    [Fact]
+    public async Task AddDocumentAsync_WhenSwitchingFromPdfToHtml_CleansUpOldMeta()
+    {
+        // Arrange
+        var url = "https://switch.se";
+        
+        var pdfDoc = IndexDocumentBuilder.BuildIndexDocument(
+            url: url,
+            metaData: new PdfDocumentMetaData("1.7", "Identity-H")
+        );
+        await _sut.AddDocumentAsync(pdfDoc);
+
+        var htmlDoc = IndexDocumentBuilder.BuildIndexDocument(
+            url: url,
+            metaData: new HtmlDocumentMetaData("UTF-8", "HTML5")
+        );
+
+        // Act
+        await _sut.AddDocumentAsync(htmlDoc);
+
+        // Assert
+        await using var context = await _factory.CreateDbContextAsync();
+        var page = await context.Pages
+            .Include(p => p.HtmlMetaData)
+            .Include(p => p.PdfMetaData)
+            .FirstOrDefaultAsync(p => p.Url == url);
+
+        Assert.NotNull(page!.HtmlMetaData);
+        Assert.Null(page.PdfMetaData); // PDF meta should have been removed by SetDocumentMetaData
+        Assert.Equal("UTF-8", page.HtmlMetaData.CharSet);
+    }
+
+
+    [Fact]
+    public async Task AddDocumentAsync_WhenSwitchingFromHtmlToPdf_CleansUpOldMeta()
+    {
+        // Arrange
+        var url = "https://switch.se";
+        
+        var htmlDoc = IndexDocumentBuilder.BuildIndexDocument(
+            url: url,
+            metaData: new HtmlDocumentMetaData("UTF-8", "HTML5")
+        );
+        
+        await _sut.AddDocumentAsync(htmlDoc);
+
+        var pdfDoc = IndexDocumentBuilder.BuildIndexDocument(
+            url: url,
+            metaData: new PdfDocumentMetaData("1.7", "Identity-H")
+        );
+
+        // Act
+        await _sut.AddDocumentAsync(pdfDoc);
+
+        // Assert
+        await using var context = await _factory.CreateDbContextAsync();
+        
+        var page = await context.Pages
+            .Include(p => p.HtmlMetaData)
+            .Include(p => p.PdfMetaData)
+            .FirstOrDefaultAsync(p => p.Url == url);
+
+        Assert.NotNull(page!.PdfMetaData);
+        Assert.Null(page.HtmlMetaData); // PDF meta should have been removed by SetDocumentMetaData
+        Assert.Equal("1.7", page.PdfMetaData.PdfVersion);
+    }
+
+
+    [Fact]
+    public async Task AddDocumentAsync_WhenPdfMetaDataExists_ShouldUpdateExistingMetaValues()
+    {
+        // Arrange
+        var url = "https://pdf-update.se";
+        var originalVersion = "1.4";
+        var updatedVersion = "1.7";
+
+        var initialDoc = IndexDocumentBuilder.BuildIndexDocument(
+            url: url,
+            metaData: new PdfDocumentMetaData(originalVersion, "Standard")
+        );
+
+        await _sut.AddDocumentAsync(initialDoc);
+
+        var updatedDoc = IndexDocumentBuilder.BuildIndexDocument(
+            url: url,
+            metaData: new PdfDocumentMetaData(updatedVersion, "Identity-H")
+        );
+
+        // Act
+        await _sut.AddDocumentAsync(updatedDoc);
+
+        // Assert
+        await using var context = await _factory.CreateDbContextAsync();
+        var page = await context.Pages
+            .Include(p => p.PdfMetaData)
+            .FirstOrDefaultAsync(p => p.Url == url);
+
+        Assert.NotNull(page!.PdfMetaData);
+
+        // Verify the existing object was updated rather than replaced
+        Assert.Equal(updatedVersion, page.PdfMetaData.PdfVersion);
+        Assert.Equal("Identity-H", page.PdfMetaData.EncodingType);
     }
 
 

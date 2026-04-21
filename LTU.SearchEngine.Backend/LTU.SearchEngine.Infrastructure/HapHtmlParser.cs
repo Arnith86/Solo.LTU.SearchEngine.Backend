@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using HtmlAgilityPack;
 using LTU.SearchEngine.Backend.Core;
 using LTU.SearchEngine.Backend.Core.Exceptions;
@@ -67,7 +66,6 @@ public class HapHtmlParser : IHtmlParser
                 
                 if (isHttp && IsSupportedResourceType(resultUri))
                 {
-                    // string url = resultUri.AbsoluteUri;
                     string url = resultUri.GetLeftPart(UriPartial.Path).ToLowerInvariant();
 
                     // removes trailing backslashes making /start and /start/ count as the same 
@@ -181,7 +179,33 @@ public class HapHtmlParser : IHtmlParser
         return terms;
     }
     
-    
+    /// <inheritdoc/>
+    public HtmlDocumentMetaData ExtractHtmlMetaData(string htmlString)
+    {
+        string docType = "Unknown";
+        string trimmedStart = htmlString.TrimStart().ToLower();
+
+        if (trimmedStart.StartsWith("<!doctype"))
+        {
+            int endBracket = htmlString.IndexOf(">");
+            if (endBracket > -1)
+            {
+                docType = htmlString.Substring(htmlString.IndexOf("<!"), endBracket + 1).Trim();
+            }
+        }
+
+        var doc = new HtmlDocument();
+        doc.LoadHtml(htmlString);
+        
+        
+        string charSet = 
+            doc.DocumentNode.SelectSingleNode("//meta[@charset]")?.GetAttributeValue("charset", "")
+            ?? doc.DocumentNode.SelectSingleNode("//meta[@http-equiv='Content-Type']")?.GetAttributeValue("content", "")
+            ?? "utf-8"; // Default
+
+        return new HtmlDocumentMetaData(charSet: charSet, docType: docType); 
+    }
+
     private bool IsSupportedResourceType(Uri uri)
     {
         string path = uri.AbsolutePath.ToLowerInvariant();

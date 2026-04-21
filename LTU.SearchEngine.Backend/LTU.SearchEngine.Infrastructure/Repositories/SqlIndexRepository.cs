@@ -2,6 +2,7 @@
 using LTU.SearchEngine.Backend.Core.Entities;
 using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 using LTU.SearchEngine.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -63,7 +64,7 @@ public class SqlIndexRepository : IIndexRepository
 
 
     // Retrieves a list of documents based on their unique IDs
-	public async Task<List<Page>> GetDocumentsByIdAsync(List<int> pageIds)
+    public async Task<List<Page>> GetDocumentsByIdAsync(List<int> pageIds)
 	{
 		//Creates a new database context based on their unique IDs
 		await using var context = await _factory.CreateDbContextAsync();
@@ -99,46 +100,93 @@ public class SqlIndexRepository : IIndexRepository
     }
 
 
+    /// <summary>
+    /// Finds the IDs of all pages containing a specific word.
+    /// </summary>
+    public async Task<HashSet<int>> GetDocumentIdsForTermAsync(string term)
+    {
+        await using var context = await _factory.CreateDbContextAsync();
+
+        return await context.PageWordFrequencies
+            .Where(pwf => pwf.Term.Word == term)
+            .Select(pwf => pwf.PageId)
+            .ToHashSetAsync();
+    }
+
+
     private async Task<Page> GetOrCreatePageAsync(SearchDbContext context, IndexDocument document)
     {
         // Check if the Page already exists in the database
-        var page = await context.Pages.FirstOrDefaultAsync(p => p.Url.Equals(document.Url));
+        var page = await context.Pages
+            .Include(p => p.HtmlMetaData)
+            .Include(p => p.PdfMetaData)
+            .FirstOrDefaultAsync(p => p.Url.Equals(document.Url));
 
         if (page is null)
         {
-            page = new Page
-            {
-                Url = document.Url,
-                Title = document.Title,
-                LastCrawled = document.LastCrawl,
-                ContentHash = document.ContentHash,
-                WordCount = document.TotalWordCount,
-                Language = document.Language
-            };
-
+            page = new Page{ Url = document.Url };
             context.Pages.Add(page);
         }
         else
         {
             // Remove old word frequencies/positions and page links for the page before adding new ones to avoid duplicates
-            var oldPageWordFrequencies = context.PageWordFrequencies.Where(pwf => pwf.PageId.Equals(page.Id));
-            context.PageWordFrequencies.RemoveRange(oldPageWordFrequencies);
-            
-            var oldPageWordPositions = context.PageWordPositions.Where(pwf => pwf.PageId.Equals(page.Id));
-            context.PageWordPositions.RemoveRange(oldPageWordPositions);
-            
-            var oldLinkEntries = context.PageLinks.Where(pl => pl.FromPageId.Equals(page.Id));
-            context.PageLinks.RemoveRange(oldLinkEntries);
-
-            // Update page metadata
-            page.Title = document.Title;
-            page.LastCrawled = document.LastCrawl;
-            page.ContentHash = document.ContentHash;
-            page.WordCount = document.TotalWordCount;
-            page.Language = document.Language;            
+            ClearExistingPageData(context, page.Id);
         }
 
+        // Update page metadata
+        page.Title = document.Title;
+        page.LastCrawled = document.LastCrawl;
+        page.ContentHash = document.ContentHash;
+        page.WordCount = document.TotalWordCount;
+        page.Language = document.Language;
+        SetDocumentMetaData(context, document, page);
+
         return page;
+    }
+
+
+    private static void SetDocumentMetaData(SearchDbContext context, IndexDocument document, Page page)
+    {
+        if (document.MetaData is HtmlDocumentMetaData html)
+        {
+            if (page.PdfMetaData is not null) context.PdfMetaEntries.Remove(page.PdfMetaData);
+            if (page.HtmlMetaData is not null)
+            {
+                page.HtmlMetaData.CharSet = html.CharSet;
+                page.HtmlMetaData.Doctype = html.DocType;
+            }
+            else
+            {
+                page.HtmlMetaData = new HtmlMetaData { CharSet = html.CharSet, Doctype = html.DocType };
+            }
+        }
+        else if (document.MetaData is PdfDocumentMetaData pdf)
+        {
+            if (page.HtmlMetaData is not null) context.HtmlMetaEntries.Remove(page.HtmlMetaData);
+            if (page.PdfMetaData is not null)
+            {
+                page.PdfMetaData.PdfVersion = pdf.PdfVersion;
+                page.PdfMetaData.EncodingType = pdf.EncodingType;
+            }
+            else
+            {
+                page.PdfMetaData = new PdfMetaData { PdfVersion = pdf.PdfVersion, EncodingType = pdf.EncodingType };
+            }
+        }
+    }
+
+
+    private static void ClearExistingPageData(SearchDbContext context, int pageId)
+    {
+        context.PageWordFrequencies.RemoveRange(
+            context.PageWordFrequencies.Where(pwf => pwf.PageId.Equals(pageId))
+        );
+        context.PageWordPositions.RemoveRange(
+            context.PageWordPositions.Where(pwf => pwf.PageId.Equals(pageId))
+        );
+        context.PageLinks.RemoveRange(
+            context.PageLinks.Where(pl => pl.FromPageId.Equals(pageId))
+        );
     }
 
 
@@ -268,19 +316,5 @@ public class SqlIndexRepository : IIndexRepository
         {
             _semaphoreProvider.GetPageSyncSemaphore().Release();
         }
-    }
-
-
-    /// <summary>
-    /// Finds the IDs of all pages containing a specific word.
-    /// </summary>
-    public async Task<HashSet<int>> GetDocumentIdsForTermAsync(string term)
-    {
-        await using var context = await _factory.CreateDbContextAsync();
-
-        return await context.PageWordFrequencies
-            .Where(pwf => pwf.Term.Word == term)
-            .Select(pwf => pwf.PageId)
-            .ToHashSetAsync();
     }
 }
