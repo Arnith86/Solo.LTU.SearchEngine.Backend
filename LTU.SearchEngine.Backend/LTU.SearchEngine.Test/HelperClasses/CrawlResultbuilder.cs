@@ -24,11 +24,13 @@ public class CrawlResultBuilder
 			url: url,
 			title: title,
 			language: language,
-			metaData: type.Equals("text/html") ? 
-				new HtmlDocumentMetaData("<!doctype html>", "utf-8") : 
-				new PdfDocumentMetaData("v1", "encoding"),
+			metaData: type is not null ? 
+				type.Equals("text/html") ? 
+					new HtmlDocumentMetaData("<!doctype html>", "utf-8") : 
+					new PdfDocumentMetaData("v1", "encoding")
+				: null,
 			indexedTerms: new List<IndexedTerm>(),
-			type: type,
+			type: type!,
 			content: Encoding.UTF8.GetBytes(content),
 			extractedLinks: Array.Empty<string>(),
 			statusCode: statusCode,
