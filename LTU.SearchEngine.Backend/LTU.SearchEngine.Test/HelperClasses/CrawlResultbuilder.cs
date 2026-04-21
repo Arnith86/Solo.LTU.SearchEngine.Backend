@@ -24,11 +24,10 @@ public class CrawlResultBuilder
 			url: url,
 			title: title,
 			language: language,
-			metaData: type is not null ? 
-				type.Equals("text/html") ? 
+			metaData: type is not null ? type.Equals("text/html") ? 
 					new HtmlDocumentMetaData("<!doctype html>", "utf-8") : 
 					new PdfDocumentMetaData("v1", "encoding")
-				: null,
+					: null,
 			indexedTerms: new List<IndexedTerm>(),
 			type: type!,
 			content: Encoding.UTF8.GetBytes(content),
@@ -39,6 +38,39 @@ public class CrawlResultBuilder
 			crawledAt: crawledAt
 		);
     }
+
+
+	  public static CrawlResult BuildCrawlResult(
+		DocumentMetaData metaData,
+        string url = "https://example.com",
+		string title = "x",
+	    string language = "en",
+		string type = "text/html",
+		string content = "x",
+		HttpStatusCode statusCode = HttpStatusCode.OK,
+		int timeTakenMs = 1,
+		string hashContent = "FakeHash",
+		DateTime dateTime = default
+        )
+    {
+		var crawledAt = dateTime == default ? DateTime.UtcNow : dateTime; 
+
+        return new CrawlResult(
+			url: url,
+			title: title,
+			language: language,
+			metaData: metaData,
+			indexedTerms: new List<IndexedTerm>(),
+			type: type,
+			content: Encoding.UTF8.GetBytes(content),
+			extractedLinks: Array.Empty<string>(),
+			statusCode: statusCode,
+			timeTakenMs: timeTakenMs,
+            contentHash: hashContent,
+			crawledAt: crawledAt
+		);
+    }
+
 
     public static CrawlResult BuildCrawlResult(
         IEnumerable<IndexedTerm> indexedTerms,

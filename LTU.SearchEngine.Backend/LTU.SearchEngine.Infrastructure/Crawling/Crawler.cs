@@ -120,7 +120,7 @@ public class Crawler : ICrawler
             language: "Unknown",
             indexedTerms: Enumerable.Empty<IndexedTerm>(),
             type: "Unknown",
-            metaData: null,
+            metaData: new HtmlDocumentMetaData("Unknown", "Unknown"),
             content: Array.Empty<byte>(),
             extractedLinks: Enumerable.Empty<string>(),
             statusCode: statusCode,

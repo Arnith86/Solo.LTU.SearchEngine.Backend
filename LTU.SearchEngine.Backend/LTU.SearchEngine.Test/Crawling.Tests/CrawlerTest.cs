@@ -46,6 +46,7 @@ public class CrawlerTest
         // ARRANGE
         var url = "https://ltu.se";
         var fakeHtml = """
+            <!DOCTYPE html>
             <html lang="en">
                 <head>
                   <title>Test Page Title</title>
@@ -61,12 +62,16 @@ public class CrawlerTest
         var expectedContent = System.Text.Encoding.UTF8.GetBytes(fakeHtml);
 
         // Create expected result
+        var expectedMetaData = new HtmlDocumentMetaData("utf-8", "<!doctype html>");
         var expectedTerms = new List<IndexedTerm> { new IndexedTerm("Welcome", TermSource.Header) };
         var expectedLinks = new List<string> { "https://ltu.se/contact" };
         var expectedTitle = "Test Page Title";
         var expectedHash = "TestHash";
 
         // Configure Moq
+        _parserMock.Setup(p => p.ExtractHtmlMetaData(It.IsAny<string>()))
+            .Returns(expectedMetaData);
+
         _parserMock.Setup(p => p.ExtractTerms(It.IsAny<string>()))
             .Returns(expectedTerms);
 
@@ -94,6 +99,7 @@ public class CrawlerTest
         // ASSERT
         Assert.NotNull(result);
         Assert.Equal(url, result.Url);
+        Assert.Equal(expectedMetaData, result.MetaData);
         Assert.Equal(HttpStatusCode.OK, result.StatusCode);
         Assert.Equal("en", result.Language);
         Assert.NotEmpty(result.IndexedTerms);

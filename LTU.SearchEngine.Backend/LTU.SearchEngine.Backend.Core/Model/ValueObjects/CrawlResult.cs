@@ -64,13 +64,16 @@ public sealed class CrawlResult
 		if (indexedTerms is null)
 			throw new ArgumentNullException(nameof(indexedTerms));
 
+		if (metaData is null)
+			throw new ArgumentNullException(nameof(metaData));
+	
 		if (extractedLinks is null)
 			throw new ArgumentNullException(nameof(extractedLinks));
 
 		if (timeTakenMs < 0)
 			throw new ArgumentOutOfRangeException(nameof(timeTakenMs), timeTakenMs, "TimeTakenMs cannot be negative.");
 
-		MetaData = metaData!;
+		MetaData = metaData;
 		IndexedTerms = indexedTerms.ToArray();
 		ExtractedLinks = extractedLinks.ToArray();
 		Title = title;
