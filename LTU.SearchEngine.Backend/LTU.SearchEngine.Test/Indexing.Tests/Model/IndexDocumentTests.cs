@@ -115,6 +115,50 @@ public class IndexDocumentTests
 
 
     [Fact]
+    public void Constructor_ShouldAssignPdfMetaDataCorrectly()
+    {
+     // Arrange 
+        var url = "https://ltu.se";
+        var title = "Lulea Tennis University";
+        var language = "sv";
+        var pdfMetaData = new PdfDocumentMetaData(pdfVersion: "1.7", encodingType: "encodeName");
+        var links = new List<string> { "dummyLink" };
+        var titleTerms = new Dictionary<string, int> { { "ltu", 1 } };
+        var headerTerms = new Dictionary<string, int> { { "fortuning", 1 }, { "fun", 1 }, { "fast", 1} };
+        var contentTerms = new Dictionary<string, int> { { "student", 2 }, { "mark", 1 }, { "dark", 1 }};
+        var titleTermPositions = new List<string> { "ltu" };
+        var headerTermPositions = new List<string> {  "fortuning", "fun", "fast" };
+        var contentTermPositions = new List<string> { "student", "mark", "dark", "student" };
+        var hash = "ABC-123";
+        var now = DateTime.UtcNow;
+
+        // Act
+        var sut = IndexDocumentBuilder.BuildIndexDocument(
+            url: url, 
+            title: title,
+            language: language, 
+            metaData: pdfMetaData,
+            outgoingLinks: links,
+            titleTerms: titleTerms, 
+            headerTerms: headerTerms, 
+            contentTerms: contentTerms,
+            titleTermPositions: titleTermPositions,
+            headerTermPositions: headerTermPositions,
+            contentTermPositions: contentTermPositions, 
+            contentHash: hash, 
+            lastCrawl: now
+        );
+
+        // Assert
+        Assert.Equal(DocumentMetaDataType.Pdf, sut.MetaData.MetaDataType);
+        var pdfMeta = Assert.IsType<PdfDocumentMetaData>(sut.MetaData);
+        
+        Assert.NotNull(pdfMeta.PdfVersion);
+        Assert.NotNull(pdfMeta.EncodingType);
+    }
+
+
+    [Fact]
     public void TotalWordCount_ShouldCalculateSumOfAllFrequencies()
     {
         // Arrange
