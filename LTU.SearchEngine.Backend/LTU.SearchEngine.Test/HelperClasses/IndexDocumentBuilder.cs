@@ -4,7 +4,7 @@ namespace LTU.SearchEngine.Test.HelperClasses;
 
 public static class IndexDocumentBuilder
 {
-    // MetaData manually set 
+    // MetaData and collections manually set 
     public static IndexDocument BuildIndexDocument(
         IEnumerable<string> outgoingLinks,
         IReadOnlyDictionary<string, int> titleTerms, 
@@ -104,6 +104,42 @@ public static class IndexDocumentBuilder
             documentMetaData: isMetaDataPdf.Equals(true)    ? 
 				new PdfDocumentMetaData(pdfVersion: "v1", encodingType: "encoding")   :
 				new HtmlDocumentMetaData( docType:"<!doctype html>", charSet:"utf-8"),
+            outgoingLinks: dummyOutgoingLinks,
+            titleTerms: dummyTitleTerms, 
+            headerTerms: dummyHeaderTerms, 
+            contentTerms: dummyContentTerms,
+            titleTermPositions: dummyTitleTermPositions, 
+            headerTermPositions: dummyHeaderTermPositions, 
+            contentTermPositions: dummyContentTermPositions, 
+            contentHash: contentHash,
+            lastCrawl: tempCrawl
+        );
+    }
+    
+    // MetaData only manual set
+    public static IndexDocument BuildIndexDocument(
+        DocumentMetaData metaData,
+        string url = "http://test.html", 
+        string title = "Test Title",
+        string language = "sv",
+        string contentHash = "x",
+        DateTime lastCrawl = default
+        )
+    {
+        var tempCrawl = lastCrawl == default ? DateTime.UtcNow : lastCrawl;
+        var dummyOutgoingLinks = new List<string> { "dummyLink" };
+        var dummyTitleTerms = new Dictionary<string, int> { { "titleWord", 1 } };
+        var dummyHeaderTerms = new Dictionary<string, int> { { "headerWord", 1 } };
+        var dummyContentTerms = new Dictionary<string, int> { { "contentWord", 1 } };
+        var dummyTitleTermPositions = new List<string> { { "titleWord"} };
+        var dummyHeaderTermPositions = new List<string> { { "headerWord" } };
+        var dummyContentTermPositions = new List<string> { { "contentWord" } };
+
+        return new IndexDocument(
+            url: url, 
+            title: title,
+            language: language,
+            documentMetaData: metaData,
             outgoingLinks: dummyOutgoingLinks,
             titleTerms: dummyTitleTerms, 
             headerTerms: dummyHeaderTerms, 
