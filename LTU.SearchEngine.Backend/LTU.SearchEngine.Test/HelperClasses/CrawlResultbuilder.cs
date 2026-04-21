@@ -24,6 +24,9 @@ public class CrawlResultBuilder
 			url: url,
 			title: title,
 			language: language,
+			metaData: type.Equals("text/html") ? 
+				new HtmlDocumentMetaData("<!doctype html>", "utf-8") : 
+				new PdfDocumentMetaData("v1", "encoding"),
 			indexedTerms: new List<IndexedTerm>(),
 			type: type,
 			content: Encoding.UTF8.GetBytes(content),
@@ -55,7 +58,10 @@ public class CrawlResultBuilder
 			url: url,
 			title: title,
 			language: language,
-			indexedTerms: indexedTerms!,
+			metaData: type.Equals("text/html") ? 
+				new HtmlDocumentMetaData("<!doctype html>", "utf-8") : 
+				new PdfDocumentMetaData("v1", "encoding"),
+			indexedTerms: indexedTerms,
 			type: type,
 			content: Encoding.UTF8.GetBytes(content),
 			extractedLinks: extractedLinks!,

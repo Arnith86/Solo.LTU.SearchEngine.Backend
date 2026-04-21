@@ -1,3 +1,5 @@
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+
 namespace LTU.SearchEngine.Test.HelperClasses;
 
 public static class IndexDocumentBuilder
@@ -10,6 +12,7 @@ public static class IndexDocumentBuilder
         IReadOnlyList<string> titleTermPositions, 
         IReadOnlyList<string> headerTermPositions, 
         IReadOnlyList<string> contentTermPositions,  
+        bool isMetaDataPdf = false,
         string url = "http://test.html", 
         string title = "Test Title",
         string language = "sv",
@@ -23,6 +26,9 @@ public static class IndexDocumentBuilder
             url: url, 
             title: title,
             language: language,
+            documentMetaData: isMetaDataPdf.Equals(true)    ? 
+				new PdfDocumentMetaData("v1", "encoding")   :
+				new HtmlDocumentMetaData("<!doctype html>", "utf-8"),
             outgoingLinks: outgoingLinks,
             titleTerms: titleTerms, 
             headerTerms: headerTerms, 
@@ -36,6 +42,7 @@ public static class IndexDocumentBuilder
     }
     
     public static IndexDocument BuildIndexDocument(
+        bool isMetaDataPdf = false,
         string url = "http://test.html", 
         string title = "Test Title",
         string language = "sv",
@@ -56,6 +63,9 @@ public static class IndexDocumentBuilder
             url: url, 
             title: title,
             language: language,
+            documentMetaData: isMetaDataPdf.Equals(true)    ? 
+				new PdfDocumentMetaData("v1", "encoding")   :
+				new HtmlDocumentMetaData("<!doctype html>", "utf-8"),  
             outgoingLinks: dummyOutgoingLinks,
             titleTerms: dummyTitleTerms, 
             headerTerms: dummyHeaderTerms, 

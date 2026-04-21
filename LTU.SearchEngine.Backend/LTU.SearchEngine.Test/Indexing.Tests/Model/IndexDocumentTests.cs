@@ -12,7 +12,8 @@ public class IndexDocumentTests
         Dictionary<string, int> contentTerms,
         List<string> titleTermsPositions, 
         List<string> headerTermsPositions, 
-        List<string> contentTermPositions
+        List<string> contentTermPositions,
+        bool IsMetaDataPdf = false
         )
     {
         return IndexDocumentBuilder.BuildIndexDocument(
@@ -20,6 +21,7 @@ public class IndexDocumentTests
             url: "https://test.com", 
             title: "Test", 
             language: "en", 
+            isMetaDataPdf: IsMetaDataPdf,
             titleTerms: titleTerms,
             headerTerms: headerTerms, 
             contentTerms: contentTerms, 
