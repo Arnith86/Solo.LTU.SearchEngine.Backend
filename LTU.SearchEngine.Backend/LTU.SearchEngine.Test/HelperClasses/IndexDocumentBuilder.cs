@@ -4,6 +4,43 @@ namespace LTU.SearchEngine.Test.HelperClasses;
 
 public static class IndexDocumentBuilder
 {
+    // MetaData manually set 
+    public static IndexDocument BuildIndexDocument(
+        IEnumerable<string> outgoingLinks,
+        IReadOnlyDictionary<string, int> titleTerms, 
+        IReadOnlyDictionary<string, int> headerTerms, 
+        IReadOnlyDictionary<string, int> contentTerms,
+        IReadOnlyList<string> titleTermPositions, 
+        IReadOnlyList<string> headerTermPositions, 
+        IReadOnlyList<string> contentTermPositions,  
+        DocumentMetaData metaData,
+        string url = "http://test.html", 
+        string title = "Test Title",
+        string language = "sv",
+        string contentHash = "x",
+        DateTime lastCrawl = default
+        )
+    {
+        var tempCrawl = lastCrawl == default ? DateTime.UtcNow : lastCrawl;
+
+        return new IndexDocument(
+            url: url, 
+            title: title,
+            language: language,
+            documentMetaData: metaData,
+            outgoingLinks: outgoingLinks,
+            titleTerms: titleTerms, 
+            headerTerms: headerTerms, 
+            contentTerms: contentTerms,
+            titleTermPositions: titleTermPositions, 
+            headerTermPositions: headerTermPositions, 
+            contentTermPositions: contentTermPositions,  
+            contentHash: contentHash,
+            lastCrawl: tempCrawl
+        );
+    }
+   
+    // MetaData with default values
     public static IndexDocument BuildIndexDocument(
         IEnumerable<string> outgoingLinks,
         IReadOnlyDictionary<string, int> titleTerms, 
@@ -27,8 +64,8 @@ public static class IndexDocumentBuilder
             title: title,
             language: language,
             documentMetaData: isMetaDataPdf.Equals(true)    ? 
-				new PdfDocumentMetaData("v1", "encoding")   :
-				new HtmlDocumentMetaData("<!doctype html>", "utf-8"),
+				new PdfDocumentMetaData(pdfVersion: "v1", encodingType: "encoding")   :
+				new HtmlDocumentMetaData( docType:"<!doctype html>", charSet:"utf-8"),
             outgoingLinks: outgoingLinks,
             titleTerms: titleTerms, 
             headerTerms: headerTerms, 
@@ -41,6 +78,7 @@ public static class IndexDocumentBuilder
         );
     }
     
+    // All default values
     public static IndexDocument BuildIndexDocument(
         bool isMetaDataPdf = false,
         string url = "http://test.html", 
@@ -64,8 +102,8 @@ public static class IndexDocumentBuilder
             title: title,
             language: language,
             documentMetaData: isMetaDataPdf.Equals(true)    ? 
-				new PdfDocumentMetaData("v1", "encoding")   :
-				new HtmlDocumentMetaData("<!doctype html>", "utf-8"),  
+				new PdfDocumentMetaData(pdfVersion: "v1", encodingType: "encoding")   :
+				new HtmlDocumentMetaData( docType:"<!doctype html>", charSet:"utf-8"),
             outgoingLinks: dummyOutgoingLinks,
             titleTerms: dummyTitleTerms, 
             headerTerms: dummyHeaderTerms, 
