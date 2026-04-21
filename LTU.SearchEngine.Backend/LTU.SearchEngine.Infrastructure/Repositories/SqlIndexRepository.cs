@@ -131,15 +131,15 @@ public class SqlIndexRepository : IIndexRepository
         {
             // Remove old word frequencies/positions and page links for the page before adding new ones to avoid duplicates
             ClearExistingPageData(context, page.Id);
-
-            // Update page metadata
-            page.Title = document.Title;
-            page.LastCrawled = document.LastCrawl;
-            page.ContentHash = document.ContentHash;
-            page.WordCount = document.TotalWordCount;
-            page.Language = document.Language;
-            SetDocumentMetaData(context, document, page);
         }
+
+        // Update page metadata
+        page.Title = document.Title;
+        page.LastCrawled = document.LastCrawl;
+        page.ContentHash = document.ContentHash;
+        page.WordCount = document.TotalWordCount;
+        page.Language = document.Language;
+        SetDocumentMetaData(context, document, page);
 
         return page;
     }
