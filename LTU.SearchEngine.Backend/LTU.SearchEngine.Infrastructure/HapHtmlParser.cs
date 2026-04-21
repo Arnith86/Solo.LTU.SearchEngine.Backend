@@ -199,7 +199,7 @@ public class HapHtmlParser : IHtmlParser
         
         
         string charSet = 
-            doc.DocumentNode.SelectSingleNode("//meta[@charset]").GetAttributeValue("charset", "")
+            doc.DocumentNode.SelectSingleNode("//meta[@charset]")?.GetAttributeValue("charset", "")
             ?? doc.DocumentNode.SelectSingleNode("//meta[@http-equiv='Content-Type']")?.GetAttributeValue("content", "")
             ?? "UTF-8"; // Default
 
