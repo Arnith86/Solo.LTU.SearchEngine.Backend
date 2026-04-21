@@ -1,4 +1,5 @@
 ﻿using LTU.SearchEngine.Backend.Core;
+using LTU.SearchEngine.Backend.Core.Enums;
 using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Infrastructure;
 using LTU.SearchEngine.Infrastructure.Configurations;
@@ -140,6 +141,54 @@ public class ParserTests
 		//Assert
 		Assert.Equal("Test: Text Extraction Quality", result);
 	}
+
+
+    [Fact]
+    public void ExtractHtmlMetaData_WithValidHtml_ReturnsCorrectMetaData()
+    {
+        // Arrange
+        var html = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"></head></html>";
+
+        // Act
+        var result = _sut.ExtractHtmlMetaData(html);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal("UTF-8", result.CharSet);
+        Assert.Equal("<!DOCTYPE html>", result.DocType);
+        Assert.Equal(DocumentMetaDataType.Html, result.MetaDataType);
+    }
+
+
+    [Fact]
+    public void ExtractHtmlMetaData_WhenMetaTagsMissing_ReturnsDefaultValues()
+    {
+        // Arrange 
+        var html = "<html><body>No meta here</body></html>";
+
+        // Act
+        var result = _sut.ExtractHtmlMetaData(html);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal("utf-8", result.CharSet); // defaults to "utf-8"
+        Assert.Equal("Unknown", result.DocType); // defaults to "Unknown"
+    }
+
+
+    [Fact]
+    public void ExtractHtmlMetaData_WithLegacyContentType_ExtractsEncoding()
+    {
+        // Arrange
+        var html = "<html><head><meta http-equiv='Content-Type' content='text/html; charset=ISO-8859-1'></head></html>";
+
+        // Act
+        var result = _sut.ExtractHtmlMetaData(html);
+
+        // Assert
+        Assert.Contains("ISO-8859-1", result.CharSet);
+    }
+
 
 	[Theory]
     [InlineData("NULL_TEST")]
