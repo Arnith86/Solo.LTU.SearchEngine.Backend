@@ -1,4 +1,6 @@
-﻿using LTU.SearchEngine.Test.HelperClasses;
+﻿using LTU.SearchEngine.Backend.Core.Enums;
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using LTU.SearchEngine.Test.HelperClasses;
 
 namespace LTU.SearchEngine.Test.Indexing.Tests.Model;
 
@@ -40,6 +42,7 @@ public class IndexDocumentTests
         var url = "https://ltu.se";
         var title = "Lulea Tennis University";
         var language = "sv";
+        var htmlMetaData = new HtmlDocumentMetaData(charSet: "utf-8", docType: "<!doctype html>");
         var links = new List<string> { "dummyLink" };
         var titleTerms = new Dictionary<string, int> { { "ltu", 1 } };
         var headerTerms = new Dictionary<string, int> { { "fortuning", 1 }, { "fun", 1 }, { "fast", 1} };
@@ -55,6 +58,7 @@ public class IndexDocumentTests
             url: url, 
             title: title,
             language: language, 
+            metaData: htmlMetaData,
             outgoingLinks: links,
             titleTerms: titleTerms, 
             headerTerms: headerTerms, 
@@ -70,6 +74,12 @@ public class IndexDocumentTests
         Assert.Equal(url, sut.Url);
         Assert.Equal(title, sut.Title);
         Assert.Equal(language, sut.Language);
+       
+        Assert.Equal(DocumentMetaDataType.Html, sut.MetaData.MetaDataType);
+        var metaData = Assert.IsType<HtmlDocumentMetaData>(sut.MetaData);
+        Assert.Equal("utf-8", metaData.CharSet);
+        Assert.Equal("<!doctype html>", metaData.DocType);
+       
         Assert.Equal(hash, sut.ContentHash);
         Assert.Equal(now, sut.LastCrawl);
 

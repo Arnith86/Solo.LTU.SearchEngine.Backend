@@ -201,9 +201,9 @@ public class HapHtmlParser : IHtmlParser
         string charSet = 
             doc.DocumentNode.SelectSingleNode("//meta[@charset]")?.GetAttributeValue("charset", "")
             ?? doc.DocumentNode.SelectSingleNode("//meta[@http-equiv='Content-Type']")?.GetAttributeValue("content", "")
-            ?? "UTF-8"; // Default
+            ?? "utf-8"; // Default
 
-        return new HtmlDocumentMetaData(charSet, docType); 
+        return new HtmlDocumentMetaData(charSet: charSet, docType: docType); 
     }
 
     private bool IsSupportedResourceType(Uri uri)
