@@ -179,7 +179,7 @@ public class HapHtmlParser : IHtmlParser
         return terms;
     }
     
-
+    /// <inheritdoc/>
     public HtmlDocumentMetaData ExtractHtmlMetaData(string htmlString)
     {
         string docType = "Unknown";
@@ -198,9 +198,10 @@ public class HapHtmlParser : IHtmlParser
         doc.LoadHtml(htmlString);
         
         
-        string charSet = doc.DocumentNode.SelectSingleNode("//meta[@charset]").GetAttributeValue("charset", "")
-                    ?? doc.DocumentNode.SelectSingleNode("//meta[@http-equiv='Content-Type']")?.GetAttributeValue("content", "")
-                    ?? "UTF-8"; // Default
+        string charSet = 
+            doc.DocumentNode.SelectSingleNode("//meta[@charset]").GetAttributeValue("charset", "")
+            ?? doc.DocumentNode.SelectSingleNode("//meta[@http-equiv='Content-Type']")?.GetAttributeValue("content", "")
+            ?? "UTF-8"; // Default
 
         return new HtmlDocumentMetaData(charSet, docType); 
     }
