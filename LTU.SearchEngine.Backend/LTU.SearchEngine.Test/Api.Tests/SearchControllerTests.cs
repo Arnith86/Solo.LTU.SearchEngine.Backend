@@ -31,7 +31,7 @@ public class SearchControllerTests
 
         var fakeItems = new List<DocumentDTO>
         {
-            new DocumentDTO("Test", "http://test.com", "sv"/*, "Test snippet"*/)
+            new DocumentDTO(1, "Test", "http://test.com", "sv"/*, "Test snippet"*/)
         };
 
         var expectedDto = new SearchResponseDTO(
@@ -155,5 +155,48 @@ public class SearchControllerTests
 
         // Act & Assert
         await Assert.ThrowsAsync<System.Exception>(() => _controller.GetSearchResponses(query));
+    }
+
+    [Fact]
+    public async Task GetSearchResponses_QueryTooLong_ReturnsBadRequest()
+    {
+        // Arrange: Create a string longer than 500 characters
+        var longQuery = new string('a', 501);
+
+        // Act
+        var result = await _controller.GetSearchResponses(longQuery);
+
+        // Assert
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal("Query length is limited to 500 characters!", badRequest.Value);
+    }
+   
+   
+    [Fact]
+    public async Task GetSearchResponses_DeepPagination_ReturnsBadRequest()
+    {
+        // Arrange
+        var query = "query";
+
+        // Act
+        var result = await _controller.GetSearchResponses(query, pageNumber: 101);
+
+        // Assert
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal("Deep pagination is restricted. Please refine your query!", badRequest.Value);
+    }
+
+    [Fact]
+    public async Task GetSearchResponses_NegativePageNumber_ReturnsBadRequest()
+    {
+        // Arrange
+        var query = "query";
+
+        // Act
+        var result = await _controller.GetSearchResponses(query, pageNumber: -1);
+
+        // Assert
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal("Page number must be 1 or greater.", badRequest.Value);
     }
 }
