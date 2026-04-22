@@ -1,6 +1,7 @@
 ﻿using LTU.SearchEngine.Application;
 using LTU.SearchEngine.Backend.Core.Model.DTOs;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Swashbuckle.AspNetCore.Annotations;
 
 namespace LTU.SearchEngine.Api
@@ -8,6 +9,7 @@ namespace LTU.SearchEngine.Api
 
     [ApiController]
     [Route("api/[controller]")]
+    [EnableRateLimiting("PublicSearchPolicy")]
     public class SearchController : ControllerBase
     {
         private readonly IServiceManager _serviceManager;
