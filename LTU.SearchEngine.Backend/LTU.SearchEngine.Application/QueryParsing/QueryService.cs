@@ -46,6 +46,7 @@ public class QueryService : IQueryService
 
 		return new SearchResponseDTO(
 			searchResults: documentResults.Select(doc => new DocumentDTO(
+				Id : doc.Id,
 				Url : doc.Url,
 				Title : doc.Title,
 				Language : doc.Language)
