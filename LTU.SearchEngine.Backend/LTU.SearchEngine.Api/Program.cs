@@ -18,6 +18,7 @@ using LTU.SearchEngine.Infrastructure.Crawling;
 using LTU.SearchEngine.Infrastructure.Data;
 using LTU.SearchEngine.Infrastructure.Indexing;
 using LTU.SearchEngine.Infrastructure.Repositories;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace LTU.SearchEngine.Backend.Api;
@@ -27,7 +28,7 @@ public partial class Program
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
-
+        
         // ========================================================================
         // 1. Configuration & Settings
         // ========================================================================
@@ -126,9 +127,30 @@ public partial class Program
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
 
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("PublicApi",
+                policy =>
+                {
+                    policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+                });
+        });
+
+        builder.Services.AddRateLimiter(options =>
+        {
+           options.AddFixedWindowLimiter("PublicSearchPolicy", opt =>
+           {
+                opt.Window = TimeSpan.FromSeconds(10);
+                opt.PermitLimit = 5;   
+                opt.QueueLimit = 4;
+           });
+        });
+
         var app = builder.Build();
 
 		app.ConfigureExceptionHandler();
+        app.UseCors("PublicApi");
+        app.UseRateLimiter();
 
 		// Configure the HTTP request pipeline.
 		if (app.Environment.IsDevelopment())
