@@ -50,7 +50,7 @@ namespace LTU.SearchEngine.Api
             if (pageNumber < 1) return BadRequest("Page number must be 1 or greater.");
             if (pageNumber > 100) return BadRequest("Deep pagination is restricted. Please refine your query!");
 
-            var responseDto = await _serviceManager.QueryService.GetSearchResultsAsync(query, language);
+            var responseDto = await _serviceManager.QueryService.GetSearchResultsAsync(query.Trim(), language);
 
             return Ok(responseDto);
         }
