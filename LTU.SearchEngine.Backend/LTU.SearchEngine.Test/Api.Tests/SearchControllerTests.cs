@@ -61,6 +61,29 @@ public class SearchControllerTests
         _mockQueryService.Verify(s => s.GetSearchResultsAsync(validQuery), Times.Once);
     }
 
+
+    [Theory]
+    [InlineData(" test search ", "test search")]
+    [InlineData("test search ", "test search")]
+    [InlineData(" test OR search", "test OR search")]
+    [InlineData("    test search ", "test search")]
+    [InlineData(" test search    ", "test search")]
+    [InlineData(" test AND search ", "test AND search")]
+    public async Task GetSearchResponses_ShouldTrimQuery_WhenQueryIsValidButHasLeadingOrTrailingWhiteSpaces(
+        string input, string expectedTrim)
+    {
+        // Arrange
+        _mockQueryService
+            .Setup(s => s.GetSearchResultsAsync(It.IsAny<string>()));
+      
+        // Act
+        var result = await _controller.GetSearchResponses(input);
+
+        // Assert
+        _mockQueryService.Verify(s => s.GetSearchResultsAsync(expectedTrim), Times.Once);
+    }
+
+
     [Fact]
     public async Task GetSearchResponses_ShouldReturnOkWithEmptyList_WhenNoMatchesFound()
     {
