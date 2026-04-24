@@ -1,8 +1,11 @@
-﻿using LTU.SearchEngine.Backend.Core;
+﻿using System.Diagnostics;
+using LTU.SearchEngine.Backend.Core;
 using LTU.SearchEngine.Backend.Core.Entities;
+using LTU.SearchEngine.Backend.Core.Enums;
 using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 using LTU.SearchEngine.Infrastructure.Data;
 using LTU.SearchEngine.Infrastructure.Repositories;
 using LTU.SearchEngine.Test.HelperClasses;
@@ -190,6 +193,98 @@ public class SqlIndexRepositoryTests : IDisposable
         Assert.NotNull(resultId);
         Assert.Null(noMatch);
         Assert.Equal(resultId, 1);
+    }
+
+
+    [Fact]
+    public async Task GetDocumentIdsForPhraseAsync_ShouldReturnPagesWithExactOrderedSequence()
+    {
+        // Arrange: 
+        await using var setupContext = await _factory.CreateDbContextAsync();
+
+        var pageMatch = new Page { Url = "https://match.com", Title = "Exact Match" };
+        var pageWrongOrder = new Page { Url = "https://wrongorder.com", Title = "Wrong Order" };
+        var pageGap = new Page { Url = "https://gap.com", Title = "Has Gap" };
+
+        var termQuick = new Term { Word = "quick" };
+        var termBrown = new Term { Word = "brown" };
+        var termFox = new Term { Word = "fox" };
+
+        setupContext.Pages.AddRange(pageMatch, pageWrongOrder, pageGap);
+        setupContext.Terms.AddRange(termQuick, termBrown, termFox);
+        await setupContext.SaveChangesAsync();
+
+        // Setup exact match "quick" (pos 0), "brown" (pos 1), "fox" (pos 2)
+        SetupPhrase(
+            setupContext, pageMatch, 
+            0, 1, 2,
+            termQuick, termBrown, termFox
+        );
+
+        // Setup wrong match "fox" (0), "brown" (1), "quick" (2)
+        SetupPhrase(
+            setupContext, pageWrongOrder, 
+            2, 1, 0,
+            termQuick, termBrown, termFox
+        );
+
+        // Setup phrase with gap "quick" (0), "brown" (1), ... "fox" (5)
+        SetupPhrase(
+            setupContext, pageGap, 
+            0, 1, 5, 
+            termQuick, termBrown, termFox
+        );
+
+        await setupContext.SaveChangesAsync();
+
+        // Create the PhraseNode to search for "quick brown fox"
+        var tokens = new List<ExtractedQueryToken>
+        {
+            new ExtractedQueryToken(QueryTokenType.Phrase, "quick", "en"),
+            new ExtractedQueryToken(QueryTokenType.Phrase, "brown", "en"),
+            new ExtractedQueryToken(QueryTokenType.Phrase, "fox", "en")
+        };
+        
+        var phraseNode = new PhraseNode<HashSet<int>>(tokens);
+
+        // Act
+        var resultIds = await _sut.GetDocumentIdsForPhraseAsync(phraseNode);
+       
+        // Assert
+        Assert.Single(resultIds); // Only one page should match exactly
+        Assert.Contains(pageMatch.Id, resultIds);
+        Assert.DoesNotContain(pageWrongOrder.Id, resultIds);
+        Assert.DoesNotContain(pageGap.Id, resultIds);
+    }
+
+    private static void SetupPhrase(
+        SearchDbContext setupContext, 
+        Page page,
+        int termPosition1,
+        int termPosition2,
+        int termPosition3,
+        Term termQuick,
+        Term termBrown,
+        Term termFox
+        )
+    {
+        setupContext.PageWordPositions.AddRange(
+            new PageWordPosition{ 
+                PageId = page.Id, TermId = termQuick.Id, 
+                Position = termPosition1, 
+                TermSource = TermSource.Body 
+            },
+            new PageWordPosition{ 
+                PageId = page.Id, TermId = termBrown.Id, 
+                Position = termPosition2, 
+                TermSource = TermSource.Body
+            },
+            new PageWordPosition{ 
+                PageId = page.Id, TermId = termFox.Id, 
+                Position = termPosition3, 
+                TermSource = TermSource.Body 
+            }
+        );
     }
 
 

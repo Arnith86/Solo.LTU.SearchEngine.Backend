@@ -33,30 +33,30 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 	{
 		if (stringBuilder.Length == 0) return;
 
-
-		var token = stringBuilder.ToString().Trim();
-        var extractedToken = new ExtractedQueryToken(queryTokenType, token, languageCode);
-
-        // Normalize BEFORE creating ExtractedQueryToken
-        if (queryTokenType == QueryTokenType.Term ||
-			queryTokenType == QueryTokenType.Phrase)
+		var originalText = stringBuilder.ToString().Trim();
+		string finalToken;
+      
+	  	// Handles term and phrase normalization and token creation
+	    if (queryTokenType == QueryTokenType.Term || queryTokenType == QueryTokenType.Phrase)
 		{
-			token = _normalizer.Normalize(token, languageCode);
-			
-			if (token == null)
-			{
-				stringBuilder.Clear();
-				return;
-			}
-			else
-			{
-				extractedToken = new ExtractedQueryToken(queryTokenType, token, languageCode);	
-			}
+			var words = originalText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+			var normalizedWords = words
+				.Select(word => _normalizer.Normalize(word, languageCode))
+				.Where(nWord => !string.IsNullOrWhiteSpace(nWord));  
+
+			finalToken = string.Join(' ', normalizedWords);	
+		}
+		else
+		{
+			finalToken = originalText;
 		}
 
-        if (token.Length > 0)
-			tokens.Add(extractedToken);
-
+		if (!string.IsNullOrWhiteSpace(finalToken))
+		{
+			tokens.Add(new ExtractedQueryToken(queryTokenType, finalToken, languageCode));
+		}
+        
 		stringBuilder.Clear();
 	}
 
