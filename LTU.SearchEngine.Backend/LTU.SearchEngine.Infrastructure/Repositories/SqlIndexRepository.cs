@@ -74,9 +74,37 @@ public class SqlIndexRepository : IIndexRepository
 			.ToListAsync();
 	}
 
-	public Task<HashSet<int>> GetDocumentIdsForPhraseAsync(PhraseNode<HashSet<int>> phrase)
+	public async Task<HashSet<int>> GetDocumentIdsForPhraseAsync(PhraseNode<HashSet<int>> phraseNode)
 	{
-		throw new NotImplementedException();
+        await using var context = await _factory.CreateDbContextAsync();
+
+        var tokenStrings = phraseNode.Phrase
+            .Select(t => t.Token).ToList();
+
+
+        var firstTerm = tokenStrings[0];
+
+        // First part of a deferred execution of the phrase search.
+        var query = context.PageWordPositions
+            .Where(pwp => pwp.Term.Word.Equals(firstTerm))
+            .Select(pwp => new { pwp.PageId, firstWordPosition = pwp.Position});
+
+        // Build the rest of the query by chaining the subsequent words using Inner Joins
+        for (int i = 0; i < tokenStrings.Count; i++)
+        {
+            var currentTerm = tokenStrings[i];
+            int offset = i;
+
+            query = 
+                from q in query
+                join next in context.PageWordPositions on q.PageId equals next.PageId
+                where next.Term.Word.Equals(currentTerm)  && next.Position == q.firstWordPosition + offset
+                select new { q.PageId, q.firstWordPosition };
+        }    
+        
+        var result = await query.Select(q => q.PageId).ToHashSetAsync();
+
+		return result;
 	}
 
     public async Task<int?> GetExistingDocumentByHashAsync(string hash)
