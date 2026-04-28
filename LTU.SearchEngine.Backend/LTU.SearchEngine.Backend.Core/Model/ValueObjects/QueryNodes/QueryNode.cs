@@ -1,4 +1,5 @@
-﻿using LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
+﻿using System.Runtime.CompilerServices;
+using LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
 
 namespace LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 

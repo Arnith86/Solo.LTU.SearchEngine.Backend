@@ -10,8 +10,8 @@ public class ExtractedQueryToken
 
 	public ExtractedQueryToken(QueryTokenType tokenType, string token, string language = "sv")
 	{
-		if (string.IsNullOrWhiteSpace(token))
-			throw new ArgumentException("Token cannot be empty.", nameof(token));
+		// if (string.IsNullOrWhiteSpace(token))
+		// 	throw new ArgumentException("Token cannot be empty.", nameof(token));
 
 		if (tokenType.Equals(QueryTokenType.LogicalOperator) && token.Length > 3)
 			throw new ArgumentOutOfRangeException(

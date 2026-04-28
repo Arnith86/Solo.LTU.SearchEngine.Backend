@@ -52,7 +52,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 			finalToken = originalText;
 		}
 
-		if (!string.IsNullOrWhiteSpace(finalToken))
+		if (/*!string.IsNullOrWhiteSpace(finalToken)*/finalToken is not null)
 		{
 			tokens.Add(new ExtractedQueryToken(queryTokenType, finalToken, languageCode));
 		}
@@ -139,7 +139,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 				continue;
 			}
 
-			// Appends phrase characters
+			// Appends phrase characters and flushes phrase if is edge of phrase
 			action = TryHandleIsEdgeOfPhrase(
 				input, tokens, stringBuilder, ref isBuildingAPhrase, index, character, ResolveLanguage(singleTermPhraseLanguage, globalLanguage)
 			);

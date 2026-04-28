@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using LTU.SearchEngine.Backend.Core;
+﻿using LTU.SearchEngine.Backend.Core;
 using LTU.SearchEngine.Backend.Core.Entities;
 using LTU.SearchEngine.Backend.Core.Enums;
 using LTU.SearchEngine.Backend.Core.Model;
