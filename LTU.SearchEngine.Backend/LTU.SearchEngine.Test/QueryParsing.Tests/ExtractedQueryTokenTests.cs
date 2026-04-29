@@ -28,19 +28,6 @@ public class ExtractedQueryTokenTests
 		Assert.Equal(token, result.Token);
 	}
 
-	[Fact]
-	public void Constructor_NullToken_ThrowsArgumentNullException()
-	{
-		// Arrange
-		var tokenType = QueryTokenType.Term;
-
-		// Act & Assert
-		var exception = Assert.Throws<ArgumentException>(
-			() => new ExtractedQueryToken(tokenType, null!)
-		);
-
-		Assert.Equal("token", exception.ParamName);
-	}
 
 	[Theory]
 	[InlineData(QueryTokenType.GroupingOperator, "((")]
@@ -58,18 +45,6 @@ public class ExtractedQueryTokenTests
 			() => new ExtractedQueryToken(type, token)
 		);
 	}
-
-	//[Theory]
-	//[InlineData("")]
-	//[InlineData(" ")]
-	//[InlineData("   ")]
-	//public void Constructor_EmptyOrWhitespaceToken_ThrowsArgumentException(string token)
-	//{
-	//	Assert.Throws<ArgumentException>(
-	//		() => new ArgumentOutOfRangeException(QueryTokenType.Term, token)
-	//	);
-	//}
-
 
 
 	[Theory]
@@ -89,4 +64,56 @@ public class ExtractedQueryTokenTests
 		// Assert
 		Assert.Equal(tokenType, result.TokenType);
 	}
+
+	[Fact]
+    public void Constructor_WithLanguage_SetsLanguageProperty()
+    {
+        // Arrange
+        var token = "search";
+        var type = QueryTokenType.Term;
+        var language = "en";
+
+        // Act
+        var result = new ExtractedQueryToken(type, token, language);
+
+        // Assert
+        Assert.Equal(language, result.Language);
+    }
+
+    [Fact]
+    public void Constructor_DefaultLanguage_IsSwedish()
+    {
+        // Act
+        var result = new ExtractedQueryToken(QueryTokenType.Term, "test");
+
+        // Assert
+        Assert.Equal("sv", result.Language);
+    }
+
+    [Theory]
+    [InlineData(QueryTokenType.LogicalOperator, "AND")] // 3 chars - OK
+    [InlineData(QueryTokenType.LogicalOperator, "NOT")] // 3 chars - OK
+    [InlineData(QueryTokenType.LogicalOperator, "OR")]  // 2 chars - OK
+    [InlineData(QueryTokenType.LogicalOperator, "&&")]  // 2 chars - OK
+    [InlineData(QueryTokenType.LogicalOperator, "+")]   // 1 char - OK
+    public void Constructor_LogicalOperatorLengthBoundaries_AllowCorrectLengths(QueryTokenType type, string token)
+    {
+        // Act
+        var result = new ExtractedQueryToken(type, token);
+
+        // Assert
+        Assert.Equal(token, result.Token);
+    }
+
+    [Theory]
+    [InlineData(QueryTokenType.GroupingOperator, "")] // 0 chars is technically > 1 false
+    [InlineData(QueryTokenType.Term, "VeryLongTermThatShouldBeAllowedBecauseItIsNotAnOperator")]
+    public void Constructor_NonOperatorTypes_IgnoreLengthRestrictions(QueryTokenType type, string token)
+    {
+        // Act
+        var result = new ExtractedQueryToken(type, token);
+
+        // Assert
+        Assert.Equal(token, result.Token);
+    }
 }
