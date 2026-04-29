@@ -1,5 +1,4 @@
-﻿using System.Runtime.CompilerServices;
-using LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
+﻿using LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
 
 namespace LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 
@@ -19,17 +18,16 @@ public class PhraseNode<T> : QueryNode<T>, IIsVoidable
 	/// <summary>Initializes a new instance of the <see cref="PhraseNode{T}"/> class.</summary>
 	/// <param name="phrase">A list of <see cref="ExtractedQueryToken"/> forming the phrase. Cannot be null.</param>
 	/// <exception cref="ArgumentNullException">Thrown if the provided phrase list is null.</exception>
-	/// <exception cref="ArgumentException">Thrown if the provided phrase list is empty.</exception>
 	public PhraseNode(List<ExtractedQueryToken> phrase)
 	{
-		ValidatePhrase(phrase);
-		Phrase = phrase;
+		Phrase = phrase ?? throw new ArgumentNullException(nameof(phrase), "must have a value.");
 	}
 
 	/// <inheritdoc/>
 	public override Task<T> AcceptAsync(IQueryVisitor<T> visitor)
 		=> visitor.VisitAsync(this);
 
+	/// <inheritdoc/>
 	public bool IsVoid() 
 		=>  Phrase == null || Phrase.Count == 0 || Phrase.All( t => string.IsNullOrWhiteSpace(t.Token));
 
@@ -40,13 +38,4 @@ public class PhraseNode<T> : QueryNode<T>, IIsVoidable
 	/// <returns>The currently stored phrase as a single string.</returns>
 	public override string ToString() 
 		=> $"\"{string.Join(" ", Phrase.Select(t => t.Token))}\"";
-
-	private void ValidatePhrase(List<ExtractedQueryToken> phrase)
-	{
-		if (phrase is null)
-			throw new ArgumentNullException(nameof(phrase), "must have a value.");
-
-		// if (phrase.Count < 1)
-		// 	throw new ArgumentException(nameof(phrase), "cannot be empty.");
-	}
 }
