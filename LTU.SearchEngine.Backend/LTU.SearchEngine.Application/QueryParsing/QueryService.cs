@@ -27,11 +27,10 @@ public class QueryService : IQueryService
 	/// <inheritdoc/>
 	public async Task<SearchResponseDTO> GetSearchResultsAsync(string rawQuery, string languageCode = "sv")
 	{
-		QueryNode<HashSet<int>> queryNode;
-
+		
 		var stopWatch = Stopwatch.StartNew();
 
-		queryNode = _queryParser.Parse(rawQuery, languageCode);
+		var (queryNode, ignoredTokens) = _queryParser.Parse(rawQuery, languageCode);
 		
 		HashSet<int> resultIds;
 		
@@ -61,7 +60,8 @@ public class QueryService : IQueryService
 			currentPage: 1,
 			pageSize: 1,
 			totalResults: documentResults.Count(),
-			message: timingMessage
+			message: timingMessage,
+			ignoredTokens: ignoredTokens
 		);
 	}
 }

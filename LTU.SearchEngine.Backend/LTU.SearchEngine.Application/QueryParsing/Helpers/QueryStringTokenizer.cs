@@ -1,5 +1,6 @@
 ﻿using LTU.SearchEngine.Backend.Core;
 using LTU.SearchEngine.Backend.Core.Enums;
+using LTU.SearchEngine.Backend.Core.Model.DTOs;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -10,7 +11,7 @@ namespace LTU.SearchEngine.Application.QueryParsing.Helpers;
 /// Implementation of <see cref="IStringTokenizer"/> that handles operator recognition, whitespace <br/>
 /// separation of terms and quote-aware grouping.
 /// </summary>
-public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryTokenType>
+public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, IgnoredTermsDTO>
 {
 	private readonly IQuerySyntaxHelper _syntaxHelper;
     private readonly ITextNormalizer<string> _normalizer;
@@ -25,7 +26,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 
 
 	/// <inheritdoc/>
-	public List<ExtractedQueryToken> Tokenize(string input, string languageCode)
+	public QueryStringTokenizingResult<ExtractedQueryToken, IgnoredTermsDTO> Tokenize(string input, string languageCode)
 	{
 		var session = new QueryStringTokenizationSession(input, languageCode, _syntaxHelper, _normalizer);
 		return session.Execute();
@@ -39,7 +40,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 		private string _globalLanguage;
 		private readonly IQuerySyntaxHelper _querySyntaxHelper;
 		private readonly ITextNormalizer<string> _textNormalizer;
-		private readonly List<ExtractedQueryToken> _ignoredTokens = new();
+		private readonly List<IgnoredTermsDTO> _ignoredTokens = new();
 		private readonly List<ExtractedQueryToken> _tokens = new();
 		private StringBuilder _stringBuilder = new();
 		private bool _isBuildingAPhrase = false;
@@ -57,7 +58,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 			_textNormalizer = normalizer;
 		}
 
-		public List<ExtractedQueryToken> Execute()
+		public QueryStringTokenizingResult<ExtractedQueryToken, IgnoredTermsDTO> Execute()
 		{
 			for (_index = 0; _index < _input.Length; _index++)
 			{
@@ -137,7 +138,9 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 			
 			_querySyntaxHelper.ValidateGrouping(_tokens);
 
-			return _tokens;
+			return new QueryStringTokenizingResult<ExtractedQueryToken, IgnoredTermsDTO>(
+				_tokens, _ignoredTokens
+			); 
 		}
 
 
@@ -153,9 +156,18 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, QueryT
 			{
 				var words = originalText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-				var normalizedWords = words
-					.Select(word => _textNormalizer.Normalize(word, languageCode))
-					.Where(nWord => !string.IsNullOrWhiteSpace(nWord));  
+				var normalizedWords = new List<string>();
+
+				foreach (var word in words)
+				{
+					var normalizedWord = _textNormalizer.Normalize(word, languageCode);
+
+					if (!string.IsNullOrWhiteSpace(normalizedWord))
+						normalizedWords.Add(normalizedWord);
+					else
+						_ignoredTokens.Add(new IgnoredTermsDTO{Token = word, Language = languageCode });
+				}
+
 
 				finalToken = string.Join(' ', normalizedWords);	
 			}

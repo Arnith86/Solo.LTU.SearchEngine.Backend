@@ -1,8 +1,9 @@
-﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
+﻿using LTU.SearchEngine.Backend.Core.Model.DTOs;
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 
 namespace LTU.SearchEngine.Application.QueryParsing;
 
 public interface IQueryParser
 {
-	QueryNode<HashSet<int>> Parse(string rawQuery, string languageCode = "sv");
+	QueryParsingResult<HashSet<int>, IgnoredTermsDTO> Parse(string rawQuery, string languageCode = "sv");
 }
