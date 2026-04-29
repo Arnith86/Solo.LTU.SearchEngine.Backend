@@ -87,18 +87,5 @@ namespace LTU.SearchEngine.Test.QueryParsing.Tests
             // Assert
             Assert.Equal(op, result);
         }
-
-        [Fact]
-        public void CreatingToken_ShouldThrowException_WhenValueIsEmpty()
-        {
-            // Arrange
-            string emptyValue = "";
-
-            // Act & Assert
-            var exception = Assert.Throws<System.ArgumentException>(() =>
-                new ExtractedQueryToken(QueryTokenType.Term, emptyValue));
-
-            Assert.Equal("Token cannot be empty. (Parameter 'token')", exception.Message);
-        }
     }
 }

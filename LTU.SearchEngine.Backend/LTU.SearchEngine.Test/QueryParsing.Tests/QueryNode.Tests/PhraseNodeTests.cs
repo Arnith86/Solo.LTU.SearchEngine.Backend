@@ -34,15 +34,6 @@ public class PhraseNodeTests
 	}
 
 	[Fact]
-	public void Constructor_EmptyPhrase_ThrowsArgumentNullException()
-	{
-		// Act & Assert
-		Assert.Throws<ArgumentException>(
-			() => new PhraseNode<string>(new List<ExtractedQueryToken>())
-		);
-	}
-
-	[Fact]
 	public async Task Accept_CallsVisitOnVisitor_ReturnsExpectedValueAsync()
 	{
 		// Arrange
@@ -63,4 +54,65 @@ public class PhraseNodeTests
 		Assert.Same(expectedResult, result);
 		mockVisitor.Verify(v => v.VisitAsync(node), Times.Once);
 	}
+
+	[Fact]
+    public void IsVoid_EmptyList_ReturnsTrue()
+    {
+        // Arrange
+        var node = new PhraseNode<string>(new List<ExtractedQueryToken>());
+
+        // Act & Assert
+        Assert.True(node.IsVoid());
+    }
+
+    [Fact]
+    public void IsVoid_ValidTokens_ReturnsFalse()
+    {
+        // Arrange
+        var tokens = new List<ExtractedQueryToken> 
+        { 
+            new ExtractedQueryToken(QueryTokenType.Term, "quick"),
+            new ExtractedQueryToken(QueryTokenType.Term, "brown"),
+            new ExtractedQueryToken(QueryTokenType.Term, "fox")
+        };
+        var node = new PhraseNode<string>(tokens);
+
+        // Act & Assert
+        Assert.False(node.IsVoid());
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("\t")]
+    public void IsVoid_ListWithOnlyWhitespaceTokens_ReturnsTrue(string whitespace)
+    {
+        // Arrange
+        var tokens = new List<ExtractedQueryToken> 
+        { 
+            new ExtractedQueryToken(QueryTokenType.Term, whitespace),
+            new ExtractedQueryToken(QueryTokenType.Term, "  ") 
+        };
+        var node = new PhraseNode<string>(tokens);
+
+        // Act & Assert
+        Assert.True(node.IsVoid());
+    }
+
+    [Fact]
+    public void IsVoid_MixedValidAndEmptyTokens_ReturnsFalse()
+    {
+        // Arrange
+        // A phrase is only void if ALL tokens are void/whitespace. 
+        // If there is at least one valid token, the phrase has semantic value.
+        var tokens = new List<ExtractedQueryToken> 
+        { 
+            new ExtractedQueryToken(QueryTokenType.Term, "  "),
+            new ExtractedQueryToken(QueryTokenType.Term, "valid-term") 
+        };
+        var node = new PhraseNode<string>(tokens);
+
+        // Act & Assert
+        Assert.False(node.IsVoid());
+    }
 }

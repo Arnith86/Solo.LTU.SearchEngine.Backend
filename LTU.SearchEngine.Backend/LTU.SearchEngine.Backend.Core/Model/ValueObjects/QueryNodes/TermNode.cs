@@ -11,25 +11,27 @@ namespace LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 /// A TermNode is an atomic element in the Abstract Syntax Tree (AST), representing <br />
 /// an unquoted keyword provided by the user.
 /// </remarks>
-public class TermNode<T> : QueryNode<T>
+public class TermNode<T> : QueryNode<T>, IIsVoidable
 {
 	public string Term { get; }
 
 	/// <summary>Initializes a new instance of the <see cref="TermNode{T}"/> class.</summary>
-	/// <param name="term">The search term string. Cannot be null or whitespace.</param>
-	/// <exception cref="ArgumentNullException">Thrown if the provided term is null or empty.</exception>
+	/// <param name="term">The search term string. Cannot be null.</param>
+	/// <exception cref="ArgumentNullException">Thrown if the provided term is null.</exception>
 	public TermNode(string term)
 	{
-		if (string.IsNullOrWhiteSpace(term))
-			throw new ArgumentNullException(nameof(term), "must have a value.");
+		if (term is null) throw new ArgumentNullException(nameof(term), "must have a value.");
 
 		Term = term;
 	}
 
 
-	/// <inheritdoc>/>
+	/// <inheritdoc/>
 	public override Task<T> AcceptAsync(IQueryVisitor<T> visitor)
 		=> visitor.VisitAsync(this);
+    
+	/// <inheritdoc/>
+	public bool IsVoid() => string.IsNullOrWhiteSpace(Term);
 
 	/// <summary>
 	/// Used for debugging and visualization purposes, returns the term string contained in this node.

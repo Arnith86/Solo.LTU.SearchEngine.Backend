@@ -19,17 +19,12 @@ public class TermNodeTests
 		Assert.Equal(expectedTerm, node.Term);
 	}
 
-	[Theory]
-	[InlineData("NULL_TEST")]
-	[InlineData("")]
-	[InlineData(" ")]
-	public void Constructor_InvalidTerm_ThrowsArgumentNullException(string input)
+	[Fact]
+	public void Constructor_InvalidTerm_ThrowsArgumentNullException()
 	{
-		string? invalidTerm = input.Equals("NULL_TEST") ? null : input;
-
 		// Act & Assert
 		Assert.Throws<ArgumentNullException>(
-			() => new TermNode<string>(invalidTerm!)
+			() => new TermNode<string>(null!)
 		);
 	}
 
@@ -53,4 +48,24 @@ public class TermNodeTests
 		Assert.Equal(expectedResult, result);
 		mockVisitor.Verify(v => v.VisitAsync(node), Times.Once);
 	}
+
+	[Theory]
+    [InlineData("apple", false)]      // Normal word
+    [InlineData("a", false)]          // Single character
+    [InlineData("123", false)]        // Numbers
+    [InlineData("", true)]            // Empty string
+    [InlineData(" ", true)]           // Single space
+    [InlineData("\t\n\r", true)]      // Whitespace characters
+    public void IsVoid_ReturnsExpectedResult(string inputTerm, bool expectedIsVoid)
+    {
+        // Arrange
+        // Note: Constructor allows empty/whitespace but not null
+        var node = new TermNode<string>(inputTerm);
+
+        // Act
+        var result = node.IsVoid();
+
+        // Assert
+        Assert.Equal(expectedIsVoid, result);
+    }
 }

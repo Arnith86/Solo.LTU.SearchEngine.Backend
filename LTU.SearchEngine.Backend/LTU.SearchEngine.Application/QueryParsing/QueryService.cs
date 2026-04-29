@@ -24,15 +24,21 @@ public class QueryService : IQueryService
 		_queryEvaluatorVisitor = queryEvaluatorVisitor;
 	}
 
+	/// <inheritdoc/>
 	public async Task<SearchResponseDTO> GetSearchResultsAsync(string rawQuery, string languageCode = "sv")
 	{
-		QueryNode<HashSet<int>> queryNode;
-
+		
 		var stopWatch = Stopwatch.StartNew();
 
-		queryNode = _queryParser.Parse(rawQuery, languageCode);
+		var (queryNode, ignoredTokens) = _queryParser.Parse(rawQuery, languageCode);
 		
-		var resultIds = await _queryEvaluatorVisitor.ExecuteAsync(queryNode);
+		HashSet<int> resultIds;
+		
+		if (queryNode is IIsVoidable voidableNode && voidableNode.IsVoid()) 
+			resultIds = new HashSet<int>();
+		else
+			resultIds = await _queryEvaluatorVisitor.ExecuteAsync(queryNode);
+		
 		
 		var documentResults = await _indexRepository
 			.GetDocumentsByIdAsync(resultIds.ToList());
@@ -54,7 +60,8 @@ public class QueryService : IQueryService
 			currentPage: 1,
 			pageSize: 1,
 			totalResults: documentResults.Count(),
-			message: timingMessage
+			message: timingMessage,
+			ignoredTokens: ignoredTokens
 		);
 	}
 }

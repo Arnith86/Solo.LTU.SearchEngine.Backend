@@ -10,18 +10,21 @@ public class ExtractedQueryToken
 
 	public ExtractedQueryToken(QueryTokenType tokenType, string token, string language = "sv")
 	{
-		if (string.IsNullOrWhiteSpace(token))
-			throw new ArgumentException("Token cannot be empty.", nameof(token));
-
 		if (tokenType.Equals(QueryTokenType.LogicalOperator) && token.Length > 3)
+		{
 			throw new ArgumentOutOfRangeException(
-				"Logical Operator cannot be longer than 3 characters.", nameof(token)
+				"Logical Operator cannot be longer than 3 characters.", 
+				nameof(token)
 			);
+		}
 
 		if (tokenType.Equals(QueryTokenType.GroupingOperator) && token.Length > 1)
+		{
 			throw new ArgumentOutOfRangeException(
-				"grouping Operator cannot be longer than a single characters.", nameof(token)
+				"grouping Operator cannot be longer than a single characters.", 
+				nameof(token)
 			);
+		}
 
 		Token = token;
 		TokenType = tokenType;

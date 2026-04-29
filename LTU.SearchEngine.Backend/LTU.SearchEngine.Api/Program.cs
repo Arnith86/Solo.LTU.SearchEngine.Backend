@@ -86,7 +86,7 @@ public partial class Program
         builder.Services.AddTransient<IQuerySyntaxHelper, QuerySyntaxHelper>();
 
 		builder.Services.AddTransient<
-            IStringTokenizer<ExtractedQueryToken, QueryTokenType>, 
+            IStringTokenizer<ExtractedQueryToken, IgnoredTermsDTO>, 
             QueryStringTokenizer>();
 		
         builder.Services.AddTransient<
