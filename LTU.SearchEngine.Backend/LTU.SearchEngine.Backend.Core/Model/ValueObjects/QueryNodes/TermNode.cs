@@ -16,12 +16,11 @@ public class TermNode<T> : QueryNode<T>, IIsVoidable
 	public string Term { get; }
 
 	/// <summary>Initializes a new instance of the <see cref="TermNode{T}"/> class.</summary>
-	/// <param name="term">The search term string. Cannot be null or whitespace.</param>
-	/// <exception cref="ArgumentNullException">Thrown if the provided term is null or empty.</exception>
+	/// <param name="term">The search term string. Cannot be null.</param>
+	/// <exception cref="ArgumentNullException">Thrown if the provided term is null.</exception>
 	public TermNode(string term)
 	{
-		if (/*string.IsNullOrWhiteSpace(term)*/term is null)
-			throw new ArgumentNullException(nameof(term), "must have a value.");
+		if (term is null) throw new ArgumentNullException(nameof(term), "must have a value.");
 
 		Term = term;
 	}
@@ -31,6 +30,7 @@ public class TermNode<T> : QueryNode<T>, IIsVoidable
 	public override Task<T> AcceptAsync(IQueryVisitor<T> visitor)
 		=> visitor.VisitAsync(this);
     
+	/// <inheritdoc/>
 	public bool IsVoid() => string.IsNullOrWhiteSpace(Term);
 
 	/// <summary>
@@ -38,5 +38,4 @@ public class TermNode<T> : QueryNode<T>, IIsVoidable
 	/// </summary>
 	/// <returns>The currently stored term.</returns>
 	public override string ToString() => Term;
-
 }
