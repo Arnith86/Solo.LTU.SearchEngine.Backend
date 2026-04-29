@@ -483,5 +483,24 @@ public class QueryTokenizerTests
 		Assert.Equal("sv", banan.Language);
 		Assert.Equal("en", orange.Language);
 	}
+
+	[Fact]
+	public void Flush_WhenWordIsNormalizedToEmpty_ShouldStillAddTokenAndTrackIgnored()
+	{
+		// Arrange
+		_mockNormalizer.Setup(n => n.Normalize("the", "en")).Returns("");
+		var input = "the";
+
+		// Act
+		var result = _sut.Tokenize(input, "en");
+
+		// Assert
+		Assert.Single(result.Tokens); 
+		Assert.Equal(string.Empty, result.Tokens.First().Token);
+		
+		Assert.Single(result.IgnoredTokens);
+		Assert.Equal("the", result.IgnoredTokens.First().Token);
+	}
+
 }
 
