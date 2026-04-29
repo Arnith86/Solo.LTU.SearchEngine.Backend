@@ -11,10 +11,12 @@ namespace LTU.SearchEngine.Backend.Core.Model.DTOs;
 /// <param name="pageSize">The maximum number of items requested per page.</param>
 /// <param name="totalResults">The total number of documents matching the search criteria across all pages.</param>
 /// <param name="message">An optional status or warning message (e.g., "No results found" or "Query expanded").</param>
+/// <param name="ignoredTokens">An optional collection of <see cref="IgnoredTermsDTO"/> representing any tokens that were ignored during query parsing.</param>
 public record SearchResponseDTO(
 	IEnumerable<DocumentDTO> searchResults,
 	int currentPage,
 	int pageSize,
 	int totalResults,
-	string? message
+	string? message,
+	IEnumerable<IgnoredTermsDTO>? ignoredTokens = null
 );
