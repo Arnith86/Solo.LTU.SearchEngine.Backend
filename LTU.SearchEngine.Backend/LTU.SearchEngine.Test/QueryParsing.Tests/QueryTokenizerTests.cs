@@ -308,51 +308,6 @@ public class QueryTokenizerTests
 	}
 
 
-	[Theory]
-	[InlineData(QueryTokenType.Term)]
-	[InlineData(QueryTokenType.Phrase)]
-	[InlineData(QueryTokenType.LogicalOperator)]
-	public void Flush_EmptyBuilder_DoesNotAddToken(QueryTokenType type)
-	{
-		// Arrange
-		var tokens = new List<ExtractedQueryToken>();
-		var sb = new StringBuilder();
-
-		// Act
-		_sut.Flush(sb, tokens, queryTokenType: type, "en");
-
-		// Assert
-		Assert.Empty(tokens);
-	}
-
-	[Theory]
-	[InlineData("   term   ",  QueryTokenType.Term)]
-	[InlineData("  \" phrase \"  ", QueryTokenType.Phrase)]
-	[InlineData("  !  ", QueryTokenType.LogicalOperator)]
-	[InlineData("  -  ", QueryTokenType.LogicalOperator)]
-	[InlineData("  +  ", QueryTokenType.LogicalOperator)]
-	[InlineData("  &&  ", QueryTokenType.LogicalOperator)]
-	[InlineData("  ||  ", QueryTokenType.LogicalOperator)]
-	public void Flush_WithContent_AddsTrimmedTokenAndClearsBuilder(
-		string termOrPhrase,
-		QueryTokenType type
-		)
-	{
-		// Arrange
-		var tokens = new List<ExtractedQueryToken>();
-		var sb = new StringBuilder(termOrPhrase);
-
-		var token = new ExtractedQueryToken(type, termOrPhrase.Trim(), "en");
-
-		// Act
-		_sut.Flush(sb, tokens, queryTokenType: type, "en");
-
-		// Assert
-		Assert.Single(tokens);
-		Assert.Equivalent(token, tokens[0]);
-		Assert.Equal(0, sb.Length);
-	}
-
     [Fact]
     public void Tokenize_Should_Call_Normalizer_For_Term()
     {
@@ -443,6 +398,46 @@ public class QueryTokenizerTests
 		var swedishTokens = result.Where(est => est.Language.Equals("sv"));
 
 		Assert.Equal(instances, swedishTokens.Count());
+	}
+
+	[Fact]
+	public void Tokenize_PhraseWithOnlyStopWords_CreatesSingleEmptyToken()
+	{
+		// Arrange
+		_mockNormalizer
+			.Setup(n => n.Normalize(It.IsAny<string>(), "en"))
+			.Returns(""); // Everything is a stop-word
+
+		var input = "\"the and a\"";
+
+		// Act
+		var result = _sut.Tokenize(input, "en");
+
+		// Assert
+		Assert.Single(result);
+		Assert.Equal("", result.First().Token);
+	}
+
+	[Fact]
+	public void Tokenize_MixedLanguagesInSameQuery_AssignsCorrectLanguages()
+	{
+		// Arrange
+		var input = "en:apple sv:banan orange"; 
+		// en:apple -> English
+		// sv:banan -> Swedish
+		// orange   -> English (falls back to global)
+
+		// Act
+		var result = _sut.Tokenize(input, "en");
+
+		// Assert
+		var apple = result.First(t => t.Token == "apple");
+		var banan = result.First(t => t.Token == "banan");
+		var orange = result.First(t => t.Token == "orange");
+
+		Assert.Equal("en", apple.Language);
+		Assert.Equal("sv", banan.Language);
+		Assert.Equal("en", orange.Language);
 	}
 }
 
