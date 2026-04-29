@@ -55,7 +55,17 @@ public class QueryEvaluatorVisitor : IQueryVisitor<HashSet<int>>
 		}
 	}
 
+
 	/// <inheritdoc/>
+	/// <remarks>
+	/// This implementation evaluates the <see cref="IIsVoidable.IsVoid"/> state of the child nodes before processing.
+	/// <list type="bullet">
+	/// <item>If both nodes are void, an empty result is returned.</item>
+	/// <item>If only one node is void, the operation is bypassed and the non-void node is evaluated directly.</item>
+	/// <item>Otherwise, a set operation (Intersect, Union, or Except) is performed on the results of both branches.</item>
+	/// <item>Special handling for NOT operations ensures that if the left node is void, the entire operation is treated as void to prevent incorrect result sets.</item>
+	/// </list>
+	/// </remarks> 
 	public async Task<HashSet<int>> VisitAsync(LogicOperationNode<HashSet<int>> node)
     {
         bool leftNodeIsVoid = IsNodeVoid(node.LeftNode);
@@ -92,12 +102,9 @@ public class QueryEvaluatorVisitor : IQueryVisitor<HashSet<int>>
 
     private static bool IsNodeVoid(QueryNode<HashSet<int>> node)
     {
-        if (node is IIsVoidable)
-        {
-            var isVoidable = node as IIsVoidable;
-            if (isVoidable!.IsVoid()) return true;
-        }
-
+        if (node is IIsVoidable voidableNode && voidableNode.IsVoid()) 
+			return true;
+        
         return false;
     }
 

@@ -32,9 +32,15 @@ public interface IQueryVisitor<TResult>
 	/// <returns>The result of the operation on the phrase node.</returns>
 	Task<TResult> VisitAsync(PhraseNode<TResult> node);
 
-	/// <summary>Processes a binary logical operation (e.g., AND, OR) or a NOT operation.</summary>
+	/// <summary>
+	/// Processes a binary logical operation (e.g., AND, OR) or a NOT operation.
+	/// </summary>
 	/// <param name="node">The node representing the logical connection between two query branches.</param>
-	/// <returns>The combined result of the binary operation.</returns>
+	/// <returns>
+	/// The combined result of the binary operation. 
+	/// If one branch is void, the visitor may return the result of the non-void branch to simplify the execution.
+	/// If however, both branches are void, then an empty <see cref="TResult"/> is returned.
+	/// </returns> 
 	Task<TResult> VisitAsync(LogicOperationNode<TResult> node);
 
 	/// <summary>Processes a node marked with the required operator (+).</summary>

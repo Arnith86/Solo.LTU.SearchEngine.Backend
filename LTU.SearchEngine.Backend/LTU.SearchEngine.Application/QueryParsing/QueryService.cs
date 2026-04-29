@@ -24,6 +24,7 @@ public class QueryService : IQueryService
 		_queryEvaluatorVisitor = queryEvaluatorVisitor;
 	}
 
+	/// <inheritdoc/>
 	public async Task<SearchResponseDTO> GetSearchResultsAsync(string rawQuery, string languageCode = "sv")
 	{
 		QueryNode<HashSet<int>> queryNode;
@@ -32,7 +33,13 @@ public class QueryService : IQueryService
 
 		queryNode = _queryParser.Parse(rawQuery, languageCode);
 		
-		var resultIds = await _queryEvaluatorVisitor.ExecuteAsync(queryNode);
+		HashSet<int> resultIds;
+		
+		if (queryNode is IIsVoidable voidableNode && voidableNode.IsVoid()) 
+			resultIds = new HashSet<int>();
+		else
+			resultIds = await _queryEvaluatorVisitor.ExecuteAsync(queryNode);
+		
 		
 		var documentResults = await _indexRepository
 			.GetDocumentsByIdAsync(resultIds.ToList());
