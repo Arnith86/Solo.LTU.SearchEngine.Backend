@@ -4,7 +4,6 @@ using LTU.SearchEngine.Backend.Core.Enums;
 using LTU.SearchEngine.Backend.Core.Exceptions;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using Moq;
-using System.Text;
 
 namespace LTU.SearchEngine.Test.QueryParsing.Tests;
 
@@ -73,7 +72,7 @@ public class QueryTokenizerTests
 		var result = _sut.Tokenize(input, "en");
 
 		// Assert 
-		Assert.Equivalent(expected, result);
+		Assert.Equivalent(expected, result.Tokens);
 	}
 
 	[Fact]
@@ -88,12 +87,13 @@ public class QueryTokenizerTests
 
 		// Act 
 		var result = _sut.Tokenize(input, "en");
+		var resultList = result.Tokens.ToList();
 
 		// Assert
-		Assert.Equal(3, result.Count);
-		Assert.Equivalent(cat, result[0]);
-		Assert.Equivalent(helloDolly, result[1]);
-		Assert.Equivalent(dog, result[2]);
+		Assert.Equal(3, resultList.Count);
+		Assert.Equivalent(cat, resultList[0]);
+		Assert.Equivalent(helloDolly, resultList[1]);
+		Assert.Equivalent(dog, resultList[2]);
 	}
 
 	[Fact]
@@ -108,7 +108,7 @@ public class QueryTokenizerTests
 		var result = _sut.Tokenize(input, "en");
 
 		// Assert
-		Assert.Equivalent(new[] { word1, word2}, result);
+		Assert.Equivalent(new[] { word1, word2}, result.Tokens);
 	}
 
 
@@ -116,8 +116,8 @@ public class QueryTokenizerTests
 	public void Tokenize_EmptyInput_ReturnsEmptyList()
 	{
 		// Act & Assert 
-		Assert.Empty(_sut.Tokenize("", "en"));
-		Assert.Empty(_sut.Tokenize("   ", "en"));
+		Assert.Empty(_sut.Tokenize("", "en").Tokens);
+		Assert.Empty(_sut.Tokenize("   ", "en").Tokens);
 	}
 
 
@@ -133,12 +133,13 @@ public class QueryTokenizerTests
 
 		// Act
 		var result = _sut.Tokenize(input, "en");
+		var resultList = result.Tokens.ToList();
 
 		// Assert
-		Assert.Equal(3, result.Count);
-		Assert.Equivalent(start, result[0]);
-		Assert.Equivalent(unclosed, result[1]);
-		Assert.Equivalent(phrase, result[2]);
+		Assert.Equal(3, resultList.Count);
+		Assert.Equivalent(start, resultList[0]);
+		Assert.Equivalent(unclosed, resultList[1]);
+		Assert.Equivalent(phrase, resultList[2]);
 	}
 
     [Fact]
@@ -146,33 +147,44 @@ public class QueryTokenizerTests
     {
         // Arrange
         var input = "apple banana";
-        var result = _sut.Tokenize(input, "en");
+        
+		// Act 
+		var result = _sut.Tokenize(input, "en");
 
-        Assert.Equal(3, result.Count);
-        Assert.Equal(QueryTokenType.Term, result[0].TokenType);
-        Assert.Equal("apple", result[0].Token);
 
-        Assert.Equal(QueryTokenType.LogicalOperator, result[1].TokenType);
-        Assert.Equal("OR", result[1].Token);
+		// Assert 
+		var resultList = result.Tokens.ToList();
+        
+		Assert.Equal(3, resultList.Count);
+        Assert.Equal(QueryTokenType.Term, resultList[0].TokenType);
+        Assert.Equal("apple", resultList[0].Token);
 
-        Assert.Equal(QueryTokenType.Term, result[2].TokenType);
-        Assert.Equal("banana", result[2].Token);
+        Assert.Equal(QueryTokenType.LogicalOperator, resultList[1].TokenType);
+        Assert.Equal("OR", resultList[1].Token);
+
+        Assert.Equal(QueryTokenType.Term, resultList[2].TokenType);
+        Assert.Equal("banana", resultList[2].Token);
     }
 
     [Fact]
     public void Tokenize_MultipleTermsSeparatedBySpaces_InsertsImplicitOrBetweenAll()
     {
-		//Arrange
+		// Arrange
 		var input = "apple banana orange";
-        var result = _sut.Tokenize(input, "en");
+        
+		// Act 
+		var result = _sut.Tokenize(input, "en");
 
-        Assert.Equal(5, result.Count);
+		// Assert 
+		var resultList = result.Tokens.ToList();
 
-        Assert.Equal("apple", result[0].Token);
-        Assert.Equal("OR", result[1].Token);
-        Assert.Equal("banana", result[2].Token);
-        Assert.Equal("OR", result[3].Token);
-        Assert.Equal("orange", result[4].Token);
+        Assert.Equal(5, resultList.Count);
+
+        Assert.Equal("apple", resultList[0].Token);
+        Assert.Equal("OR", resultList[1].Token);
+        Assert.Equal("banana", resultList[2].Token);
+        Assert.Equal("OR", resultList[3].Token);
+        Assert.Equal("orange", resultList[4].Token);
     }
 
     [Fact]
@@ -180,26 +192,36 @@ public class QueryTokenizerTests
     {
 		// Arrange
 		var input = "start AND phrase";
+
+		// Act 
         var result = _sut.Tokenize(input, "en");
 
-        Assert.Equal(3, result.Count);
+		// Assert 
+		var resultList = result.Tokens.ToList();
 
-        Assert.Equal("start", result[0].Token);
-        Assert.Equal("AND", result[1].Token);
-        Assert.Equal("phrase", result[2].Token);
+        Assert.Equal(3, resultList.Count);
+
+        Assert.Equal("start", resultList[0].Token);
+        Assert.Equal("AND", resultList[1].Token);
+        Assert.Equal("phrase", resultList[2].Token);
     }
 
     [Fact]
     public void Tokenize_TermPhraseTerm_DoesNotInsertImplicitOr()
     {
+		// Arrange 
         var input = "cat \"hello dolly\" dog";
 
+		// Act 
         var result = _sut.Tokenize(input, "en");
 
-        Assert.Equal(3, result.Count);
-        Assert.Equal(QueryTokenType.Term, result[0].TokenType);
-        Assert.Equal(QueryTokenType.Phrase, result[1].TokenType);
-        Assert.Equal(QueryTokenType.Term, result[2].TokenType);
+		// Assert 
+		var resultList = result.Tokens.ToList();
+		
+        Assert.Equal(3, resultList.Count);
+        Assert.Equal(QueryTokenType.Term, resultList[0].TokenType);
+        Assert.Equal(QueryTokenType.Phrase, resultList[1].TokenType);
+        Assert.Equal(QueryTokenType.Term, resultList[2].TokenType);
     }
 
     [Fact]
@@ -207,13 +229,18 @@ public class QueryTokenizerTests
     {
 		// Arrange 
 		var input = "start \"unclosed phrase";
-        var result = _sut.Tokenize(input, "en");
+        
+		// Act 
+		var result = _sut.Tokenize(input, "en");
 
-        Assert.Equal(3, result.Count);
+		// Assert 
+		var resultList = result.Tokens.ToList();
 
-        Assert.Equal("start", result[0].Token);
-        Assert.Equal("\"unclosed", result[1].Token);
-        Assert.Equal("phrase", result[2].Token);
+        Assert.Equal(3, resultList.Count);
+
+        Assert.Equal("start", resultList[0].Token);
+        Assert.Equal("\"unclosed", resultList[1].Token);
+        Assert.Equal("phrase", resultList[2].Token);
     }
 
     [Fact]
@@ -221,13 +248,18 @@ public class QueryTokenizerTests
     {
 		// Arrange
 		var input = "start && phrase";
+
+		// Act 
         var result = _sut.Tokenize(input, "en");
 
-        Assert.Equal(3, result.Count);
+		// Assert 
+		var resultList = result.Tokens.ToList();
+        
+		Assert.Equal(3, resultList.Count);
 
-        Assert.Equal("start", result[0].Token);
-        Assert.Equal("&&", result[1].Token);
-        Assert.Equal("phrase", result[2].Token);
+        Assert.Equal("start", resultList[0].Token);
+        Assert.Equal("&&", resultList[1].Token);
+        Assert.Equal("phrase", resultList[2].Token);
     }
 
     [Theory]
@@ -250,13 +282,14 @@ public class QueryTokenizerTests
 
 		// Act
 		var result = _sut.Tokenize(input, "en");
+		var resultList = result.Tokens.ToList();
 
 		// Assert
-		Assert.Equal(3, result.Count);
-		Assert.Equivalent(start, result[0]);
-		Assert.Equivalent(expectedOperator, result[1]);
-		Assert.Equivalent(phrase, result[2]);
-		Assert.Equal(expectedOperator.TokenType, result[1].TokenType);
+		Assert.Equal(3, resultList.Count);
+		Assert.Equivalent(start, resultList[0]);
+		Assert.Equivalent(expectedOperator, resultList[1]);
+		Assert.Equivalent(phrase, resultList[2]);
+		Assert.Equal(expectedOperator.TokenType, resultList[1].TokenType);
 	}
 
 	[Theory]
@@ -275,11 +308,13 @@ public class QueryTokenizerTests
 		var result = _sut.Tokenize(input, "en");
 
 		// Assert
-		Assert.Equal(3, result.Count);
-		Assert.Equivalent(first, result[0]);
-		Assert.Equivalent(expectedOperator, result[1]);
-		Assert.Equivalent(second, result[2]);
-		Assert.Equal(expectedOperator.TokenType, result[1].TokenType);
+		var resultList = result.Tokens.ToList();
+
+		Assert.Equal(3, resultList.Count);
+		Assert.Equivalent(first, resultList[0]);
+		Assert.Equivalent(expectedOperator, resultList[1]);
+		Assert.Equivalent(second, resultList[2]);
+		Assert.Equal(expectedOperator.TokenType, resultList[1].TokenType);
 	}
 
 	[Theory]
@@ -299,12 +334,14 @@ public class QueryTokenizerTests
 		var result = _sut.Tokenize(input, "en");
 
 		// Assert
-		Assert.Equal(3, result.Count);
-		Assert.Equivalent(expectedOperator1, result[0]);
-		Assert.Equivalent(expectedPhrase, result[1]);
-		Assert.Equivalent(expectedOperator2, result[2]);
-		Assert.Equal(expectedOperator1.TokenType, result[0].TokenType);
-		Assert.Equal(expectedOperator2.TokenType, result[2].TokenType);
+		var resultList = result.Tokens.ToList();
+
+		Assert.Equal(3, resultList.Count);
+		Assert.Equivalent(expectedOperator1, resultList[0]);
+		Assert.Equivalent(expectedPhrase, resultList[1]);
+		Assert.Equivalent(expectedOperator2, resultList[2]);
+		Assert.Equal(expectedOperator1.TokenType, resultList[0].TokenType);
+		Assert.Equal(expectedOperator2.TokenType, resultList[2].TokenType);
 	}
 
 
@@ -338,10 +375,11 @@ public class QueryTokenizerTests
     {
         // Arrange
         var result = _sut.Tokenize(input, "en");
+		var resultList = result.Tokens.ToList();
 
 		// Act 
-        Assert.Single(result);
-        Assert.Equal(QueryTokenType.LogicalOperator, result[0].TokenType);
+        Assert.Single(resultList);
+        Assert.Equal(QueryTokenType.LogicalOperator, resultList[0].TokenType);
 		
 		// Assert 
         _mockNormalizer.Verify(
@@ -359,9 +397,10 @@ public class QueryTokenizerTests
 	{
 		// Act 
 		var result = _sut.Tokenize(input, "sv");
+		var resultList = result.Tokens.ToList();
 
 		// Assert 
-		var swedishTokens = result.Where(est => est.Language.Equals("sv"));
+		var swedishTokens = resultList.Where(est => est.Language.Equals("sv"));
 
 		Assert.Empty(swedishTokens);
 	}
@@ -376,9 +415,10 @@ public class QueryTokenizerTests
 	{
 		// Act 
 		var result = _sut.Tokenize(input, "sv");
+		var resultList = result.Tokens.ToList();
 
 		// Assert 
-		var englishTokens = result.Where(est => est.Language.Equals("en"));
+		var englishTokens = resultList.Where(est => est.Language.Equals("en"));
 
 		Assert.Single(englishTokens);
 	}
@@ -393,9 +433,10 @@ public class QueryTokenizerTests
 	{
 		// Act 
 		var result = _sut.Tokenize(input, "sv");
+		var resultList = result.Tokens.ToList();
 
 		// Assert 
-		var swedishTokens = result.Where(est => est.Language.Equals("sv"));
+		var swedishTokens = resultList.Where(est => est.Language.Equals("sv"));
 
 		Assert.Equal(instances, swedishTokens.Count());
 	}
@@ -414,8 +455,10 @@ public class QueryTokenizerTests
 		var result = _sut.Tokenize(input, "en");
 
 		// Assert
-		Assert.Single(result);
-		Assert.Equal("", result.First().Token);
+		var resultList = result.Tokens.ToList();
+
+		Assert.Single(resultList);
+		Assert.Equal("", resultList.First().Token);
 	}
 
 	[Fact]
@@ -429,11 +472,12 @@ public class QueryTokenizerTests
 
 		// Act
 		var result = _sut.Tokenize(input, "en");
+		var resultList = result.Tokens.ToList();
 
 		// Assert
-		var apple = result.First(t => t.Token == "apple");
-		var banan = result.First(t => t.Token == "banan");
-		var orange = result.First(t => t.Token == "orange");
+		var apple = resultList.First(t => t.Token == "apple");
+		var banan = resultList.First(t => t.Token == "banan");
+		var orange = resultList.First(t => t.Token == "orange");
 
 		Assert.Equal("en", apple.Language);
 		Assert.Equal("sv", banan.Language);

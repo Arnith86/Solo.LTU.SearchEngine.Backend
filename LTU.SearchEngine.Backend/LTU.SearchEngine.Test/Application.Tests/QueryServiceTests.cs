@@ -6,6 +6,7 @@ using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 using LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
 using LTU.SearchEngine.Infrastructure.Repositories;
+using LTU.SearchEngine.Test.HelperClasses;
 using Moq;
 
 namespace LTU.SearchEngine.Application.QueryParsing;
@@ -60,9 +61,12 @@ public class QueryServiceTests
         List<Page> fakeDocumentList
         )
     {
+        var fakeQueryParsingResult = 
+            QueryParsingResultBuilder.BuildQueryParsingResult(rootNode: fakeOperatorNode);
+        
         _mockQueryParser
             .Setup(p => p.Parse(rawQuery, languageCode))
-            .Returns(fakeOperatorNode);
+            .Returns(fakeQueryParsingResult);
 
         _mockQueryEvaluatorVisitor
             .Setup(qe => qe.ExecuteAsync(fakeOperatorNode))
