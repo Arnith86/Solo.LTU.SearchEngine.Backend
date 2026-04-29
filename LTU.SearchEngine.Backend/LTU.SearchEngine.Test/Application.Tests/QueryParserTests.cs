@@ -51,7 +51,7 @@ public class QueryParserTests
 
 		_tokenizerMock
 			.Setup(t => t.Tokenize(query))
-			.Returns(queryStringTokenizingResult/*tokens*/);
+			.Returns(queryStringTokenizingResult);
 
 		_treeBuilderMock
 			.Setup(t => t.BuildTree(queryStringTokenizingResult.Tokens))
@@ -123,13 +123,11 @@ public class QueryParserTests
 	{
 		// Arrange
 		string query = "cat";
-		// var tokens = new List<ExtractedQueryToken>();
 		var queryStringTokenizingResult = 
 				QueryStringTokenizingResultBuilder.BuildQueryStringTokenizingResult();
 
 		var expectedResult = QueryParsingResultBuilder.BuildQueryParsingResult();
-		// var expectedNode = Mock.Of<QueryNode<HashSet<int>>>();
-
+	
 		_tokenizerMock
 			.Setup(t => t.Tokenize(query, languageCode: expected))
 			.Returns(queryStringTokenizingResult);
@@ -138,7 +136,7 @@ public class QueryParserTests
 			.Setup(t => t.BuildTree(queryStringTokenizingResult.Tokens))
 			.Returns(expectedResult.RootNode);
 
-		Func</*QueryNode<HashSet<int>>*/QueryParsingResult<HashSet<int>, IgnoredTermsDTO>> act = input switch
+		Func<QueryParsingResult<HashSet<int>, IgnoredTermsDTO>> act = input switch
         {
             "NO_INPUT"  => () => _parser.Parse(query),
             _           => () => _parser.Parse(query, languageCode: input)
@@ -152,5 +150,51 @@ public class QueryParserTests
 			input: It.IsAny<string>(),
 			languageCode: expected
 		));
+	}
+
+	[Fact]
+	public void Parse_ShouldIncludeIgnoredTokensInResult()
+	{
+		// Arrange
+		var query = "test";
+		var ignored = new List<IgnoredTermsDTO> { new() { Token = "stopword", Language = "sv" } };
+		
+		var tokenizerResult = new QueryStringTokenizingResult<ExtractedQueryToken, IgnoredTermsDTO>(
+			new List<ExtractedQueryToken>(), 
+			ignored
+		);
+
+		_tokenizerMock.Setup(t => t.Tokenize(query, It.IsAny<string>()))
+			.Returns(tokenizerResult);
+
+		_treeBuilderMock.Setup(t => t.BuildTree(It.IsAny<IEnumerable<ExtractedQueryToken>>()))
+			.Returns(Mock.Of<QueryNode<HashSet<int>>>());
+
+		// Act
+		var result = _parser.Parse(query);
+
+		// Assert
+		Assert.Equal(ignored, result.IgnoredTokens);
+	}
+
+	[Fact]
+	public void Parse_WhenNoTokens_ShouldStillReturnResultWithRootNode()
+	{
+		// Arrange
+		var tokenizerResult = new QueryStringTokenizingResult<ExtractedQueryToken, IgnoredTermsDTO>(
+			Enumerable.Empty<ExtractedQueryToken>(),
+			Enumerable.Empty<IgnoredTermsDTO>()
+		);
+
+		_tokenizerMock.Setup(t => t.Tokenize(It.IsAny<string>(), It.IsAny<string>())).Returns(tokenizerResult);
+		_treeBuilderMock.Setup(t => t.BuildTree(It.IsAny<IEnumerable<ExtractedQueryToken>>()))
+						.Returns(Mock.Of<QueryNode<HashSet<int>>>());
+
+		// Act
+		var result = _parser.Parse(" ");
+
+		// Assert
+		Assert.NotNull(result.RootNode);
+		Assert.Empty(result.IgnoredTokens);
 	}
 }
