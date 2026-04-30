@@ -90,10 +90,10 @@ public class QueryTokenizerTests
 		var resultList = result.Tokens.ToList();
 
 		// Assert
-		Assert.Equal(3, resultList.Count);
+		Assert.Equal(5, resultList.Count);
 		Assert.Equivalent(cat, resultList[0]);
-		Assert.Equivalent(helloDolly, resultList[1]);
-		Assert.Equivalent(dog, resultList[2]);
+		Assert.Equivalent(helloDolly, resultList[2]);
+		Assert.Equivalent(dog, resultList[4]);
 	}
 
 	[Fact]
@@ -122,7 +122,7 @@ public class QueryTokenizerTests
 
 
 	[Fact]
-	public void Tokenize_UnclosedQuotes_TreatsAllWordsAsTerms()
+	public void Tokenize_UnclosedQuotes_TreatsAllWordsAsTerms_AddsImplicitOr()
 	{
 		// Arrange
 		var input = "start \"unclosed phrase";
@@ -130,16 +130,18 @@ public class QueryTokenizerTests
 		var start = new ExtractedQueryToken(QueryTokenType.Term, "start", "en");
 		var unclosed = new ExtractedQueryToken(QueryTokenType.Term, "\"unclosed", "en");
 		var phrase = new ExtractedQueryToken(QueryTokenType.Term, "phrase", "en");
-
+		var or = new ExtractedQueryToken(QueryTokenType.LogicalOperator, "OR", "en");
 		// Act
 		var result = _sut.Tokenize(input, "en");
 		var resultList = result.Tokens.ToList();
 
 		// Assert
-		Assert.Equal(3, resultList.Count);
+		Assert.Equal(5, resultList.Count);
 		Assert.Equivalent(start, resultList[0]);
-		Assert.Equivalent(unclosed, resultList[1]);
-		Assert.Equivalent(phrase, resultList[2]);
+		Assert.Equivalent(or, resultList[1]);
+		Assert.Equivalent(unclosed, resultList[2]);
+		Assert.Equivalent(or, resultList[3]);
+		Assert.Equivalent(phrase, resultList[4]);
 	}
 
     [Fact]
@@ -207,7 +209,7 @@ public class QueryTokenizerTests
     }
 
     [Fact]
-    public void Tokenize_TermPhraseTerm_DoesNotInsertImplicitOr()
+    public void Tokenize_TermPhraseTerm_DoesNotInsertImplicitOrInPhrase()
     {
 		// Arrange 
         var input = "cat \"hello dolly\" dog";
@@ -218,29 +220,12 @@ public class QueryTokenizerTests
 		// Assert 
 		var resultList = result.Tokens.ToList();
 		
-        Assert.Equal(3, resultList.Count);
+        Assert.Equal(5, resultList.Count);
         Assert.Equal(QueryTokenType.Term, resultList[0].TokenType);
-        Assert.Equal(QueryTokenType.Phrase, resultList[1].TokenType);
-        Assert.Equal(QueryTokenType.Term, resultList[2].TokenType);
-    }
-
-    [Fact]
-    public void Tokenize_UnclosedQuote_DoesNotInsertImplicitOr()
-    {
-		// Arrange 
-		var input = "start \"unclosed phrase";
-        
-		// Act 
-		var result = _sut.Tokenize(input, "en");
-
-		// Assert 
-		var resultList = result.Tokens.ToList();
-
-        Assert.Equal(3, resultList.Count);
-
-        Assert.Equal("start", resultList[0].Token);
-        Assert.Equal("\"unclosed", resultList[1].Token);
-        Assert.Equal("phrase", resultList[2].Token);
+		Assert.Equal(QueryTokenType.LogicalOperator, resultList[1].TokenType);
+        Assert.Equal(QueryTokenType.Phrase, resultList[2].TokenType);
+		Assert.Equal(QueryTokenType.LogicalOperator, resultList[3].TokenType);
+        Assert.Equal(QueryTokenType.Term, resultList[4].TokenType);
     }
 
     [Fact]
@@ -426,7 +411,7 @@ public class QueryTokenizerTests
 	[Theory]
 	[InlineData("term1", 1)]
 	[InlineData("\"term1 term2\"", 1)]
-	[InlineData("term1 \"term2 term3\"", 2)]
+	[InlineData("term1 \"term2 term3\"", 3)] // implicit OR +1
 	[InlineData("term1 en:AND term3", 2)]
 	[InlineData("term1 AND term3", 3)]
 	public void Tokenize_IsLanguagePreFix_FindsNoLanguage_UsesDefault(string input, int instances)

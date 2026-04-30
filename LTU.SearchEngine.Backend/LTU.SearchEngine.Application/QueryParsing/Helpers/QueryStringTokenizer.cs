@@ -80,8 +80,20 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 					}
 				}
 				
-				// Checks implicit OR
-				action = TryHandleImplicitOr();
+
+				bool isWhitespace = char.IsWhiteSpace(_character);
+
+				if ((isWhitespace || ShouldBreakTerm(_character, _index)) && !_isBuildingAPhrase)
+				{
+					Flush(QueryTokenType.Term, ResolveLanguage(_singleTermPhraseLanguage, _globalLanguage));
+					_singleTermPhraseLanguage = null!;
+				}
+
+				if (isWhitespace && !_isBuildingAPhrase) 
+				{
+					HandleWhiteSpace();
+					continue;
+				}
 
 				if (action.Equals(LoopAction.Continue)) 
 				{
@@ -120,17 +132,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 					continue;
 				};
 
-				// If this is reached must be term
-				if (IsTokenTerm(_character))
-				{
-					Flush(QueryTokenType.Term, ResolveLanguage(_singleTermPhraseLanguage, _globalLanguage));
-					_singleTermPhraseLanguage = null!;
-					continue;
-				}
-				else
-				{
-					_stringBuilder.Append(_character);
-				}
+				_stringBuilder.Append(_character);
 			}
 
 			// Handles the last term if there is one
@@ -143,8 +145,15 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 			); 
 		}
 
+        private bool ShouldBreakTerm(char character, int index)
+        {
+			if (IsGroupingOperator(character)) return true;
+			if ("!+-&|".Contains(character) && IsAtStartOfWordOrAfterColon(index)) return true;
 
-		private void Flush( QueryTokenType queryTokenType, string languageCode)
+			return false;
+        }
+
+        private void Flush( QueryTokenType queryTokenType, string languageCode)
 		{
 			if (_stringBuilder.Length == 0) return;
 
@@ -162,12 +171,11 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 				{
 					var normalizedWord = _textNormalizer.Normalize(word, languageCode);
 
-					if (!string.IsNullOrWhiteSpace(normalizedWord))
+					if (!string.IsNullOrWhiteSpace(normalizedWord)) 
 						normalizedWords.Add(normalizedWord);
-					else
+					else 
 						_ignoredTokens.Add(new IgnoredTermsDTO{Token = word, Language = languageCode });
 				}
-
 
 				finalToken = string.Join(' ', normalizedWords);	
 			}
@@ -185,45 +193,33 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 		}
 
 
-		private LoopAction TryHandleImplicitOr()
-		{
-			// Only handle whitespace outside phrases
-			if (!char.IsWhiteSpace(_character) || _isBuildingAPhrase) return LoopAction.None;
+		private void HandleWhiteSpace()
+        {
+			if (_isBuildingAPhrase || _tokens.Count == 0) return; 
 
-			// No term being built → nothing to separate
-			if (_stringBuilder.Length == 0) return LoopAction.None;
+            var lastToken = _tokens.Last();
 
-			// Prevent implicit OR when term starts with quote (unclosed phrase case)
-			if (_stringBuilder[0] == '"') return LoopAction.None;
+			bool lastTokenWasOperand = 	
+				lastToken.TokenType.Equals(QueryTokenType.Term) ||
+				lastToken.TokenType.Equals(QueryTokenType.Phrase) || 
+				(lastToken.TokenType.Equals(QueryTokenType.GroupingOperator) && ")}]".Contains(lastToken.Token));
 
-			// Look ahead to next character
+			if(!lastTokenWasOperand) return;
+
 			if (_index + 1 < _input.Length)
 			{
 				char next = _input[_index + 1];
 
-				// Do not insert OR before phrases or operators
-				if (next == '"' ||
-					"!+-&|".Contains(next) ||
+				// Do not insert OR before operators
+				if ("!+-&|".Contains(next) ||
 					IsCapitalLetterOperator(_input, _index + 1) ||
-					IsLanguagePreFix(_input, _index + 1))
-				{
-					return LoopAction.None;
-				}
+					IsGroupingOperator(next) ||
+					IsLanguagePreFix(_input, _index +1)
+				) return; 
+
+				_tokens.Add(new ExtractedQueryToken(QueryTokenType.LogicalOperator, "OR", _globalLanguage));
 			}
-
-			int tokenCountBeforeFlush = _tokens.Count;
-
-			Flush(QueryTokenType.Term, ResolveLanguage(_singleTermPhraseLanguage, _globalLanguage));
-
-			// Flush may not add a token if normalization removes it
-			if (_tokens.Count == tokenCountBeforeFlush) return LoopAction.Continue;
-
-			_tokens.Add(new ExtractedQueryToken(
-				QueryTokenType.LogicalOperator, "OR", ResolveLanguage(_singleTermPhraseLanguage, _globalLanguage)
-			));
-
-			return LoopAction.Continue;
-		}
+        }
 
 
 		private bool IsLanguagePreFix(string input, int index, out int jump, out string detectedLanguage)
@@ -270,14 +266,9 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 		{
 			if (IsLogicalOperator(_character))
 			{
-				if (IsDoubleLogicalOperator(_character))
-				{
-					_stringBuilder.Append(_input, _index++, 2);
-					Flush(QueryTokenType.LogicalOperator, ResolveLanguage(_singleTermPhraseLanguage, _globalLanguage));
-					return LoopAction.Continue;
-				}
+				if (IsDoubleLogicalOperator(_character)) _stringBuilder.Append(_input, _index++, 2);
+				else _stringBuilder.Append(_character);
 
-				_stringBuilder.Append(_character);
 				Flush(QueryTokenType.LogicalOperator, ResolveLanguage(_singleTermPhraseLanguage, _globalLanguage));
 				return LoopAction.Continue;
 			}
@@ -400,9 +391,6 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 
 			return false;
 		}
-
-
-		private bool IsTokenTerm(char character) => char.IsWhiteSpace(character);
 
 
 		// ToDo: extract to own static helper class
