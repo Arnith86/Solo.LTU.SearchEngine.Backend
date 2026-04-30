@@ -14,69 +14,131 @@ public class SearchQueryShuntingYardParser : IShuntingYardParser<ExtractedQueryT
 	public Queue<ExtractedQueryToken> ConvertToPostfix(IEnumerable<ExtractedQueryToken> tokens)
 	{
 		// ToDo: Figure out a solution to handle required tokens.
-		// ToDo: Figure out a solution to handle implicit OR (word1 word2).
 		VerifyTokens(tokens);
 
 		Queue<ExtractedQueryToken> outputQueue = new();
 		Stack<ExtractedQueryToken> operatorStack = new();
 
+		ExtractedQueryToken? lastNonGroupingToken = null;
+		bool firstTermPhraseSet = false;
+		
 		foreach (ExtractedQueryToken token in tokens)
-		{
-			if (IsTermOrPhrase(token))
-			{
-				outputQueue.Enqueue(token);
-			}
-			else if (IsStartParentheses(token))
-			{
-				operatorStack.Push(token);
-			}
-			else if (IsEndParentheses(token))
-			{
-				// Move operators to output until the matching start parenthesis is found.
-				while (ShouldPopOperator(operatorStack))
-				{
-					outputQueue.Enqueue(operatorStack.Pop());
-				}
+        {
+            bool currTokenIsLogicalOperator = IsLogicalOperator(token);
 
-				// If stack is empty then there is a "(" missing.
-				if (operatorStack.Count == 0 || !IsStartParentheses(operatorStack.Peek()))
-				{
-					throw new FormatException(
-						"Mismatched parentheses: Found closing parenthesis ')' without a matching opening parenthesis."
-					);
-				}
+            HandleLogicalOperatorBeforeFirstTermOrPhrase(firstTermPhraseSet, token, currTokenIsLogicalOperator);
+            HandleLogicalOperatorsInSequence(lastNonGroupingToken, token);
 
-				// Discard the start parenthesis from the stack.
-				if (operatorStack.Count > 0) operatorStack.Pop();
-			}
-			else if (IsLogicalOperator(token))
-			{
-				int currentOperatorValue = GetPrecedenceValue(token.Token);
+            if (IsTermOrPhrase(token))
+            {
+                outputQueue.Enqueue(token);
+                firstTermPhraseSet = true;
+            }
+            else if (IsStartParentheses(token))
+            {
+                operatorStack.Push(token);
+            }
+            else if (IsEndParentheses(token))
+            {
+                // Move operators to output until the matching start parenthesis is found.
+                while (ShouldPopOperator(operatorStack))
+                {
+                    outputQueue.Enqueue(operatorStack.Pop());
+                }
 
-				while (NextPopDoesNotHavePrecedence(operatorStack, currentOperatorValue))
-					outputQueue.Enqueue(operatorStack.Pop());
+                HandleMismatchingClosingParentheses(operatorStack);
 
-				operatorStack.Push(token);
-			}
-		}
+                // Discard the start parenthesis from the stack.
+                if (operatorStack.Count > 0) operatorStack.Pop();
+            }
+            else if (IsLogicalOperator(token))
+            {
+                int currentOperatorValue = GetPrecedenceValue(token.Token);
 
-		// Empty any remaining operators into the output queue
-		while (operatorStack.Count > 0)
-		{
-			var remainingToken = operatorStack.Pop();
+                while (NextPopDoesNotHavePrecedence(operatorStack, currentOperatorValue))
+                    outputQueue.Enqueue(operatorStack.Pop());
 
-			if (IsStartParentheses(remainingToken))
-				throw new FormatException(
-					"Mismatched parentheses: Found opening parenthesis '(' without a matching closing parenthesis."
-				);
+                operatorStack.Push(token);
+            }
 
-			outputQueue.Enqueue(remainingToken);
-		}
+            if (!IsGroupingOperator(token)) lastNonGroupingToken = token;
+        }
 
-		return outputQueue;
+        // Empty any remaining operators into the output queue
+        while (operatorStack.Count > 0)
+        {
+            var remainingToken = operatorStack.Pop();
+
+            HandleMismatchingStartParentheses(remainingToken);
+
+            outputQueue.Enqueue(remainingToken);
+        }
+
+        return outputQueue;
 	}
 
-	private void VerifyTokens(IEnumerable<ExtractedQueryToken> tokens)
+    private void HandleMismatchingStartParentheses(ExtractedQueryToken remainingToken)
+    {
+        if (IsStartParentheses(remainingToken))
+            throw new FormatException(
+                "Mismatched parentheses: Found opening parenthesis '(' without a matching closing parenthesis."
+            );
+    }
+
+    private void HandleMismatchingClosingParentheses(Stack<ExtractedQueryToken> operatorStack)
+    {
+		// If stack is empty then there is a "(" missing.
+        if (operatorStack.Count == 0 || !IsStartParentheses(operatorStack.Peek()))
+        {
+            throw new FormatException(
+                "Mismatched parentheses: Found closing parenthesis ')' without a matching opening parenthesis."
+            );
+        }
+    }
+
+    private void HandleLogicalOperatorsInSequence(
+		ExtractedQueryToken? lastNonGroupingToken, 
+		ExtractedQueryToken token)
+    {
+        if (lastNonGroupingToken is not null && 
+			IsLogicalOperator(lastNonGroupingToken) && 
+			IsLogicalOperator(token))
+        {
+            throw new FormatException(
+                "Invalid query format: Consecutive logical operators are not allowed. " +
+                $"Found '{lastNonGroupingToken.Token}' and '{token.Token}' in sequence."
+            );
+        }
+    }
+
+    private static void HandleLogicalOperatorBeforeFirstTermOrPhrase(
+		bool firstTermPhraseSet, 
+		ExtractedQueryToken token, 
+		bool currTokenIsLogicalOperator)
+    {
+        if (currTokenIsLogicalOperator && !firstTermPhraseSet)
+        {
+            throw new FormatException(
+                "Invalid query format: Query cannot start with a logical operator. " +
+                $"Found '{token.Token}' at the beginning of the query."
+            );
+        }
+    }
+
+    private bool IsGroupingOperator(ExtractedQueryToken token) 
+		=> token.TokenType.Equals(QueryTokenType.GroupingOperator);
+    
+
+    private bool IsANotOperator(ExtractedQueryToken token)
+	{
+		return token.Token switch
+		{
+			"NOT" or "!" or "-" => true,
+			_ => false	
+		};
+	}
+
+    private void VerifyTokens(IEnumerable<ExtractedQueryToken> tokens)
 	{
 		if (tokens is null)
 			throw new ArgumentNullException(nameof(tokens), "must have a value.");
@@ -104,6 +166,7 @@ public class SearchQueryShuntingYardParser : IShuntingYardParser<ExtractedQueryT
 			_ => 0
 		};
 	}
+	
 	private bool ShouldPopOperator(Stack<ExtractedQueryToken> operatorStack)
 		=> operatorStack.TryPeek(out ExtractedQueryToken? result) &&
 							!IsStartParentheses(result);
