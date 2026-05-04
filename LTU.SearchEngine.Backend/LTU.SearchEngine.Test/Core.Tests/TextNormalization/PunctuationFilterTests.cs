@@ -5,7 +5,7 @@ namespace LTU.SearchEngine.Test.Core.Tests.TextNormalization
 {
     public class PunctuationFilterTests
     {
-        private readonly PunctuationFilter _filter = new PunctuationFilter();
+        private readonly NoiseFilter _filter = new NoiseFilter();
 
         [Fact]
         public void Apply_GivenOnlyPunctuation_ShouldReturnNull()
