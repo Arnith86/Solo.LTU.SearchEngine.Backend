@@ -355,7 +355,7 @@ public class SearchQueryShuntingYardParserTests
 	public void ConvertToPostfix_OperatorsFirstInMultipleParentheses_ShouldThrowFormatException()
 	{
 		// Arrange
-		// Query: (NOT Ltu)
+		// Query: ((NOT Ltu))
 		var tokens = new List<ExtractedQueryToken>
 		{
 			CreateToken("(", QueryTokenType.GroupingOperator),
