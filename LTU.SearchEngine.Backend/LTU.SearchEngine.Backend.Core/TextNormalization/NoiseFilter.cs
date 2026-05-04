@@ -1,7 +1,26 @@
 ﻿namespace LTU.SearchEngine.Backend.Core.TextNormalization;
 
+/// <summary>
+/// Filters out tokens that consist entirely of punctuation or symbols, 
+/// ensuring only "searchable" terms reach the indexing and query pipelines.
+/// </summary>
+/// <remarks>
+/// This filter acts as a lightweight validation step. It does not modify the text; 
+/// rather, it decides whether a token has enough semantic substance (at least one letter or digit) 
+/// to be useful. This allows technical terms like "C++" or "e-post" to pass through, 
+/// while rejecting "noise" like "???" or "---".
+/// </remarks>
 public class NoiseFilter : ITextFilter
 {
+    /// <summary>
+    /// Evaluates whether the provided term contains any alphanumeric characters.
+    /// </summary>
+    /// <param name="rawTerm">The raw string token to evaluate.</param>
+    /// <param name="languageCode">The ISO language code (e.g., "sv" or "en"). Currently unused as alphanumeric checks are Unicode-standard.</param>
+    /// <returns>
+    /// The original <paramref name="rawTerm"/> if it contains at least one letter or digit; 
+    /// otherwise, <c>null</c> if the term is purely symbol-based or whitespace.
+    /// </returns>
     public string? Apply(string rawTerm, string languageCode = "en")
     {
         if (string.IsNullOrWhiteSpace(rawTerm))
@@ -19,37 +38,5 @@ public class NoiseFilter : ITextFilter
         }
 
         return isSearchable ? rawTerm : null;
-
-        // var builder = new StringBuilder();
-        // bool hasAlphaNumeric = false;
-
-        // foreach (var c in rawTerm)
-        // {
-        //     if (char.IsLetterOrDigit(c))
-        //     {
-        //         builder.Append(c);
-        //         hasAlphaNumeric = true;
-        //     }
-        //     else if (c == '+' || c == '#')
-        //     {
-        //         builder.Append(c);
-        //     }
-        // }
-
-        // if (!hasAlphaNumeric)
-        //     return null;
-
-        // var result = builder.ToString();
-
-        // // Remove leading + or #
-        // while (result.StartsWith("+") || result.StartsWith("#"))
-        // {
-        //     result = result.Substring(1);
-        // }
-
-        // if (result.Length == 0)
-        //     return null;
-
-        // return result;
     }
 }
