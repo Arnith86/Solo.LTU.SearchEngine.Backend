@@ -47,6 +47,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 		private string _singleTermPhraseLanguage = null!;
 		private int _index;
 		private char _character; 
+		private bool _isNextCharacterEscaped = false;
 
 		public QueryStringTokenizationSession(
 			string input, string languageCode, IQuerySyntaxHelper syntaxHelper, ITextNormalizer<string> normalizer 
@@ -61,82 +62,76 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 		public QueryStringTokenizingResult<ExtractedQueryToken, IgnoredTermsDTO> Execute()
 		{
 			for (_index = 0; _index < _input.Length; _index++)
-			{
-				LoopAction action = LoopAction.None;
-				_character = _input[_index];
+            {
+                LoopAction action = LoopAction.None;
+                _character = _input[_index];
 
-				// Checks Whole query language 
-				if (_stringBuilder.Length == 0 && !_isBuildingAPhrase && IsAtStartOfWordOrAfterColon(_index))
-				{
-					if (IsLanguagePreFix(_input, _index, out int jump, out string detectedLanguage))
-					{
-						if (_index.Equals(0)) _globalLanguage = detectedLanguage;
-						
-						_singleTermPhraseLanguage = detectedLanguage;
-						
-						_index += jump;
-						
-						continue;
-					}
-				}
-				
+            
+				if (HandleEscapeCharacter().Equals(LoopAction.Continue)) continue;
 
-				bool isWhitespace = char.IsWhiteSpace(_character);
+                // Checks Whole query language 
+                if (_stringBuilder.Length == 0 && !_isBuildingAPhrase && IsAtStartOfWordOrAfterColon(_index))
+                {
+                    if (IsLanguagePreFix(_input, _index, out int jump, out string detectedLanguage))
+                    {
+                        if (_index.Equals(0)) _globalLanguage = detectedLanguage;
 
-				if ((isWhitespace || ShouldBreakTerm(_character, _index)) && !_isBuildingAPhrase)
-				{
-					Flush(QueryTokenType.Term, ResolveLanguage(_singleTermPhraseLanguage, _globalLanguage));
-					_singleTermPhraseLanguage = null!;
-				}
+                        _singleTermPhraseLanguage = detectedLanguage;
 
-				if (isWhitespace && !_isBuildingAPhrase) 
-				{
-					HandleWhiteSpace();
-					continue;
-				}
+                        _index += jump;
 
-				if (action.Equals(LoopAction.Continue)) 
-				{
-					_singleTermPhraseLanguage = null!;
-					continue;
-				}
+                        continue;
+                    }
+                }
 
-				// Checks for grouping operators. ( ) [ ] { } 
-				action = TryHandleIsGroupingOperator();
 
-				if (action.Equals(LoopAction.Continue))	continue;
+                bool isWhitespace = char.IsWhiteSpace(_character);
 
-				// AND, OR, NOT, are exceptions and are handled in the next method.
-				action = TryHandleLogicalOperator();
+                if ((isWhitespace || ShouldBreakTerm(_character, _index)) && !_isBuildingAPhrase)
+                {
+                    Flush(QueryTokenType.Term, ResolveLanguage(_singleTermPhraseLanguage, _globalLanguage));
+                    _singleTermPhraseLanguage = null!;
+                }
 
-				if (action.Equals(LoopAction.Continue)) continue;
-				
+                if (isWhitespace && !_isBuildingAPhrase)
+                {
+                    HandleWhiteSpace();
+                    continue;
+                }
 
-				action = TryHandleIsCapitalLetterOperator();
+                if (action.Equals(LoopAction.Continue))
+                {
+                    _singleTermPhraseLanguage = null!;
+                    continue;
+                }
 
-				if (action.Equals(LoopAction.Continue)) continue;
-				
-				// Found start of a phrase
-				if (IsEdgeOfPhrase())
-				{
-					_isBuildingAPhrase = !_isBuildingAPhrase; // ToDo: Move to IsEdgeOfPhrase?
-					continue;
-				}
+                // Checks for grouping operators. ( ) [ ] { } 
+                if (TryHandleIsGroupingOperator().Equals(LoopAction.Continue)) continue;
 
-				// Appends phrase characters and flushes phrase if is edge of phrase
-				action = TryHandleIsEdgeOfPhrase(_character, ResolveLanguage(_singleTermPhraseLanguage, _globalLanguage));
+                // AND, OR, NOT, are exceptions and are handled in the next method.
+                if (TryHandleLogicalOperator().Equals(LoopAction.Continue)) continue;
+                
+				if (TryHandleIsCapitalLetterOperator().Equals(LoopAction.Continue)) continue;
 
-				if (action.Equals(LoopAction.Continue)) 
-				{
-					_singleTermPhraseLanguage = null!;
-					continue;
-				};
+                // Found start of a phrase
+                if (IsEdgeOfPhrase())
+                {
+                    _isBuildingAPhrase = !_isBuildingAPhrase; // ToDo: Move to IsEdgeOfPhrase?
+                    continue;
+                }
 
-				_stringBuilder.Append(_character);
-			}
+                // Appends phrase characters and flushes phrase if is edge of phrase
+                if (TryHandleIsEdgeOfPhrase().Equals(LoopAction.Continue))
+                {
+                    _singleTermPhraseLanguage = null!;
+                    continue;
+                };
 
-			// Handles the last term if there is one
-			Flush(QueryTokenType.Term, ResolveLanguage(_singleTermPhraseLanguage, _globalLanguage));
+                _stringBuilder.Append(_character);
+            }
+
+            // Handles the last term if there is one
+            Flush(QueryTokenType.Term, ResolveLanguage(_singleTermPhraseLanguage, _globalLanguage));
 			
 			_querySyntaxHelper.ValidateGrouping(_tokens);
 
@@ -145,15 +140,8 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 			); 
 		}
 
-        private bool ShouldBreakTerm(char character, int index)
-        {
-			if (IsGroupingOperator(character)) return true;
-			if ("!+-&|".Contains(character) && IsAtStartOfWordOrAfterColon(index)) return true;
-
-			return false;
-        }
-
-        private void Flush( QueryTokenType queryTokenType, string languageCode)
+                
+		private void Flush( QueryTokenType queryTokenType, string languageCode)
 		{
 			if (_stringBuilder.Length == 0) return;
 
@@ -191,6 +179,34 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 			
 			_stringBuilder.Clear();
 		}
+
+
+		private LoopAction HandleEscapeCharacter()
+        {
+            if (!_isNextCharacterEscaped && _character.Equals('\\') && _index + 1 < _input.Length)
+            {
+                _isNextCharacterEscaped = true;
+                return LoopAction.Continue;
+            }
+
+            if (_isNextCharacterEscaped)
+            {
+                _stringBuilder.Append(_character);
+                _isNextCharacterEscaped = false;
+                return LoopAction.Continue;
+            }
+
+            return LoopAction.None;
+        }
+
+
+		private bool ShouldBreakTerm(char character, int index)
+        {
+			if (IsGroupingOperator(character)) return true;
+			if ("!+-&|".Contains(character) && IsAtStartOfWordOrAfterColon(index)) return true;
+
+			return false;
+        }
 
 
 		private void HandleWhiteSpace()
@@ -295,7 +311,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 		}
 
 
-		private LoopAction TryHandleIsEdgeOfPhrase(char character, string languageCode)
+		private LoopAction TryHandleIsEdgeOfPhrase()
 		{
 			if (_isBuildingAPhrase)
 			{
@@ -303,11 +319,11 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 				if (IsEdgeOfPhrase(checkEndPhrase: true))
 				{
 					_isBuildingAPhrase = !_isBuildingAPhrase;
-					Flush(QueryTokenType.Phrase, languageCode);
+					Flush(QueryTokenType.Phrase, ResolveLanguage(_singleTermPhraseLanguage, _globalLanguage));
 					return LoopAction.Continue;
 				}
 
-				_stringBuilder.Append(character);
+				_stringBuilder.Append(_character);
 				return LoopAction.Continue;
 			}
 
