@@ -487,5 +487,20 @@ public class QueryTokenizerTests
 		Assert.Equal("the", result.IgnoredTokens.First().Token);
 	}
 
+	[Theory]
+	[InlineData("A\\+\\+", "A++")]
+	[InlineData("\\!B", "!B")]
+	[InlineData("\\-C\\+", "-C+")]
+	[InlineData("D\\+E", "D+E")]
+	[InlineData("\\-F\\+G\\#H", "-F+G#H")]
+	public void Tokenize_EscapedSymbols_ArePassedToNormalizerAsLiteralText(string input, string expected)
+	{
+		// Act
+		var result = _sut.Tokenize(input, "en");
+
+		// Assert
+		Assert.Equal(expected, result.Tokens.First().Token); 
+		_mockNormalizer.Verify(n => n.Normalize(expected, "en"), Times.Once);
+	}
 }
 
