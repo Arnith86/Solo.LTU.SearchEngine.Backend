@@ -5,7 +5,7 @@ namespace LTU.SearchEngine.Test.Core.Tests.TextNormalization
 {
     public class PunctuationFilterTests
     {
-        private readonly PunctuationFilter _filter = new PunctuationFilter();
+        private readonly NoiseFilter _filter = new NoiseFilter();
 
         [Fact]
         public void Apply_GivenOnlyPunctuation_ShouldReturnNull()
@@ -21,34 +21,16 @@ namespace LTU.SearchEngine.Test.Core.Tests.TextNormalization
             Assert.Equal("Running", _filter.Apply("Running"));
         }
 
-        [Fact]
-        public void Apply_GivenAlphaNumericWithPunctuation_ShouldRemovePunctuation()
+        [Theory]
+        [InlineData("A++", "A++")]
+        [InlineData("C#", "C#")]
+        [InlineData("B!", "B!")]
+        [InlineData("!D!", "!D!")]
+        [InlineData("#E!", "#E!")]
+        [InlineData("-F+", "-F+")]
+        public void Apply_GivenCPlusPlus_ShouldPreservePlus(string input, string expected)
         {
-            Assert.Equal("Hello", _filter.Apply("Hello!!!"));
-        }
-
-        [Fact]
-        public void Apply_GivenCPlusPlus_ShouldPreservePlus()
-        {
-            Assert.Equal("C++", _filter.Apply("C++"));
-        }
-
-        [Fact]
-        public void Apply_GivenCSharp_ShouldPreserveHash()
-        {
-            Assert.Equal("C#", _filter.Apply("C#"));
-        }
-
-        [Fact]
-        public void Apply_GivenPlusAroundWord_ShouldRemoveLeadingPlusOnly()
-        {
-            Assert.Equal("C++", _filter.Apply("++C++"));
-        }
-
-        [Fact]
-        public void Apply_GivenHashBeforeWord_ShouldRemoveLeadingHash()
-        {
-            Assert.Equal("C#", _filter.Apply("#C#"));
+            Assert.Equal(expected, _filter.Apply(input));
         }
     }
 }

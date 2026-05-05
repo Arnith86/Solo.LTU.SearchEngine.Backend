@@ -4,20 +4,30 @@ namespace LTU.SearchEngine.Application.QueryParsing.Helpers;
 
 
 /// <summary>
-/// A generic interface for decomposing raw strings into a collection of categorized tokens.
+/// Defines a contract for decomposing a raw input string into a structured collection 
+/// of categorized tokens and identified ignored terms.
 /// </summary>
-/// <typeparam name="TToken">The type representing the finalized token (e.g., ExtractedQueryToken).</typeparam>
-/// <typeparam name="TIgnoredToken">The type representing the ignored token (e.g., IgnoredTermsDTO).</typeparam>
+/// <typeparam name="TToken">
+/// The type representing a finalized, categorized token (e.g., <see cref="ExtractedQueryToken"/>).
+/// </typeparam>
+/// <typeparam name="TIgnoredToken">
+/// The type representing metadata for tokens that were discarded during processing 
+/// (e.g., IgnoredTermsDTO).
+/// </typeparam>
 public interface IStringTokenizer<TToken, TIgnoredToken>
 {
 	/// <summary>
-	/// Transforms a raw input string into a sequence of categorized tokens.
-	/// </summary>
-	/// <param name="input">The raw string to be tokenized.</param>
-	/// <param name="languageCode">The main language for the given query.</param>
-	/// <returns>
-	/// A <see cref="QueryStringTokenizingResult{TToken, TIgnoredToken}"/> which contains a list of tokens of type 
-	/// <typeparamref name="TToken"/> and an list of ignored tokens of type <typeparamref name="TIgnoredToken"/>.
-	/// </returns>
+    /// Transforms a raw input string into a structured <see cref="QueryStringTokenizingResult{TToken, TIgnoredToken}"/>.
+    /// </summary>
+    /// <param name="input">The raw string to be tokenized.</param>
+    /// <param name="languageCode">
+    /// The language context (defaulting to "sv") used to determine language-specific 
+    /// tokenization rules, such as stop-words or character boundaries.
+    /// </param>
+    /// <returns>
+    /// A result object containing a sequence of valid tokens of type <typeparamref name="TToken"/> 
+    /// and a collection of ignored elements of type <typeparamref name="TIgnoredToken"/>.
+    /// </returns>
+    /// <exception cref="ArgumentNullException">Thrown if the input string is null.</exception>
 	QueryStringTokenizingResult<TToken, TIgnoredToken> Tokenize(string input, string languageCode = "sv");
 }

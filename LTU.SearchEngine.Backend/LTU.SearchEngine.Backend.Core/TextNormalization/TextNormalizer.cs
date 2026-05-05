@@ -1,24 +1,51 @@
-﻿namespace LTU.SearchEngine.Backend.Core.TextNormalization;
+﻿using System.Text.RegularExpressions;
 
-public class TextNormalizer : ITextNormalizer<string>
+namespace LTU.SearchEngine.Backend.Core.TextNormalization;
+
+/// <summary>
+/// Orchestrates the text normalization pipeline by coordinating noise reduction, 
+/// protection of technical symbols, and linguistic analysis via Lucene.
+/// </summary>
+public class TextNormalizer : ITextNormalizer<string, IEnumerable<string>>
 {
-    private readonly ITextFilter _punctuationFilter;
-    private readonly ITextFilter _luceneFilter;
-
-    public TextNormalizer(ITextFilter punctuationFilter, ITextFilter luceneFilter)
+    private readonly INoiseFilter _noiseFilter;
+    private readonly ILuceneFilter _luceneFilter;
+    
+    /// <summary>
+    /// Matches characters that define a "Technical Term" (e.g., C++, C#, @user).
+    /// These terms bypass linguistic splitting to preserve their semantic meaning.
+    /// </summary>
+    private static readonly Regex _protectedTechTermsRegex = 
+        new Regex(@"[\@\%\#\+&|!\\(){}\[\]""]", RegexOptions.Compiled);
+    
+    public TextNormalizer(INoiseFilter noiseFilter, ILuceneFilter luceneFilter)
     {
-        _punctuationFilter = punctuationFilter;
+        _noiseFilter = noiseFilter;
         _luceneFilter = luceneFilter;
-
     }
 
-    public string? Normalize(string rawTerm, string languageCode)
+    /// <summary>
+    /// Normalizes a raw string into one or more searchable tokens.
+    /// </summary>
+    /// <param name="rawTerm">The input string from a document or query.</param>
+    /// <param name="languageCode">ISO language code (e.g., "sv", "en") for linguistic rules.</param>
+    /// <returns>
+    /// A collection of normalized tokens. Returns an empty list if the input is considered noise.
+    /// </returns>
+    public IEnumerable<string> Normalize(string rawTerm, string languageCode)
     {
-        var cleaned = _punctuationFilter.Apply(rawTerm, languageCode);
+        var validWord = _noiseFilter.Apply(rawTerm, languageCode);
 
-        if (cleaned == null) return null;
+        if (validWord == null) return new List<string>();
 
-        return _luceneFilter.Apply(cleaned, languageCode);
+        // Keep technical terms as one token
+        if (_protectedTechTermsRegex.IsMatch(validWord)) 
+            return new List<string> { FinalCleanup(rawTerm) };
+        
+        return _luceneFilter.Apply(validWord, languageCode);
     }
+
+    private string FinalCleanup(string token) => 
+        token.ToLowerInvariant().Normalize(System.Text.NormalizationForm.FormC);
 }
 

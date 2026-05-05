@@ -10,12 +10,12 @@ namespace LTU.SearchEngine.Test.Indexing.Tests;
 
 public class IndexingPipelineTests
 {
-    private readonly Mock<ITextNormalizer<string>> _normalizerMock;
+    private readonly Mock<ITextNormalizer<string, IEnumerable<string>>> _normalizerMock;
     private readonly IndexingPipeline _pipeline;
 
     public IndexingPipelineTests()
     {
-        _normalizerMock = new Mock<ITextNormalizer<string>>();
+        _normalizerMock = new Mock<ITextNormalizer<string, IEnumerable<string>>>();
         _pipeline = new IndexingPipeline(_normalizerMock.Object);
     }
 
@@ -50,7 +50,7 @@ public class IndexingPipelineTests
         // Arrange
         _normalizerMock
             .Setup(n => n.Normalize("Running", "en"))
-            .Returns("run");
+            .Returns(new List<string>{"run"});
 
         var crawlResult = CreateCrawlResult(
             new[] { new IndexedTerm("Running", TermSource.Body) });
@@ -70,7 +70,7 @@ public class IndexingPipelineTests
         // Arrange
         _normalizerMock
             .Setup(n => n.Normalize("Running", "en"))
-            .Returns("run");
+            .Returns(new List<string>{"run"});
 
         var crawlResult = CreateCrawlResult( new[]
         {
@@ -100,7 +100,7 @@ public class IndexingPipelineTests
         
         _normalizerMock
             .Setup(n => n.Normalize(It.IsAny<string>(), "en"))
-            .Returns("run");
+            .Returns(new List<string>{"run"});
 
         
         // Act 
@@ -128,7 +128,7 @@ public class IndexingPipelineTests
         
         _normalizerMock
             .Setup(n => n.Normalize(It.IsAny<string>(), "en"))
-            .Returns("run");
+            .Returns(new List<string>{"run"});
 
         
         // Act 
@@ -151,7 +151,7 @@ public class IndexingPipelineTests
         
         _normalizerMock
             .Setup(n => n.Normalize(It.IsAny<string>(), "en"))
-            .Returns("run");
+            .Returns(new List<string>{"run"});
 
         // Act 
         var document = _pipeline.Transform(crawlResult);
@@ -179,7 +179,7 @@ public class IndexingPipelineTests
         
         _normalizerMock
             .Setup(n => n.Normalize(It.IsAny<string>(), "en"))
-            .Returns("run");
+            .Returns(new List<string>{"run"});
 
         // Act 
         var document = _pipeline.Transform(crawlResult);
@@ -201,7 +201,7 @@ public class IndexingPipelineTests
         
         _normalizerMock
             .Setup(n => n.Normalize(It.IsAny<string>(), "en"))
-            .Returns("run");
+            .Returns(new List<string>{"run"});
 
         // Act 
         var document = _pipeline.Transform(crawlResult);
@@ -229,7 +229,7 @@ public class IndexingPipelineTests
         
         _normalizerMock
             .Setup(n => n.Normalize(It.IsAny<string>(), "en"))
-            .Returns("run");
+            .Returns(new List<string>{"run"});
 
         // Act 
         var document = _pipeline.Transform(crawlResult);
@@ -255,7 +255,7 @@ public class IndexingPipelineTests
         
         _normalizerMock
             .Setup(n => n.Normalize(It.IsAny<string>(), "en"))
-            .Returns("run");
+            .Returns(new List<string>{"run"});
 
         // Act 
         var document = _pipeline.Transform(crawlResult);
@@ -274,11 +274,11 @@ public class IndexingPipelineTests
         // Arrange
         _normalizerMock
             .Setup(n => n.Normalize("Running", "en"))
-            .Returns("run");
+            .Returns(new List<string>{"run"});
 
         _normalizerMock
             .Setup(n => n.Normalize("THE", "en"))
-            .Returns((string?)null);
+            .Returns(new List<string>());
 
         var crawlResult = CreateCrawlResult(new[]
         {
@@ -325,7 +325,7 @@ public class IndexingPipelineTests
         // Arrange 
         _normalizerMock
             .Setup(n => n.Normalize(It.IsAny<string>(), "en"))
-            .Returns<string, string>((s, l) => s.ToLower());
+            .Returns<string, string>((s, l) => new List<string> { s.ToLower() });
         
         var crawlResult = CreateCrawlResult(new List<IndexedTerm>
         {
@@ -350,7 +350,7 @@ public class IndexingPipelineTests
         // Arrange 
         _normalizerMock
             .Setup(n => n.Normalize(It.IsAny<string>(), "en"))
-            .Returns<string, string>((s, l) => s.ToLower());
+            .Returns<string, string>((s, l) => new List<string> { s.ToLower() });
         
         var crawlResult = CreateCrawlResult(new List<IndexedTerm>
         {
