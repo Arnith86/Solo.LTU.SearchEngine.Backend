@@ -312,6 +312,60 @@ public class SearchQueryIntegrationTests : IClassFixture<WebApplicationFactory<P
         Assert.DoesNotContain(helloResult.searchResults, r => r.Url.Contains("/c"));
     }
 
+    [Theory]
+    [InlineData("+")]
+    [InlineData("!")]
+    [InlineData("%")]
+    [InlineData("#")]
+    [InlineData("&")]
+    [InlineData("|")]
+    [InlineData("@")]
+    [InlineData("(")]
+    [InlineData(")")]
+    [InlineData("{")]
+    [InlineData("}")]
+    [InlineData("[")]
+    [InlineData("]")]
+    [InlineData("\"")]
+    [Trait("TestCase", "TC-FRQ-3002")]
+    public async Task Search_ShouldHandleEscapedCharacters_Correctly(string character)
+    {
+        // Arrange
+        var httpClient = _webHostBuilder.CreateFakeInternetClient();
+        using var testFactory = CreateTestFactory<Indexer>(httpClient: httpClient);
+        using var scope = testFactory.Services.CreateScope();
+        
+        var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<SearchDbContext>>();
+        using var db = dbFactory.CreateDbContext();
+        await db.Database.EnsureCreatedAsync();
+
+        // Seed Documents A
+        var docA = new Page { Url = "http://localhost/a", Title = "Doc A", LastCrawled = DateTime.UtcNow };
+        
+        // term will look like this ex: te!rm
+        var term = new Term { Word = $"te{character}rm", LanguageCode = "en" };
+        
+        db.Pages.AddRange(docA);
+        db.Terms.AddRange(term);
+        await db.SaveChangesAsync();
+
+        // Map terms to pages
+        db.PageWordFrequencies.AddRange(
+            new PageWordFrequency { Page = docA, Term = term, HeaderFrequency = 1 }
+        );
+
+        await db.SaveChangesAsync();
+
+        var apiClient = testFactory.CreateClient();
+
+        // Act - query will look like this ex: te\!rm
+        var url = SearchUrlGenerator.QueryUrlBuilder(query: $"te\\{character}rm", language: "en");
+        var helloResult = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
+        
+        // Assert
+        Assert.Contains(helloResult!.searchResults, r => r.Url.Contains("/a"));
+    }
+    
     public void Dispose()
     {
         if (File.Exists(_tempSettingsPath)) File.Delete(_tempSettingsPath);
