@@ -342,8 +342,8 @@ public class SearchQueryIntegrationTests : IClassFixture<WebApplicationFactory<P
         // Seed Documents A
         var docA = new Page { Url = "http://localhost/a", Title = "Doc A", LastCrawled = DateTime.UtcNow };
         
-        // term will look like this ex: term!
-        var term = new Term { Word = $"term{character}", LanguageCode = "en" };
+        // term will look like this ex: te!rm
+        var term = new Term { Word = $"te{character}rm", LanguageCode = "en" };
         
         db.Pages.AddRange(docA);
         db.Terms.AddRange(term);
@@ -358,8 +358,8 @@ public class SearchQueryIntegrationTests : IClassFixture<WebApplicationFactory<P
 
         var apiClient = testFactory.CreateClient();
 
-        // Act
-        var url = SearchUrlGenerator.QueryUrlBuilder(query: $"term\\{character}", language: "en");
+        // Act - query will look like this ex: te\!rm
+        var url = SearchUrlGenerator.QueryUrlBuilder(query: $"te\\{character}rm", language: "en");
         var helloResult = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
         
         // Assert
