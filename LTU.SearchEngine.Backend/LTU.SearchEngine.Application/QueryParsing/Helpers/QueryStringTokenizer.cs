@@ -3,7 +3,6 @@ using LTU.SearchEngine.Backend.Core.Enums;
 using LTU.SearchEngine.Backend.Core.Model.DTOs;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using System.Text;
-using System.Text.RegularExpressions;
 
 namespace LTU.SearchEngine.Application.QueryParsing.Helpers;
 
@@ -45,9 +44,10 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 		private StringBuilder _stringBuilder = new();
 		private bool _isBuildingAPhrase = false;
 		private string _singleTermPhraseLanguage = null!;
-		private int _index;
 		private char _character; 
 		private bool _isNextCharacterEscaped = false;
+		private bool _isRequired = false; 
+		private int _index;
 
 		public QueryStringTokenizationSession(
 			string input, string languageCode, 
@@ -148,6 +148,10 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 		{
 			if (_stringBuilder.Length == 0) return;
 
+			RequirementLevel requirementLevel = _isRequired ? 
+				RequirementLevel.Required: 
+				RequirementLevel.Optional;
+
 			var originalText = _stringBuilder.ToString().Trim();
 			string finalToken;
 		
@@ -180,10 +184,11 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 
 			if (finalToken is not null)
 			{
-				_tokens.Add(new ExtractedQueryToken(queryTokenType, finalToken, languageCode));
+				_tokens.Add(new ExtractedQueryToken(queryTokenType, finalToken, requirementLevel, languageCode));
 			}
 			
 			_stringBuilder.Clear();
+			_isRequired = false;
 		}
 
 
@@ -239,7 +244,12 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 					IsLanguagePreFix(_input, _index +1)
 				) return; 
 
-				_tokens.Add(new ExtractedQueryToken(QueryTokenType.LogicalOperator, "OR", _globalLanguage));
+				_tokens.Add(new ExtractedQueryToken(
+					QueryTokenType.LogicalOperator, 
+					"OR", 
+					RequirementLevel.Optional, 
+					_globalLanguage)
+				);
 			}
         }
 
@@ -288,6 +298,12 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 		{
 			if (IsLogicalOperator(_character))
 			{
+				if (_character.Equals('+'))
+				{
+					_isRequired = true;
+					return LoopAction.Continue;
+				}
+				
 				if (IsDoubleLogicalOperator(_character)) _stringBuilder.Append(_input, _index++, 2);
 				else _stringBuilder.Append(_character);
 

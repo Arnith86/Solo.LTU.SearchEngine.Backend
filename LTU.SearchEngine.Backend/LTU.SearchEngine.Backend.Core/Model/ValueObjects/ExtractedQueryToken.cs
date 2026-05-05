@@ -7,8 +7,13 @@ public class ExtractedQueryToken
 	public QueryTokenType TokenType { get; }
 	public string Token { get; }
 	public string Language { get; }
+	public RequirementLevel RequirementLevel { get; }
 
-	public ExtractedQueryToken(QueryTokenType tokenType, string token, string language = "sv")
+	public ExtractedQueryToken(
+		QueryTokenType tokenType, 
+		string token, 
+		RequirementLevel requirementLevel = RequirementLevel.Optional,
+		string language = "sv")
 	{
 		if (tokenType.Equals(QueryTokenType.LogicalOperator) && token.Length > 3)
 		{
@@ -29,5 +34,6 @@ public class ExtractedQueryToken
 		Token = token;
 		TokenType = tokenType;
 		Language = language;
+		RequirementLevel = requirementLevel;
 	}
 }
