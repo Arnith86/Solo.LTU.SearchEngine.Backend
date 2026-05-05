@@ -5,28 +5,38 @@ using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 
 namespace LTU.SearchEngine.Infrastructure.Indexing;
 
-/// <summary>Performs the transformation of crawl results into index-ready documents.</summary>
+/// <summary>
+/// Performs the transformation of raw crawl results into structured, index-ready documents.
+/// </summary>
 /// <remarks>
-/// <para>
-/// The indexing pipeline is a pure transformation component that converts a <br />
-/// <see cref="CrawlResult"/> into an <see cref="IndexDocument"/> by normalizing terms <br />
-/// and calculating term frequency per document field.
-/// </para>
+/// The indexing pipeline acts as a data transformer that converts a <see cref="CrawlResult"/> 
+/// into an <see cref="IndexDocument"/>. It orchestrates the normalization process, which may 
+/// expand a single raw term into multiple searchable tokens, and calculates frequency and 
+/// positional data for each field (Title, Header, Body).
 /// </remarks>
 public class IndexingPipeline : IIndexingPipeline
 {
-    private readonly ITextNormalizer<string> _textNormalizer;
+    private readonly ITextNormalizer<string, IEnumerable<string>> _textNormalizer;
 
-    /// <summary>Initializes a new instance of the <see cref="IndexingPipeline"/> class.</summary>
-    /// <param name="normalizer">The strategy used to normalize terms (e.g., lowercasing, stemming, or removing punctuation).</param>
-    public IndexingPipeline(ITextNormalizer<string> normalizer)
+    /// <summary>
+    /// Initializes a new instance of the <see cref="IndexingPipeline"/> class.
+    /// </summary>
+    /// <param name="normalizer">
+    /// The normalization strategy used to process terms (e.g., handling linguistic splits, 
+    /// technical symbols, and lowercasing).
+    /// </param>
+    public IndexingPipeline(ITextNormalizer<string, IEnumerable<string>> normalizer)
     {
         _textNormalizer = normalizer;
     }
 
+    
     /// <inheritdoc/>
-    /// <param name="crawlResult">The result containing the URL, raw terms, and content hash.</param>
-    /// <returns>An <see cref="IndexDocument"/> containing read-only maps of normalized terms and their frequencies.</returns>
+    /// <param name="crawlResult">The result containing the URL, raw extracted terms, and content metadata.</param>
+    /// <returns>
+    /// An <see cref="IndexDocument"/> containing read-only maps of normalized tokens, 
+    /// their frequencies, and their positions within the source document.
+    /// </returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="crawlResult"/> is null.</exception>
     public virtual IndexDocument Transform(CrawlResult crawlResult)
     {
@@ -48,12 +58,15 @@ public class IndexingPipeline : IIndexingPipeline
 
         foreach (var indexedTerm in crawlResult.IndexedTerms)
         {
-            var normalized = _textNormalizer.Normalize(indexedTerm.Term, crawlResult.Language);
+            var normalizedWords = _textNormalizer.Normalize(indexedTerm.Term, crawlResult.Language);
 
-            if (string.IsNullOrWhiteSpace(normalized)) continue;
+            foreach (var token in normalizedWords)
+            {
+                if (string.IsNullOrWhiteSpace(token)) continue;
             
-            sourceFrequencyMap[indexedTerm.Source].AddTerm(normalized);
-            sourcePositionMap[indexedTerm.Source].AddTerm(normalized);
+                sourceFrequencyMap[indexedTerm.Source].AddTerm(token);
+                sourcePositionMap[indexedTerm.Source].AddTerm(token);    
+            }
         }
 
         return new IndexDocument(

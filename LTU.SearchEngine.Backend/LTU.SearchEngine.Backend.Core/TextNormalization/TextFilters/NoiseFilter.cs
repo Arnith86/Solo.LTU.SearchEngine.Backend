@@ -10,7 +10,7 @@
 /// to be useful. This allows technical terms like "C++" or "e-post" to pass through, 
 /// while rejecting "noise" like "???" or "---".
 /// </remarks>
-public class NoiseFilter : ITextFilter
+public class NoiseFilter : INoiseFilter
 {
     /// <summary>
     /// Evaluates whether the provided term contains any alphanumeric characters.

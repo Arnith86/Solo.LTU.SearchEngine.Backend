@@ -11,17 +11,17 @@ public class QueryTokenizerTests
 {
 	private readonly QueryStringTokenizer _sut;
 	private readonly Mock<IQuerySyntaxHelper> _mockSyntaxHelper;
-	private readonly Mock<ITextNormalizer<string>> _mockNormalizer;
+	private readonly Mock<ITextNormalizer<string, IEnumerable<string>>> _mockNormalizer;
 
 	public QueryTokenizerTests()
 	{
 		_mockSyntaxHelper = new Mock<IQuerySyntaxHelper>();
-		_mockNormalizer = new Mock<ITextNormalizer<string>>();
+		_mockNormalizer = new Mock<ITextNormalizer<string, IEnumerable<string>>>();
 		_sut = new QueryStringTokenizer(_mockSyntaxHelper.Object, _mockNormalizer.Object);
 
         _mockNormalizer
             .Setup(n => n.Normalize(It.IsAny<string>(), It.IsAny<string>()))
-            .Returns((string s, string lang) => s);
+            .Returns((string s, string lang) => new List<string> { s });
     }
 
 	[Fact]
@@ -336,7 +336,7 @@ public class QueryTokenizerTests
 		// Arrange 
         _mockNormalizer
             .Setup(n => n.Normalize(It.IsAny<string>(), "en"))
-            .Returns((string s, string lang) => s);
+            .Returns((string s, string lang) => new List<string> { s });
 
 		// Act 
         _sut.Tokenize("the Running man", "en");
@@ -432,7 +432,7 @@ public class QueryTokenizerTests
 		// Arrange
 		_mockNormalizer
 			.Setup(n => n.Normalize(It.IsAny<string>(), "en"))
-			.Returns(""); // Everything is a stop-word
+			.Returns(new List<string>{""}); // Everything is a stop-word
 
 		var input = "\"the and a\"";
 
@@ -473,7 +473,7 @@ public class QueryTokenizerTests
 	public void Flush_WhenWordIsNormalizedToEmpty_ShouldStillAddTokenAndTrackIgnored()
 	{
 		// Arrange
-		_mockNormalizer.Setup(n => n.Normalize("the", "en")).Returns("");
+		_mockNormalizer.Setup(n => n.Normalize("the", "en")).Returns(new List<string>{""});
 		var input = "the";
 
 		// Act

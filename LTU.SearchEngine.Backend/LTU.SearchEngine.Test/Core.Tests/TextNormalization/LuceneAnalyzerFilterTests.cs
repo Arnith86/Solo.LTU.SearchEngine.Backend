@@ -51,14 +51,14 @@ public class LuceneAnalyzerFilterTests
         // Assert
         _luceneAnalyzerStrategyMock.Verify(s => s.GetAppropriateAnalyzer(code), Times.Once);
         Assert.NotNull(result);
-        Assert.IsType<string>(result);
+        Assert.IsType<List<string>>(result);
     }
 
     [Theory]
     [InlineData("")]
     [InlineData(" ")]
     [InlineData("NULL_TEST")]
-    public void Apply_RawTerm_WhiteSpaceOrNull_ReturnNull(string input)
+    public void Apply_RawTerm_WhiteSpaceOrNull_ReturnEmptyList(string input)
     {
         // Arrange
         string? rawTerm = input.Equals("NULL_TEST") ? null : input; 
@@ -67,6 +67,6 @@ public class LuceneAnalyzerFilterTests
         var result = _sut.Apply(rawTerm!);
 
         // Assert
-        Assert.Null(result);
+        Assert.Empty(result);
     }
 }

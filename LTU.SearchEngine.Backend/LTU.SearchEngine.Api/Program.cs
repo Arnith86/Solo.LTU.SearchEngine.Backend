@@ -3,7 +3,6 @@ using LTU.SearchEngine.Application;
 using LTU.SearchEngine.Application.QueryParsing;
 using LTU.SearchEngine.Application.QueryParsing.Helpers;
 using LTU.SearchEngine.Backend.Core;
-using LTU.SearchEngine.Backend.Core.Enums;
 using LTU.SearchEngine.Backend.Core.HelperClasses;
 using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.DTOs;
@@ -66,8 +65,9 @@ public partial class Program
         builder.Services.AddSingleton<LuceneAnalyzerStrategy>();
         builder.Services.AddSingleton<ILanguageAnalyzerRegistry, LanguageAnalyzerRegistry>();
         builder.Services.AddTransient<IHtmlLanguageCodeConverter, HtmlLanguageCodeConverter>();
-        builder.Services.AddTransient<ITextFilter, LuceneAnalyzerFilter>();
-        builder.Services.AddTransient<ITextNormalizer<string>, TextNormalizer>();
+        builder.Services.AddTransient<ILuceneFilter, LuceneAnalyzerFilter>();
+        builder.Services.AddTransient<INoiseFilter, NoiseFilter>();
+        builder.Services.AddTransient<ITextNormalizer<string, IEnumerable<string>>, TextNormalizer>();
         builder.Services.AddTransient<IIndexingPipeline, IndexingPipeline>();
 
         // Services that orchestrate the actual work (Fetching and Indexing).

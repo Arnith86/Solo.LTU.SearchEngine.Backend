@@ -14,9 +14,9 @@ namespace LTU.SearchEngine.Application.QueryParsing.Helpers;
 public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, IgnoredTermsDTO>
 {
 	private readonly IQuerySyntaxHelper _syntaxHelper;
-    private readonly ITextNormalizer<string> _normalizer;
+    private readonly ITextNormalizer<string, IEnumerable<string>> _normalizer;
 
-    public QueryStringTokenizer(IQuerySyntaxHelper syntaxHelper, ITextNormalizer<string> normalizer)
+    public QueryStringTokenizer(IQuerySyntaxHelper syntaxHelper, ITextNormalizer<string, IEnumerable<string>> normalizer)
 	{
 		_syntaxHelper = syntaxHelper ?? 
 			throw new ArgumentNullException(nameof(syntaxHelper));
@@ -39,7 +39,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 		private readonly string _input;
 		private string _globalLanguage;
 		private readonly IQuerySyntaxHelper _querySyntaxHelper;
-		private readonly ITextNormalizer<string> _textNormalizer;
+		private readonly ITextNormalizer<string, IEnumerable<string>> _textNormalizer;
 		private readonly List<IgnoredTermsDTO> _ignoredTokens = new();
 		private readonly List<ExtractedQueryToken> _tokens = new();
 		private StringBuilder _stringBuilder = new();
@@ -50,7 +50,10 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 		private bool _isNextCharacterEscaped = false;
 
 		public QueryStringTokenizationSession(
-			string input, string languageCode, IQuerySyntaxHelper syntaxHelper, ITextNormalizer<string> normalizer 
+			string input, string languageCode, 
+			IQuerySyntaxHelper syntaxHelper, 
+			ITextNormalizer<string, 
+			IEnumerable<string>> normalizer 
 			)
 		{
 			_input = input;
@@ -159,10 +162,13 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 				{
 					var normalizedWord = _textNormalizer.Normalize(word, languageCode);
 
-					if (!string.IsNullOrWhiteSpace(normalizedWord)) 
-						normalizedWords.Add(normalizedWord);
-					else 
-						_ignoredTokens.Add(new IgnoredTermsDTO{Token = word, Language = languageCode });
+					foreach (var token in normalizedWord)
+					{
+						if (!string.IsNullOrWhiteSpace(token)) 
+							normalizedWords.Add(token);
+						else 
+							_ignoredTokens.Add(new IgnoredTermsDTO{Token = word, Language = languageCode });	
+					}
 				}
 
 				finalToken = string.Join(' ', normalizedWords);	
