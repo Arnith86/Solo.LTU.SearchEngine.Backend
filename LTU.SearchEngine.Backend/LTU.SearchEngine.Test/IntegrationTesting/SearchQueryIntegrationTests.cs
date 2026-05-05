@@ -236,6 +236,81 @@ public class SearchQueryIntegrationTests : IClassFixture<WebApplicationFactory<P
         Assert.Contains(testResult.searchResults, r => r.Url.Contains("/c"));
         Assert.DoesNotContain(testResult.searchResults, r => r.Url.Contains("/b"));
     }
+   
+   
+    [Theory]
+    [InlineData("\"hello from page\"")]
+    [InlineData("\"hello from\"")]
+    [InlineData("\"from page\"")]
+    [InlineData("hello AND \"from page\"")]
+    [InlineData("\"hello from\" AND page")]
+    [Trait("TestCase", "TC-FRQ-3003")]
+    public async Task Search_ShouldHandlePhraseQueries_Correctly(string input)
+    {
+        // Arrange
+        var httpClient = _webHostBuilder.CreateFakeInternetClient();
+        using var testFactory = CreateTestFactory<Indexer>(httpClient: httpClient);
+        using var scope = testFactory.Services.CreateScope();
+        
+        var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<SearchDbContext>>();
+        using var db = dbFactory.CreateDbContext();
+        await db.Database.EnsureCreatedAsync();
+
+        // Seed Documents A, B, and C
+        var docA = new Page { Url = "http://localhost/a", Title = "Doc A", LastCrawled = DateTime.UtcNow }; // Hello from page 
+        var docB = new Page { Url = "http://localhost/b", Title = "Doc B", LastCrawled = DateTime.UtcNow }; // Hello Page from
+        var docC = new Page { Url = "http://localhost/c", Title = "Doc C", LastCrawled = DateTime.UtcNow }; // Hello wonderer
+        
+        var termHello = new Term { Word = "hello", LanguageCode = "en" };
+        var termFrom = new Term { Word = "from", LanguageCode = "en" };
+        var termPage = new Term { Word = "page", LanguageCode = "en" };
+        var termWonderer = new Term { Word = "wonderer", LanguageCode = "en" };
+        
+        db.Pages.AddRange(docA, docB, docC);
+        db.Terms.AddRange(termHello, termFrom, termPage, termWonderer);
+        await db.SaveChangesAsync();
+
+        // Map terms to pages
+        db.PageWordFrequencies.AddRange(
+            // Hello from page
+            new PageWordFrequency { Page = docA, Term = termHello, HeaderFrequency = 1 }, 
+            new PageWordFrequency { Page = docA, Term = termFrom, HeaderFrequency = 1 }, 
+            new PageWordFrequency { Page = docA, Term = termPage, HeaderFrequency = 1 }, 
+            // Hello page from 
+            new PageWordFrequency { Page = docB, Term = termHello, HeaderFrequency = 1 }, 
+            new PageWordFrequency { Page = docB, Term = termPage, HeaderFrequency = 1 }, 
+            new PageWordFrequency { Page = docB, Term = termFrom, HeaderFrequency = 1 }, 
+            // Hello Wonderer
+            new PageWordFrequency { Page = docC, Term = termHello, HeaderFrequency = 1 }, 
+            new PageWordFrequency { Page = docC, Term = termWonderer, HeaderFrequency = 1 } 
+        );
+
+        db.PageWordPositions.AddRange(
+            // Hello from page
+            new PageWordPosition { Page = docA, Term = termHello, Position = 0},
+            new PageWordPosition { Page = docA, Term = termFrom, Position = 1},
+            new PageWordPosition { Page = docA, Term = termPage, Position = 2},
+            // Hello page from
+            new PageWordPosition { Page = docB, Term = termHello, Position = 0},
+            new PageWordPosition { Page = docB, Term = termPage, Position = 1},
+            new PageWordPosition { Page = docB, Term = termFrom, Position = 2},
+            // Hello Wonderer 
+            new PageWordPosition { Page = docC, Term = termHello, Position = 0},
+            new PageWordPosition { Page = docC, Term = termWonderer, Position = 1}
+        );
+
+        await db.SaveChangesAsync();
+
+        var apiClient = testFactory.CreateClient();
+
+        // Act & Assert: Step 1 - ("Hello from page A")
+        var url = SearchUrlGenerator.QueryUrlBuilder(query: input, language: "en");
+        var helloResult = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
+        
+        Assert.Contains(helloResult!.searchResults, r => r.Url.Contains("/a"));
+        Assert.DoesNotContain(helloResult.searchResults, r => r.Url.Contains("/b"));
+        Assert.DoesNotContain(helloResult.searchResults, r => r.Url.Contains("/c"));
+    }
 
     public void Dispose()
     {
