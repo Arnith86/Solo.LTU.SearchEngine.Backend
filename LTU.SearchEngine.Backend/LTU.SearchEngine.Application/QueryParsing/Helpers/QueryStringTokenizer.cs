@@ -144,7 +144,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 		}
 
                 
-		private void Flush( QueryTokenType queryTokenType, string languageCode)
+		private void Flush(QueryTokenType queryTokenType, string languageCode)
 		{
 			if (_stringBuilder.Length == 0) return;
 
@@ -299,7 +299,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 		}
 
 
-		private LoopAction TryHandleIsCapitalLetterOperator()
+     	private LoopAction TryHandleIsCapitalLetterOperator()
 		{
 			if (IsCapitalLetterOperator(_input, _index))
 			{
@@ -339,13 +339,13 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 
 		private bool IsLogicalOperator(char character)
 		{
-			if ((_index.Equals(0) || char.IsWhiteSpace(_input[_index - 1])) &&
-				Regex.IsMatch(character.ToString(), @"[\+\-\!\&\|]")
-				)
-			{
-				return true;			
-			}
-
+			bool isAtStart = _index.Equals(0);
+			bool isAfterSeparator = !isAtStart && 
+				(char.IsWhiteSpace(_input[_index - 1]) || " :([{".Contains(_input[_index - 1]));
+			
+			if (isAtStart || isAfterSeparator) 
+				return "+-!&|".Contains(character);
+			
 			return false;
 		}
 
