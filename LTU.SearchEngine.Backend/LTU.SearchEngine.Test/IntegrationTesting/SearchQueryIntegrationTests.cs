@@ -180,6 +180,62 @@ public class SearchQueryIntegrationTests : IClassFixture<WebApplicationFactory<P
         Assert.Equal("Doc C", andResult.searchResults.First().Title);
         Assert.Contains("/c", andResult.searchResults.First().Url);
     }
+  
+  
+    [Fact]
+    [Trait("TestCase", "TC-FRQ-3002")]
+    public async Task Search_ShouldHandleSingleTermsOfDifferentLanguageButSameStem_Correctly()
+    {
+        // Arrange
+        var httpClient = _webHostBuilder.CreateFakeInternetClient();
+        using var testFactory = CreateTestFactory<Indexer>(httpClient: httpClient);
+        using var scope = testFactory.Services.CreateScope();
+        
+        var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<SearchDbContext>>();
+        using var db = dbFactory.CreateDbContext();
+        await db.Database.EnsureCreatedAsync();
+
+        // Seed Documents A, B, and C
+        var docA = new Page { Url = "http://localhost/a", Title = "Doc A", LastCrawled = DateTime.UtcNow };
+        var docB = new Page { Url = "http://localhost/b", Title = "Doc B", LastCrawled = DateTime.UtcNow };
+        var docC = new Page { Url = "http://localhost/c", Title = "Doc C", LastCrawled = DateTime.UtcNow };
+        
+        var termHello = new Term { Word = "hello", LanguageCode = "en" };
+        var termTestEn = new Term { Word = "test", LanguageCode = "en" };
+        var termTestSv = new Term { Word = "test", LanguageCode = "sv" };
+
+        db.Pages.AddRange(docA, docB, docC);
+        db.Terms.AddRange(termHello, termTestEn, termTestSv);
+        await db.SaveChangesAsync();
+
+        // Map terms to pages
+        db.PageWordFrequencies.AddRange(
+            new PageWordFrequency { Page = docA, Term = termTestSv, HeaderFrequency = 1 }, // Doc A: test Sv
+            new PageWordFrequency { Page = docB, Term = termHello, HeaderFrequency = 1 }, // Doc B: hello
+            new PageWordFrequency { Page = docC, Term = termTestEn, HeaderFrequency = 1 } // Doc C: test En
+        );
+        await db.SaveChangesAsync();
+
+        var apiClient = testFactory.CreateClient();
+
+        // Act & Assert: Step 1 - ("hello")
+        var url = SearchUrlGenerator.QueryUrlBuilder(query: "hello", language: "en");
+        var helloResult = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
+        
+        
+        Assert.Contains(helloResult!.searchResults, r => r.Url.Contains("/b"));
+        Assert.DoesNotContain(helloResult.searchResults, r => r.Url.Contains("/c"));
+        Assert.DoesNotContain(helloResult.searchResults, r => r.Url.Contains("/a"));
+
+        // Act & Assert: Step 2 - ("test")
+        url = SearchUrlGenerator.QueryUrlBuilder(query: "test", language: "en");
+        var testResult = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
+        
+        Assert.Equal(2, testResult!.searchResults.Count());
+        Assert.Contains(testResult.searchResults, r => r.Url.Contains("/a"));
+        Assert.Contains(testResult.searchResults, r => r.Url.Contains("/c"));
+        Assert.DoesNotContain(testResult.searchResults, r => r.Url.Contains("/b"));
+    }
 
     public void Dispose()
     {
