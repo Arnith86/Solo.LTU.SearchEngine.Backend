@@ -4,19 +4,29 @@ using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 namespace LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
 
 /// <summary>
-/// Implements the Shunting-yard algorithm to parse search queries. <br/>
-/// It converts an infix notation query (e.g., "A AND B") into postfix notation (Reverse Polish Notation), <br/>
-/// handling logical operator precedence (NOT > AND > OR) and grouping via parentheses.
+/// Implements an enhanced Shunting-yard algorithm to parse search queries into Postfix notation (RPN). <br/>
+/// Beyond standard operator precedence (NOT > AND > OR), this implementation handles:
+/// <list type="bullet">
+///     <item><b>Requirement Persistence:</b> Individual terms maintain their <see cref="RequirementLevel"/> (e.g., +term).</item>
+///     <item><b>Requirement Inheritance:</b> Propagates requirements from grouping operators to their root logical operators (e.g., +(A OR B) marks OR as Required).</item>
+///     <item><b>Validation:</b> Prevents invalid semantic combinations like consecutive operators or applying NOT to a required term.</item>
+/// </list>
 /// </summary>
 public class SearchQueryShuntingYardParser : IShuntingYardParser<ExtractedQueryToken>
 {
 	/// <inheritdoc/>
+    /// <summary>
+    /// Converts an infix sequence of tokens into a postfix queue while preserving and propagating requirement metadata.
+    /// </summary>
+    /// <param name="tokens">The stream of tokens extracted from the raw search string.</param>
+    /// <returns>A queue of tokens in Reverse Polish Notation, ready for AST construction.</returns>
+    /// <exception cref="FormatException">Thrown when encountering mismatched parentheses, consecutive operators, or illegal requirement applications (e.g., NOT +term).</exception>
+    /// <exception cref="ArgumentNullException">Thrown if the token collection is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown if the token collection is empty.</exception> 
 	public Queue<ExtractedQueryToken> ConvertToPostfix(IEnumerable<ExtractedQueryToken> tokens)
 	{
-		// ToDo: Figure out a solution to handle required tokens.
 		VerifyTokens(tokens);
 
-		// Queue<ExtractedQueryToken> outputQueue = new();
 		List<ExtractedQueryToken> postFixResults = new();
 		Stack<ExtractedQueryToken> operatorStack = new();
 
@@ -39,7 +49,6 @@ public class SearchQueryShuntingYardParser : IShuntingYardParser<ExtractedQueryT
 
             if (IsTermOrPhrase(token))
             {
-                // outputQueue.Enqueue(token);
                 postFixResults.Add(token);
                 firstTermPhraseSet = true;
             }
@@ -52,7 +61,6 @@ public class SearchQueryShuntingYardParser : IShuntingYardParser<ExtractedQueryT
                 // Move operators to output until the matching start parenthesis is found.
                 while (ShouldPopOperator(operatorStack))
                 {
-                    // outputQueue.Enqueue(operatorStack.Pop());
                     postFixResults.Add(operatorStack.Pop());
                 }
 
@@ -63,16 +71,12 @@ public class SearchQueryShuntingYardParser : IShuntingYardParser<ExtractedQueryT
                 
                 if (openingBracket.RequirementLevel.Equals(RequirementLevel.Required))
                     MarkLastOperatorAsRequired(postFixResults);
-            
-                // if (operatorStack.Count > 0) operatorStack.Pop();
-
             }
             else if (currTokenIsLogicalOperator)
             {
                 int currentOperatorValue = GetPrecedenceValue(token.Token);
 
                 while (NextPopDoesNotHavePrecedence(operatorStack, currentOperatorValue))
-                    // outputQueue.Enqueue(operatorStack.Pop());
                     postFixResults.Add(operatorStack.Pop());
 
                 operatorStack.Push(token);
@@ -88,7 +92,6 @@ public class SearchQueryShuntingYardParser : IShuntingYardParser<ExtractedQueryT
 
             HandleMismatchingStartParentheses(remainingToken);
 
-            // outputQueue.Enqueue(remainingToken);
             postFixResults.Add(remainingToken);
         }
 
