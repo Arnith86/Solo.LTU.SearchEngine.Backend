@@ -272,6 +272,46 @@ public class QueryTokenizerTests
     }
 
 
+	[Fact]
+	public void Tokenize_RequiredGrouping_StartGroupingOperatorTaggedAsRequired()
+    {
+		// Arrange
+		string input = "+(term1 AND term2)";
+		
+        // Act
+        var result = _sut.Tokenize(input, "en");
+        var token = result.Tokens.First();
+
+        // Assert
+        Assert.Equal("(", token.Token);
+        Assert.Equal(RequirementLevel.Required, token.RequirementLevel);
+    }
+
+
+	[Fact]
+	public void Tokenize_NestedRequiredGrouping_InnerAndOuterParenthesesTaggedAsRequired()
+	{
+		// Arrange
+		// Logic: +( term1 AND +( term1 OR term2 ) )
+		string input = "+(term1 AND +(term1 OR term2))";
+		
+		// Act
+		var result = _sut.Tokenize(input, "en");
+		var tokens = result.Tokens.ToList();
+
+		// Assert
+		// 1. Check Outer Parenthesis: +(
+		var outerParen = tokens[0];
+		Assert.Equal("(", outerParen.Token);
+		Assert.Equal(RequirementLevel.Required, outerParen.RequirementLevel);
+
+		// 2. Check Inner Parenthesis: Sequence should be: 0:+(  1:term1, 2:AND, 3:+(
+		var innerParen = tokens[3];
+		Assert.Equal("(", innerParen.Token);
+		Assert.Equal(RequirementLevel.Required, innerParen.RequirementLevel);
+	}
+
+
     [Fact]
     public void Tokenize_TermFollowedByExplicitOperator_DoesNotInsertImplicitOr()
     {
