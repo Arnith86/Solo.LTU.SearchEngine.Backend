@@ -312,6 +312,19 @@ public class QueryTokenizerTests
 	}
 
 
+	[Fact]
+	public void Tokenize_DeeplyNestedRequired_AllOpeningBracketsAreRequired()
+	{
+		string input = "+(+(+(term)))"; // Triple nested required
+		var result = _sut.Tokenize(input, "en");
+
+		var openBrackets = result.Tokens.Where(t => t.Token == "(").ToList();
+
+		Assert.Equal(3, openBrackets.Count);
+		Assert.All(openBrackets, t => Assert.Equal(RequirementLevel.Required, t.RequirementLevel));
+	}
+
+
     [Fact]
     public void Tokenize_TermFollowedByExplicitOperator_DoesNotInsertImplicitOr()
     {
