@@ -192,8 +192,9 @@ public class QueryEvaluatorVisitorTests
 		var leftNode = new TermNode<HashSet<int>>(string.Empty); // Assumed to implement IIsVoidable and return true
 		var rightNode = new TermNode<HashSet<int>>("dog");
 		
-		_repositoryMock.Setup(r => r.GetDocumentIdsForTermAsync("dog"))
-					.ReturnsAsync(new HashSet<int> { 1 });
+		_repositoryMock
+			.Setup(r => r.GetDocumentIdsForTermAsync("dog"))
+			.ReturnsAsync(new HashSet<int> { 1 });
 
 		var node = new LogicOperationNode<HashSet<int>>(leftNode, rightNode, LogicalOperators.NOT);
 
@@ -213,8 +214,9 @@ public class QueryEvaluatorVisitorTests
 		var leftNode = new TermNode<HashSet<int>>("cat");
 		var rightNode = new TermNode<HashSet<int>>(string.Empty); // Void node
 
-		_repositoryMock.Setup(r => r.GetDocumentIdsForTermAsync("cat"))
-					.ReturnsAsync(expectedIds);
+		_repositoryMock
+			.Setup(r => r.GetDocumentIdsForTermAsync("cat"))
+			.ReturnsAsync(expectedIds);
 
 		var node = new LogicOperationNode<HashSet<int>>(leftNode, rightNode, LogicalOperators.OR);
 
@@ -246,12 +248,152 @@ public class QueryEvaluatorVisitorTests
 	public async Task VisitAsync_TermNode_WhenRepositoryThrows_ShouldThrowQueryEvaluationException()
 	{
 		// Arrange
-		_repositoryMock.Setup(r => r.GetDocumentIdsForTermAsync(It.IsAny<string>()))
-					.ThrowsAsync(new Exception("Database down"));
+		_repositoryMock
+			.Setup(r => r.GetDocumentIdsForTermAsync(It.IsAny<string>()))
+			.ThrowsAsync(new Exception("Database down"));
+		
 		var node = new TermNode<HashSet<int>>("fail");
 
 		// Act & Assert
 		var ex = await Assert.ThrowsAsync<QueryEvaluationException>(() => _sut.VisitAsync(node));
 		Assert.Contains("Failed evaluating term 'fail'", ex.Message);
+	}
+
+	[Fact]
+	public async Task VisitAsync_OR_WithRequiredRightChild_IntersectsResults()
+	{
+		// Arrange: "cat" OR +"dog"
+		// cat has {1, 2}, dog has {2, 3}. 
+		// Normal OR would be {1, 2, 3}. 
+		// Because dog is required, it should be {1, 2, 3} INTERSECT {2, 3} = {2, 3}.
+		var catSet = new HashSet<int> { 1, 2 };
+		var dogSet = new HashSet<int> { 2, 3 };
+		var expectedIds = new HashSet<int> { 2, 3 };
+
+		_repositoryMock.Setup(r => r.GetDocumentIdsForTermAsync("cat")).ReturnsAsync(catSet);
+		_repositoryMock.Setup(r => r.GetDocumentIdsForTermAsync("dog")).ReturnsAsync(dogSet);
+
+		var leftNode = new TermNode<HashSet<int>>("cat", isRequired: false);
+		var rightNode = new TermNode<HashSet<int>>("dog", isRequired: true); // Required!
+
+		var node = new LogicOperationNode<HashSet<int>>(leftNode, rightNode, LogicalOperators.OR);
+
+		// Act
+		var result = await _sut.VisitAsync(node);
+
+		// Assert
+		Assert.Equal(expectedIds, result);
+		Assert.DoesNotContain(1, result); 
+	}
+
+	[Fact]
+	public async Task VisitAsync_OR_WithRequiredLeftChild_IntersectsResults()
+	{
+		// Arrange: +"cat" OR "dog"
+		var catSet = new HashSet<int> { 1, 2 };
+		var dogSet = new HashSet<int> { 2, 3 };
+		var expectedIds = new HashSet<int> { 1, 2 }; // Must have cat
+
+		_repositoryMock.Setup(r => r.GetDocumentIdsForTermAsync("cat")).ReturnsAsync(catSet);
+		_repositoryMock.Setup(r => r.GetDocumentIdsForTermAsync("dog")).ReturnsAsync(dogSet);
+
+		var leftNode = new TermNode<HashSet<int>>("cat", isRequired: true);
+		var rightNode = new TermNode<HashSet<int>>("dog", isRequired: false);
+
+		var node = new LogicOperationNode<HashSet<int>>(leftNode, rightNode, LogicalOperators.OR);
+
+		// Act
+		var result = await _sut.VisitAsync(node);
+
+		// Assert
+		Assert.Equal(expectedIds, result);
+	}
+
+	[Fact]
+	public async Task VisitAsync_OR_BothChildrenRequired_ResultsInIntersection()
+	{
+		// Arrange: +"cat" OR +"dog"
+		var catSet = new HashSet<int> { 1, 2 };
+		var dogSet = new HashSet<int> { 2, 3 };
+		var expectedIds = new HashSet<int> { 2 }; // Only common element
+
+		_repositoryMock.Setup(r => r.GetDocumentIdsForTermAsync("cat")).ReturnsAsync(catSet);
+		_repositoryMock.Setup(r => r.GetDocumentIdsForTermAsync("dog")).ReturnsAsync(dogSet);
+
+		var leftNode = new TermNode<HashSet<int>>("cat", isRequired: true);
+		var rightNode = new TermNode<HashSet<int>>("dog", isRequired: true);
+
+		var node = new LogicOperationNode<HashSet<int>>(leftNode, rightNode, LogicalOperators.OR);
+
+		// Act
+		var result = await _sut.VisitAsync(node);
+
+		// Assert
+		Assert.Equal(expectedIds, result);
+	}
+
+	[Fact]
+	public async Task VisitAsync_AND_WithRequiredChild_BehavesLikeStandardAND()
+	{
+		// Arrange: cat AND +dog
+		var catSet = new HashSet<int> { 1, 2 };
+		var dogSet = new HashSet<int> { 2, 3 };
+		
+		_repositoryMock.Setup(r => r.GetDocumentIdsForTermAsync("cat")).ReturnsAsync(catSet);
+		_repositoryMock.Setup(r => r.GetDocumentIdsForTermAsync("dog")).ReturnsAsync(dogSet);
+
+		var node = new LogicOperationNode<HashSet<int>>(
+			new TermNode<HashSet<int>>("cat"),
+			new TermNode<HashSet<int>>("dog", isRequired: true),
+			LogicalOperators.AND
+		);
+
+		// Act
+		var result = await _sut.VisitAsync(node);
+
+		// Assert
+		Assert.Single(result);
+		Assert.Contains(2, result);
+	}
+
+	[Fact]
+	public async Task VisitAsync_OR_WithRequiredNOTChild_FiltersCorrectly()
+	{
+		// Arrange: +(Java NOT Python) OR C#
+		// Java: 	{1, 2, 3}, 
+		// Python: 	{3}, 
+		// C#: 		{4}
+		// (Java NOT Python) = {1, 2}
+		// ({1, 2} OR {4}) = {1, 2, 4}
+		// Filter by Required NOT: {1, 2, 4} INTERSECT {1, 2} = {1, 2}
+		
+		var javaSet = new HashSet<int> { 1, 2, 3 };
+		var pythonSet = new HashSet<int> { 3 };
+		var cSharpSet = new HashSet<int> { 4 };
+
+		_repositoryMock.Setup(r => r.GetDocumentIdsForTermAsync("Java")).ReturnsAsync(javaSet);
+		_repositoryMock.Setup(r => r.GetDocumentIdsForTermAsync("Python")).ReturnsAsync(pythonSet);
+		_repositoryMock.Setup(r => r.GetDocumentIdsForTermAsync("C#")).ReturnsAsync(cSharpSet);
+
+		var notNode = new LogicOperationNode<HashSet<int>>(
+			new TermNode<HashSet<int>>("Java"),
+			new TermNode<HashSet<int>>("Python"),
+			LogicalOperators.NOT,
+			isRequired: true // The whole NOT group is required
+		);
+
+		var rootOrNode = new LogicOperationNode<HashSet<int>>(
+			notNode,
+			new TermNode<HashSet<int>>("C#"),
+			LogicalOperators.OR
+		);
+
+		// Act
+		var result = await _sut.VisitAsync(rootOrNode);
+
+		// Assert
+		Assert.Contains(1, result);
+		Assert.Contains(2, result);
+		Assert.DoesNotContain(4, result); // C# was there, but the mandatory NOT group excluded it
 	}
 }

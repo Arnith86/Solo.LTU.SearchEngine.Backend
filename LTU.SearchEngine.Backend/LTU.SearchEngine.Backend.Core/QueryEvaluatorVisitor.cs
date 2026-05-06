@@ -79,13 +79,22 @@ public class QueryEvaluatorVisitor : IQueryVisitor<HashSet<int>>
         var left = await node.LeftNode.AcceptAsync(this);
         var right = await node.RightNode.AcceptAsync(this);
 
-        return node.LogicalOperator switch
+		var result = node.LogicalOperator switch
         {
             LogicalOperators.AND => left.Intersect(right).ToHashSet(),
             LogicalOperators.OR => left.Union(right).ToHashSet(),
             LogicalOperators.NOT => left.Except(right).ToHashSet(),
             _ => throw new InvalidOperationException($"Unsupported logical operator: {node.LogicalOperator}")
         };
+
+		// Result is "filtered" through the required node
+		if (node.LogicalOperator.Equals(LogicalOperators.OR))
+		{
+			if (IsRequiredNode(node.LeftNode)) result.IntersectWith(left); 
+			if (IsRequiredNode(node.RightNode)) result.IntersectWith(right); 
+		}
+
+		return result;
     }
 
 	private bool IsWholeOperationVoid(bool leftNodeIsVoid, bool rightNodeIsVoid, LogicOperationNode<HashSet<int>> node)
@@ -104,9 +113,15 @@ public class QueryEvaluatorVisitor : IQueryVisitor<HashSet<int>>
     {
         if (node is IIsVoidable voidableNode && voidableNode.IsVoid()) 
 			return true;
-        
         return false;
     }
+
+	private static bool IsRequiredNode(QueryNode<HashSet<int>> node)
+	{
+		if (node is IIsRequirable requirableNode && requirableNode.IsRequired())
+			return true;
+		return false;
+	}
 
     /// <inheritdoc/>
     public Task<HashSet<int>> VisitAsync(RequiredNode<HashSet<int>> node)
