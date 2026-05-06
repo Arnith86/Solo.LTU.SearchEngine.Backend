@@ -13,7 +13,7 @@ public class ExtractedQueryToken
 		QueryTokenType tokenType, 
 		string token, 
 		RequirementLevel requirementLevel = RequirementLevel.Optional,
-		string language = "sv")
+		string language = "Unknown")
 	{
 		if (tokenType.Equals(QueryTokenType.LogicalOperator) && token.Length > 3)
 		{

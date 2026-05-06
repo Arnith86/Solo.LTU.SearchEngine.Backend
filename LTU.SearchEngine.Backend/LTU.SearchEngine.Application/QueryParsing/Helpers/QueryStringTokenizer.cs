@@ -92,7 +92,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 
                 if ((isWhitespace || ShouldBreakTerm(_character, _index)) && !_isBuildingAPhrase)
                 {
-                    Flush(QueryTokenType.Term, ResolveLanguage(_singleTermPhraseLanguage, _globalLanguage));
+                    FlushTermOrPhrase(QueryTokenType.Term, ResolveLanguage(_singleTermPhraseLanguage, _globalLanguage));
                     _singleTermPhraseLanguage = null!;
                 }
 
@@ -134,7 +134,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
             }
 
             // Handles the last term if there is one
-            Flush(QueryTokenType.Term, ResolveLanguage(_singleTermPhraseLanguage, _globalLanguage));
+            FlushTermOrPhrase(QueryTokenType.Term, ResolveLanguage(_singleTermPhraseLanguage, _globalLanguage));
 			
 			_querySyntaxHelper.ValidateGrouping(_tokens);
 
@@ -143,56 +143,72 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 			); 
 		}
 
-                
-		private void Flush(QueryTokenType queryTokenType, string languageCode)
+
+		private void FlushOperator(QueryTokenType type)
 		{
 			if (_stringBuilder.Length == 0) return;
 
-			RequirementLevel requirementLevel = _isRequired ? 
-				RequirementLevel.Required: 
-				RequirementLevel.Optional;
-
-			var originalText = _stringBuilder.ToString().Trim();
-			string finalToken;
+			var tokenValue = _stringBuilder.ToString().Trim();
 		
-			// Handles term and phrase normalization and token creation
-			if (queryTokenType == QueryTokenType.Term || queryTokenType == QueryTokenType.Phrase)
-			{
-				var words = originalText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+			RequirementLevel requirementLevel = GetRequirementLevel();
 
-				var normalizedWords = new List<string>();
+			_tokens.Add(new ExtractedQueryToken(type, tokenValue, requirementLevel));
 
-				foreach (var word in words)
-				{
-					var normalizedWord = _textNormalizer.Normalize(word, languageCode);
-
-					foreach (var token in normalizedWord)
-					{
-						if (!string.IsNullOrWhiteSpace(token)) 
-							normalizedWords.Add(token);
-						else 
-							_ignoredTokens.Add(new IgnoredTermsDTO{Token = word, Language = languageCode });	
-					}
-				}
-
-				finalToken = string.Join(' ', normalizedWords);	
-			}
-			else
-			{
-				finalToken = originalText;
-			}
-
-			if (finalToken is not null)
-			{
-				_tokens.Add(new ExtractedQueryToken(queryTokenType, finalToken, requirementLevel, languageCode));
-			}
-			
 			_stringBuilder.Clear();
-			_isRequired = false;
+			_isRequired = false; // Reset state
 		}
 
+                
+		private void FlushTermOrPhrase(QueryTokenType queryTokenType, string languageCode)
+        {
+            if (_stringBuilder.Length == 0) return;
 
-		private LoopAction HandleEscapeCharacter()
+            RequirementLevel requirementLevel = GetRequirementLevel();
+
+            var originalText = _stringBuilder.ToString().Trim();
+            string finalToken;
+
+            // Handles term and phrase normalization and token creation
+            if (queryTokenType == QueryTokenType.Term || queryTokenType == QueryTokenType.Phrase)
+            {
+                var words = originalText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+                var normalizedWords = new List<string>();
+
+                foreach (var word in words)
+                {
+                    var normalizedWord = _textNormalizer.Normalize(word, languageCode);
+
+                    foreach (var token in normalizedWord)
+                    {
+                        if (!string.IsNullOrWhiteSpace(token))
+                            normalizedWords.Add(token);
+                        else
+                            _ignoredTokens.Add(new IgnoredTermsDTO { Token = word, Language = languageCode });
+                    }
+                }
+
+                finalToken = string.Join(' ', normalizedWords);
+            }
+            else
+            {
+                finalToken = originalText;
+            }
+
+            if (finalToken is not null)
+            {
+                _tokens.Add(new ExtractedQueryToken(queryTokenType, finalToken, requirementLevel, languageCode));
+            }
+
+            _stringBuilder.Clear();
+            _isRequired = false;
+        }
+
+        private RequirementLevel GetRequirementLevel() =>
+        	_isRequired ? RequirementLevel.Required : RequirementLevel.Optional;
+        
+
+        private LoopAction HandleEscapeCharacter()
         {
             if (!_isNextCharacterEscaped && _character.Equals('\\') && _index + 1 < _input.Length)
             {
@@ -214,7 +230,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 		private bool ShouldBreakTerm(char character, int index)
         {
 			if (IsGroupingOperator(character)) return true;
-			if ("!-&|".Contains(character) && IsAtStartOfWordOrAfterColon(index)) return true;
+			if ("!+-&|".Contains(character) && IsAtStartOfWordOrAfterColon(index)) return true; // ToDo: Make sure that + is required here!
 
 			return false;
         }
@@ -243,8 +259,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 					_tokens.Add(new ExtractedQueryToken(
 						QueryTokenType.LogicalOperator, 
 						"AND", 
-						RequirementLevel.Required, 
-						_globalLanguage)
+						RequirementLevel.Required)
 					);
 					return;	
 				}
@@ -259,8 +274,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 				_tokens.Add(new ExtractedQueryToken(
 					QueryTokenType.LogicalOperator, 
 					"OR", 
-					RequirementLevel.Optional, 
-					_globalLanguage)
+					RequirementLevel.Optional)
 				);
 			}
         }
@@ -295,7 +309,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 			if (IsGroupingOperator(_character))
 			{
 				_stringBuilder.Append(_character);
-				Flush(QueryTokenType.GroupingOperator, ResolveLanguage(_singleTermPhraseLanguage, _globalLanguage));
+				FlushOperator(QueryTokenType.GroupingOperator);
 				return LoopAction.Continue;
 			}
 
@@ -319,7 +333,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 				if (IsDoubleLogicalOperator(_character)) _stringBuilder.Append(_input, _index++, 2);
 				else _stringBuilder.Append(_character);
 
-				Flush(QueryTokenType.LogicalOperator, ResolveLanguage(_singleTermPhraseLanguage, _globalLanguage));
+				FlushOperator(QueryTokenType.LogicalOperator);
 				return LoopAction.Continue;
 			}
 
@@ -335,7 +349,8 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 				int length = (span.StartsWith("AND") || span.StartsWith("NOT")) ? 3 : 2;
 
 				_stringBuilder.Append(_input, _index, length);
-				Flush(QueryTokenType.LogicalOperator, ResolveLanguage(_singleTermPhraseLanguage, _globalLanguage));
+				
+				FlushOperator(QueryTokenType.LogicalOperator);
 
 				_index += (length - 1);
 				return LoopAction.Continue;
@@ -353,7 +368,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 				if (IsEdgeOfPhrase(checkEndPhrase: true))
 				{
 					_isBuildingAPhrase = !_isBuildingAPhrase;
-					Flush(QueryTokenType.Phrase, ResolveLanguage(_singleTermPhraseLanguage, _globalLanguage));
+					FlushTermOrPhrase(QueryTokenType.Phrase, ResolveLanguage(_singleTermPhraseLanguage, _globalLanguage));
 					return LoopAction.Continue;
 				}
 

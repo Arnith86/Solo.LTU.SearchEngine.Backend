@@ -12,8 +12,9 @@ namespace LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 /// This node is a structural component of the AST, used to represent logical operations <br />
 /// such as AND and OR by linking a left and a right <see cref="QueryNode{T}"/>.
 /// </remarks>
-public class LogicOperationNode<T> : QueryNode<T>
+public class LogicOperationNode<T> : QueryNode<T>, IIsRequirable
 {
+	private bool _isRequired; 
 	public QueryNode<T> LeftNode { get; }
 	public QueryNode<T> RightNode { get; }
 	public LogicalOperators LogicalOperator { get; }
@@ -26,7 +27,8 @@ public class LogicOperationNode<T> : QueryNode<T>
 	public LogicOperationNode(
 		QueryNode<T> leftNode,
 		QueryNode<T> rightNode,
-		LogicalOperators logicalOperator
+		LogicalOperators logicalOperator,
+		bool isRequired = false
 		)
 	{
 		LeftNode = leftNode ??
@@ -37,11 +39,15 @@ public class LogicOperationNode<T> : QueryNode<T>
 		ValidateLogicalOperator(logicalOperator);
 
 		LogicalOperator = logicalOperator;
+		_isRequired = isRequired;
 	}
 
 	/// <inheritdoc>/>
 	public override Task<T> AcceptAsync(IQueryVisitor<T> visitor)
 		=> visitor.VisitAsync(this);
+
+	/// <inheritdoc/>
+	public bool IsRequirable() => _isRequired;
 
 	/// <summary>
 	/// Used for debugging and visualization purposes, returns the logical expression <br/>
@@ -64,5 +70,4 @@ public class LogicOperationNode<T> : QueryNode<T>
 			);
 		}
 	}
-
 }

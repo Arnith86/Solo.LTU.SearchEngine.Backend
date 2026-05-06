@@ -130,7 +130,7 @@ public class QueryTokenizerTests
 		var start = new ExtractedQueryToken(QueryTokenType.Term, "start", RequirementLevel.Optional, "en");
 		var unclosed = new ExtractedQueryToken(QueryTokenType.Term, "\"unclosed", RequirementLevel.Optional, "en");
 		var phrase = new ExtractedQueryToken(QueryTokenType.Term, "phrase", RequirementLevel.Optional, "en");
-		var or = new ExtractedQueryToken(QueryTokenType.LogicalOperator, "OR", RequirementLevel.Optional, "en");
+		var or = new ExtractedQueryToken(QueryTokenType.LogicalOperator, "OR", RequirementLevel.Optional);
 		// Act
 		var result = _sut.Tokenize(input, "en");
 		var resultList = result.Tokens.ToList();
@@ -345,9 +345,7 @@ public class QueryTokenizerTests
 		var input = $"start {operatorInput} phrase";
 
 		var start = new ExtractedQueryToken(QueryTokenType.Term, "start", RequirementLevel.Optional, "en");
-		var expectedOperator = new ExtractedQueryToken(
-			QueryTokenType.LogicalOperator, operatorInput, RequirementLevel.Optional, "en"
-		);
+		var expectedOperator = new ExtractedQueryToken(QueryTokenType.LogicalOperator, operatorInput, RequirementLevel.Optional);
 		var phrase = new ExtractedQueryToken(QueryTokenType.Term, "phrase", RequirementLevel.Optional, "en");
 
 		// Act
@@ -372,7 +370,7 @@ public class QueryTokenizerTests
 
 		var first = new ExtractedQueryToken(QueryTokenType.Term, "first", RequirementLevel.Optional, "en");
 		var expectedOperator = new ExtractedQueryToken(
-			QueryTokenType.LogicalOperator, operatorInput, RequirementLevel.Optional, "en"
+			QueryTokenType.LogicalOperator, operatorInput, RequirementLevel.Optional, "Unknown"
 		);
 		var second = new ExtractedQueryToken(QueryTokenType.Term, "second", RequirementLevel.Optional, "en");
 
@@ -399,13 +397,13 @@ public class QueryTokenizerTests
 		var input = $"{operator1}\"start phrase\"{operator2}";
 
 		var expectedOperator1 = new ExtractedQueryToken(
-			QueryTokenType.GroupingOperator, operator1, RequirementLevel.Optional, "en"
+			QueryTokenType.GroupingOperator, operator1, RequirementLevel.Optional
 		);
 		var expectedPhrase = new ExtractedQueryToken(
 			QueryTokenType.Phrase, "start phrase", RequirementLevel.Optional, "en"
 		);
 		var expectedOperator2 = new ExtractedQueryToken(
-			QueryTokenType.GroupingOperator, operator2, RequirementLevel.Optional, "en"
+			QueryTokenType.GroupingOperator, operator2, RequirementLevel.Optional
 		);
 
 		// Act
@@ -504,9 +502,8 @@ public class QueryTokenizerTests
 	[Theory]
 	[InlineData("term1", 1)]
 	[InlineData("\"term1 term2\"", 1)]
-	[InlineData("term1 \"term2 term3\"", 3)] // implicit OR +1
-	[InlineData("term1 en:AND term3", 2)]
-	[InlineData("term1 AND term3", 3)]
+	[InlineData("term1 \"term2 term3\"", 2)] 
+	[InlineData("term1 AND term3", 2)] 
 	public void Tokenize_IsLanguagePreFix_FindsNoLanguage_UsesDefault(string input, int instances)
 	{
 		// Act 
