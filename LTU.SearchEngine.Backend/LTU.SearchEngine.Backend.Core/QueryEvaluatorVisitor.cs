@@ -58,14 +58,30 @@ public class QueryEvaluatorVisitor : IQueryVisitor<HashSet<int>>
 
 	/// <inheritdoc/>
 	/// <remarks>
-	/// This implementation evaluates the <see cref="IIsVoidable.IsVoid"/> state of the child nodes before processing.
-	/// <list type="bullet">
-	/// <item>If both nodes are void, an empty result is returned.</item>
-	/// <item>If only one node is void, the operation is bypassed and the non-void node is evaluated directly.</item>
-	/// <item>Otherwise, a set operation (Intersect, Union, or Except) is performed on the results of both branches.</item>
-	/// <item>Special handling for NOT operations ensures that if the left node is void, the entire operation is treated as void to prevent incorrect result sets.</item>
-	/// </list>
-	/// </remarks> 
+	/// Evaluates logical operations (AND, OR, NOT) by performing set operations on document ID collections.
+	/// <para>
+	/// 	<b>Void Handling:</b>
+	/// 	<list type="bullet">
+	/// 		<item>If both child nodes are void, returns an empty set.</item>
+	/// 		<item>If one node is void, the operation is bypassed in favor of the non-void node (e.g., "A OR [void]" becomes "A").</item>
+	/// 		<item>Special case for <see cref="LogicalOperators.NOT"/>: If the left node (the base set) is void, the entire operation is treated as void.</item>
+	/// 	</list>
+	///	</para>
+	///	<para>
+	/// 	<b>Requirement Filtering (Mandatory Terms):</b>
+	/// 	<list type="bullet">
+	///			<item>
+	/// 			For <see cref="LogicalOperators.OR"/>, if a child node is marked as required (e.g., "A OR +B"), 
+	/// 			the resulting union is intersected with that child's result set. This effectively ensures the required 
+	/// 			term is present while still allowing the other branch to contribute matches.
+	/// 		</item>
+	/// 		<item>
+	/// 			Requirement levels are implicitly satisfied by <see cref="LogicalOperators.AND"/> 
+	/// 			and do not require additional filtering.
+	/// 		</item>
+	/// 	</list>
+	/// </para>
+	/// </remarks>
 	public async Task<HashSet<int>> VisitAsync(LogicOperationNode<HashSet<int>> node)
     {
         bool leftNodeIsVoid = IsNodeVoid(node.LeftNode);
@@ -79,13 +95,22 @@ public class QueryEvaluatorVisitor : IQueryVisitor<HashSet<int>>
         var left = await node.LeftNode.AcceptAsync(this);
         var right = await node.RightNode.AcceptAsync(this);
 
-        return node.LogicalOperator switch
+		var result = node.LogicalOperator switch
         {
             LogicalOperators.AND => left.Intersect(right).ToHashSet(),
             LogicalOperators.OR => left.Union(right).ToHashSet(),
             LogicalOperators.NOT => left.Except(right).ToHashSet(),
             _ => throw new InvalidOperationException($"Unsupported logical operator: {node.LogicalOperator}")
         };
+
+		// Result is "filtered" through the required node
+		if (node.LogicalOperator.Equals(LogicalOperators.OR))
+		{
+			if (IsRequiredNode(node.LeftNode)) result.IntersectWith(left); 
+			if (IsRequiredNode(node.RightNode)) result.IntersectWith(right); 
+		}
+
+		return result;
     }
 
 	private bool IsWholeOperationVoid(bool leftNodeIsVoid, bool rightNodeIsVoid, LogicOperationNode<HashSet<int>> node)
@@ -104,9 +129,15 @@ public class QueryEvaluatorVisitor : IQueryVisitor<HashSet<int>>
     {
         if (node is IIsVoidable voidableNode && voidableNode.IsVoid()) 
 			return true;
-        
         return false;
     }
+
+	private static bool IsRequiredNode(QueryNode<HashSet<int>> node)
+	{
+		if (node is IIsRequirable requirableNode && requirableNode.IsRequired())
+			return true;
+		return false;
+	}
 
     /// <inheritdoc/>
     public Task<HashSet<int>> VisitAsync(RequiredNode<HashSet<int>> node)

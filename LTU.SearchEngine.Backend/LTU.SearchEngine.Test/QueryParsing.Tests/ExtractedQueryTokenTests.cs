@@ -74,20 +74,20 @@ public class ExtractedQueryTokenTests
         var language = "en";
 
         // Act
-        var result = new ExtractedQueryToken(type, token, language);
+        var result = new ExtractedQueryToken(type, token, RequirementLevel.Optional, language);
 
         // Assert
         Assert.Equal(language, result.Language);
     }
 
     [Fact]
-    public void Constructor_DefaultLanguage_IsSwedish()
+    public void Constructor_DefaultLanguage_IsUnknown()
     {
         // Act
         var result = new ExtractedQueryToken(QueryTokenType.Term, "test");
 
         // Assert
-        Assert.Equal("sv", result.Language);
+        Assert.Equal("Unknown", result.Language);
     }
 
     [Theory]

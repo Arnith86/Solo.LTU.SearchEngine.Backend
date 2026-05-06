@@ -35,18 +35,22 @@ public class AbstractSyntaxTreeBuilder<TResult> : ITreeBuilder<TResult, Extracte
 
 		foreach (ExtractedQueryToken token in postfix)
 		{
+			bool isRequired = token.RequirementLevel.Equals(RequirementLevel.Required) ? 
+				true : 
+				false;
+
 			switch (token.TokenType)
 			{
 				case QueryTokenType.Term:
-					Stack.Push(new TermNode<TResult>(token.Token));
+					Stack.Push(new TermNode<TResult>(token.Token, isRequired));
 					break;
 				case QueryTokenType.Phrase:
 					Stack.Push(
-						new PhraseNode<TResult>(ConvertPhraseToTermList(token.Token))
+						new PhraseNode<TResult>(ConvertPhraseToTermList(token.Token), isRequired)
 					);
 					break;
 				case QueryTokenType.LogicalOperator:
-					HandleLogicalOperator(Stack, token);
+					HandleLogicalOperator(Stack, token, isRequired);
 					break;
 				default:
 					break;
@@ -61,7 +65,9 @@ public class AbstractSyntaxTreeBuilder<TResult> : ITreeBuilder<TResult, Extracte
 
 
 	private void HandleLogicalOperator(
-		Stack<QueryNode<TResult>> aSTStack, ExtractedQueryToken token)
+		Stack<QueryNode<TResult>> aSTStack, 
+		ExtractedQueryToken token,
+		bool isRequired = false)
 	{
 		// makes sure there are enough tokens to build a logical operation
 		if (aSTStack.Count < 2)
@@ -75,7 +81,8 @@ public class AbstractSyntaxTreeBuilder<TResult> : ITreeBuilder<TResult, Extracte
 		aSTStack.Push(new LogicOperationNode<TResult>(
 			leftNode: left,
 			rightNode: right,
-			logicalOperator: op
+			logicalOperator: op,
+			isRequired: isRequired
 		));
 	}
 
@@ -86,7 +93,6 @@ public class AbstractSyntaxTreeBuilder<TResult> : ITreeBuilder<TResult, Extracte
 			"AND" or "&&" => LogicalOperators.AND,
 			"OR" or "||" => LogicalOperators.OR,
 			"NOT" or "-" or "!" => LogicalOperators.NOT,
-			// "+" => LogicalOperators.REQUIRED, When Required gets implemented, this should be un-commented.
 			_ => throw new NotSupportedException()
 		};
 	}

@@ -101,31 +101,24 @@ public class SearchQueryShuntingYardParserTests
 		Assert.Equivalent(QueryTokenType.LogicalOperator, result[2].TokenType);
 	}
 
-	// ToDo: implement this test when required operators are implemented in the parser.
-	//[Fact]
-	//public void ConvertToPostfix_HandlesRequiredOperatorsCorrectly()
-	//{
-	//	// Arrange
-	//	// Infix: +Java OR Luleå -> Postfix: +Java Luleå OR
-	//	var tokens = new List<ExtractedQueryToken>
-	//	{
-	//		CreateToken("Java", QueryTokenType.Term),
-	//		CreateToken(op, QueryTokenType.LogicalOperator),
-	//		CreateToken("Luleå", QueryTokenType.Term)
-	//	};
+	[Fact]
+	public void ConvertToPostfix_RequiredTerm_MaintainsRequirementLevel()
+	{
+		// Arrange: +Java AND Luleå
+		var tokens = new List<ExtractedQueryToken>
+		{
+			CreateToken("Java", QueryTokenType.Term, RequirementLevel.Required),
+			CreateToken("AND", QueryTokenType.LogicalOperator),
+			CreateToken("Luleå", QueryTokenType.Term)
+		};
 
-	//	// Act
-	//	var result = _sut
-	//		.ConvertToPostfix(tokens)
-	//		.ToList();
+		// Act
+		var result = _sut.ConvertToPostfix(tokens).ToList();
 
-	//	// Assert
-	//	Assert.Equal(3, result.Count);
-	//	Assert.Equal("Java", result[0].Token);
-	//	Assert.Equal("Luleå", result[1].Token);
-	//	Assert.Equal(op, result[2].Token);
-	//	Assert.Equivalent(QueryTokenType.LogicalOperator, result[2].TokenType);
-	//}
+		// Assert
+		Assert.Equal(RequirementLevel.Required, result[0].RequirementLevel); // Java
+		Assert.Equal(RequirementLevel.Optional, result[1].RequirementLevel); // Luleå
+	}
 
 	[Fact]
 	public void ConvertToPostfix_PrecedenceNotOverAnd_ReturnsNotFirst()
@@ -287,8 +280,73 @@ public class SearchQueryShuntingYardParserTests
 		Assert.Equal(expected, result);
 	}
 
+
 	[Fact]
-	public void ConvertToPostfix_OperatorsInSequence_ShouldThrowFormatException()
+	public void ConvertToPostfix_RequiredGrouping_AppliesRequirementToRootOperator()
+	{
+		// Arrange: term1 AND +(term2 OR term3)
+		// Infix: term1, AND, +(, term2, OR, term3, )
+		var tokens = new List<ExtractedQueryToken>
+		{
+			CreateToken("term1", QueryTokenType.Term),
+			CreateToken("AND", QueryTokenType.LogicalOperator),
+			CreateToken("(", QueryTokenType.GroupingOperator, RequirementLevel.Required),
+			CreateToken("term2", QueryTokenType.Term),
+			CreateToken("OR", QueryTokenType.LogicalOperator),
+			CreateToken("term3", QueryTokenType.Term),
+			CreateToken(")", QueryTokenType.GroupingOperator)
+		};
+
+		// Act
+		var result = _sut.ConvertToPostfix(tokens).ToList();
+
+		// Assert
+		// Expected Postfix: term1, term2, term3, OR (Required), AND
+		var orOperator = result.First(t => t.Token == "OR");
+		var andOperator = result.First(t => t.Token == "AND");
+
+		Assert.Equal(RequirementLevel.Required, orOperator.RequirementLevel);
+		Assert.Equal(RequirementLevel.Optional, andOperator.RequirementLevel);
+	}
+
+
+	[Fact]
+	public void ConvertToPostfix_NestedRequiredGrouping_MarksBothRootOperatorsAsRequired()
+	{
+		// Arrange: +(term1 AND +(term2 OR term3))
+		var tokens = new List<ExtractedQueryToken>
+		{
+			CreateToken("(", QueryTokenType.GroupingOperator, RequirementLevel.Required),
+			CreateToken("term1", QueryTokenType.Term),
+			CreateToken("AND", QueryTokenType.LogicalOperator),
+			CreateToken("(", QueryTokenType.GroupingOperator, RequirementLevel.Required),
+			CreateToken("term2", QueryTokenType.Term),
+			CreateToken("OR", QueryTokenType.LogicalOperator),
+			CreateToken("term3", QueryTokenType.Term),
+			CreateToken(")", QueryTokenType.GroupingOperator),
+			CreateToken(")", QueryTokenType.GroupingOperator)
+		};
+
+		// Act
+		var result = _sut.ConvertToPostfix(tokens).ToList();
+
+		// Assert
+		// Postfix: term1, term2, term3, OR (Req), AND (Req)
+		var orToken = result.Find(t => t.Token == "OR");
+		var andToken = result.Find(t => t.Token == "AND");
+
+		Assert.NotNull(orToken);
+		Assert.NotNull(andToken);
+		Assert.Equal(RequirementLevel.Required, orToken.RequirementLevel);
+		Assert.Equal(RequirementLevel.Required, andToken.RequirementLevel);
+	}
+
+
+	[Theory]
+	[InlineData("!")]
+	[InlineData("-")]
+	[InlineData("NOT")]
+	public void ConvertToPostfix_OperatorsInSequence_ShouldThrowFormatException(string not)
 	{
 		// Arrange
 		// Query: Java AND NOT Ltu
@@ -296,15 +354,18 @@ public class SearchQueryShuntingYardParserTests
 		{
 			CreateToken("Java", QueryTokenType.Term),
 			CreateToken("AND", QueryTokenType.LogicalOperator),
-			CreateToken("NOT", QueryTokenType.LogicalOperator),
+			CreateToken(not, QueryTokenType.LogicalOperator),
 			CreateToken("Ltu", QueryTokenType.Term),
 		};
 
 		Assert.Throws<FormatException>(()=> _sut.ConvertToPostfix(tokens));
 	}
 	
-	[Fact]
-	public void ConvertToPostfix_OperatorsInSequenceWithParentheses_ShouldThrowFormatException()
+	[Theory]
+	[InlineData("!")]
+	[InlineData("-")]
+	[InlineData("NOT")]
+	public void ConvertToPostfix_OperatorsInSequenceWithParentheses_ShouldThrowFormatException(string not)
 	{
 		// Arrange
 		// Query: Java AND (NOT Ltu)
@@ -313,7 +374,7 @@ public class SearchQueryShuntingYardParserTests
 			CreateToken("Java", QueryTokenType.Term),
 			CreateToken("AND", QueryTokenType.LogicalOperator),
 			CreateToken("(", QueryTokenType.GroupingOperator),
-			CreateToken("NOT", QueryTokenType.LogicalOperator),
+			CreateToken(not, QueryTokenType.LogicalOperator),
 			CreateToken("Ltu", QueryTokenType.Term),
 			CreateToken(")", QueryTokenType.GroupingOperator),
 		};
@@ -321,29 +382,35 @@ public class SearchQueryShuntingYardParserTests
 		Assert.Throws<FormatException>(()=> _sut.ConvertToPostfix(tokens));
 	}
 	
-	[Fact]
-	public void ConvertToPostfix_OperatorsFirst_ShouldThrowFormatException()
+	[Theory]
+	[InlineData("!")]
+	[InlineData("-")]
+	[InlineData("NOT")]
+	public void ConvertToPostfix_OperatorsFirst_ShouldThrowFormatException(string not)
 	{
 		// Arrange
 		// Query: NOT Ltu
 		var tokens = new List<ExtractedQueryToken>
 		{
-			CreateToken("NOT", QueryTokenType.LogicalOperator),
+			CreateToken(not, QueryTokenType.LogicalOperator),
 			CreateToken("Ltu", QueryTokenType.Term),
 		};
 
 		Assert.Throws<FormatException>(()=> _sut.ConvertToPostfix(tokens));
 	}
 	
-	[Fact]
-	public void ConvertToPostfix_OperatorsFirstInParentheses_ShouldThrowFormatException()
+	[Theory]
+	[InlineData("!")]
+	[InlineData("-")]
+	[InlineData("NOT")]
+	public void ConvertToPostfix_OperatorsFirstInParentheses_ShouldThrowFormatException(string not)
 	{
 		// Arrange
 		// Query: (NOT Ltu)
 		var tokens = new List<ExtractedQueryToken>
 		{
 			CreateToken("(", QueryTokenType.GroupingOperator),
-			CreateToken("NOT", QueryTokenType.LogicalOperator),
+			CreateToken(not, QueryTokenType.LogicalOperator),
 			CreateToken("Ltu", QueryTokenType.Term),
 			CreateToken(")", QueryTokenType.GroupingOperator)
 		};
@@ -351,8 +418,11 @@ public class SearchQueryShuntingYardParserTests
 		Assert.Throws<FormatException>(()=> _sut.ConvertToPostfix(tokens));
 	}
 	
-	[Fact]
-	public void ConvertToPostfix_OperatorsFirstInMultipleParentheses_ShouldThrowFormatException()
+	[Theory]
+	[InlineData("!")]
+	[InlineData("-")]
+	[InlineData("NOT")]
+	public void ConvertToPostfix_OperatorsFirstInMultipleParentheses_ShouldThrowFormatException(string not)
 	{
 		// Arrange
 		// Query: ((NOT Ltu))
@@ -360,7 +430,7 @@ public class SearchQueryShuntingYardParserTests
 		{
 			CreateToken("(", QueryTokenType.GroupingOperator),
 			CreateToken("(", QueryTokenType.GroupingOperator),
-			CreateToken("NOT", QueryTokenType.LogicalOperator),
+			CreateToken(not, QueryTokenType.LogicalOperator),
 			CreateToken("Ltu", QueryTokenType.Term),
 			CreateToken(")", QueryTokenType.GroupingOperator),
 			CreateToken(")", QueryTokenType.GroupingOperator)
@@ -370,11 +440,75 @@ public class SearchQueryShuntingYardParserTests
 	}
 
 
-	private ExtractedQueryToken CreateToken(string text, QueryTokenType type)
+	[Theory]
+	[InlineData("!")]
+	[InlineData("-")]
+	[InlineData("NOT")]
+	public void ConvertToPostfix_NotAndRequiredInSequenceSameExpression_ShouldThrowFormatException(string not)
+	{
+		// Arrange
+		// Query: term NOT +Ltu
+		var tokens = new List<ExtractedQueryToken>
+		{
+			CreateToken("term", QueryTokenType.Term),
+			CreateToken(not, QueryTokenType.LogicalOperator),
+			CreateToken("Ltu", QueryTokenType.Term, RequirementLevel.Required)
+		};
+
+		Assert.Throws<FormatException>(()=> _sut.ConvertToPostfix(tokens));
+	}
+
+	[Theory]
+	[InlineData("!")]
+	[InlineData("-")]
+	[InlineData("NOT")]
+	public void ConvertToPostfix_NotAndRequiredInSequenceSameExpressionWithPhrase_ShouldThrowFormatException(string not)
+	{
+		// Arrange
+		// Query: term NOT +"Ltu term"
+		var tokens = new List<ExtractedQueryToken>
+		{
+			CreateToken("term", QueryTokenType.Term),
+			CreateToken(not, QueryTokenType.LogicalOperator),
+			CreateToken("Ltu term", QueryTokenType.Phrase, RequirementLevel.Required)
+		};
+
+		Assert.Throws<FormatException>(()=> _sut.ConvertToPostfix(tokens));
+	}
+	
+	[Theory]
+	[InlineData("!")]
+	[InlineData("-")]
+	[InlineData("NOT")]
+	public void ConvertToPostfix_NotAndRequiredInSameExpressionWithParentheses_ShouldThrowFormatException(string not)
+	{
+		// Arrange
+		// Query: term NOT +(Ltu OR Term)
+		var tokens = new List<ExtractedQueryToken>
+		{
+			CreateToken("term", QueryTokenType.Term),
+			CreateToken(not, QueryTokenType.LogicalOperator),
+			CreateToken("(", QueryTokenType.GroupingOperator, RequirementLevel.Required),
+			CreateToken("Ltu", QueryTokenType.Term),
+			CreateToken("OR", QueryTokenType.LogicalOperator),
+			CreateToken("term", QueryTokenType.Term),
+			CreateToken(")", QueryTokenType.GroupingOperator)
+		};
+
+		Assert.Throws<FormatException>(()=> _sut.ConvertToPostfix(tokens));
+	}
+
+
+	private ExtractedQueryToken CreateToken(
+		string text, 
+		QueryTokenType type, 
+		RequirementLevel requirementLevel = RequirementLevel.Optional
+		)
 	{
 		return new ExtractedQueryToken( 
 			tokenType: type,
-			token : text 
+			token : text, 
+			requirementLevel: requirementLevel
 		);
 	}
 }

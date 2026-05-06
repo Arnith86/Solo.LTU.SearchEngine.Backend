@@ -4,34 +4,52 @@ using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 namespace LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
 
 /// <summary>
-/// Implements the Shunting-yard algorithm to parse search queries. <br/>
-/// It converts an infix notation query (e.g., "A AND B") into postfix notation (Reverse Polish Notation), <br/>
-/// handling logical operator precedence (NOT > AND > OR) and grouping via parentheses.
+/// Implements an enhanced Shunting-yard algorithm to parse search queries into Postfix notation (RPN). <br/>
+/// Beyond standard operator precedence (NOT > AND > OR), this implementation handles:
+/// <list type="bullet">
+///     <item><b>Requirement Persistence:</b> Individual terms maintain their <see cref="RequirementLevel"/> (e.g., +term).</item>
+///     <item><b>Requirement Inheritance:</b> Propagates requirements from grouping operators to their root logical operators (e.g., +(A OR B) marks OR as Required).</item>
+///     <item><b>Validation:</b> Prevents invalid semantic combinations like consecutive operators or applying NOT to a required term.</item>
+/// </list>
 /// </summary>
 public class SearchQueryShuntingYardParser : IShuntingYardParser<ExtractedQueryToken>
 {
 	/// <inheritdoc/>
+    /// <summary>
+    /// Converts an infix sequence of tokens into a postfix queue while preserving and propagating requirement metadata.
+    /// </summary>
+    /// <param name="tokens">The stream of tokens extracted from the raw search string.</param>
+    /// <returns>A queue of tokens in Reverse Polish Notation, ready for AST construction.</returns>
+    /// <exception cref="FormatException">Thrown when encountering mismatched parentheses, consecutive operators, or illegal requirement applications (e.g., NOT +term).</exception>
+    /// <exception cref="ArgumentNullException">Thrown if the token collection is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown if the token collection is empty.</exception> 
 	public Queue<ExtractedQueryToken> ConvertToPostfix(IEnumerable<ExtractedQueryToken> tokens)
 	{
-		// ToDo: Figure out a solution to handle required tokens.
 		VerifyTokens(tokens);
 
-		Queue<ExtractedQueryToken> outputQueue = new();
+		List<ExtractedQueryToken> postFixResults = new();
 		Stack<ExtractedQueryToken> operatorStack = new();
 
 		ExtractedQueryToken? lastNonGroupingToken = null;
 		bool firstTermPhraseSet = false;
 		
-		foreach (ExtractedQueryToken token in tokens)
+        var tokenList = tokens.ToList();
+
+		for (int i = 0; i < tokenList.Count; i++)
         {
+            var token = tokenList[i];
+
             bool currTokenIsLogicalOperator = IsLogicalOperator(token);
 
             HandleLogicalOperatorBeforeFirstTermOrPhrase(firstTermPhraseSet, token, currTokenIsLogicalOperator);
             HandleLogicalOperatorsInSequence(lastNonGroupingToken, token);
 
+            if (CanVerifyRequirementLookahead(tokenList, i, currTokenIsLogicalOperator))
+                HandleRequiredRequirement(token, tokenList[i + 1]);
+
             if (IsTermOrPhrase(token))
             {
-                outputQueue.Enqueue(token);
+                postFixResults.Add(token);
                 firstTermPhraseSet = true;
             }
             else if (IsStartParentheses(token))
@@ -43,20 +61,23 @@ public class SearchQueryShuntingYardParser : IShuntingYardParser<ExtractedQueryT
                 // Move operators to output until the matching start parenthesis is found.
                 while (ShouldPopOperator(operatorStack))
                 {
-                    outputQueue.Enqueue(operatorStack.Pop());
+                    postFixResults.Add(operatorStack.Pop());
                 }
 
                 HandleMismatchingClosingParentheses(operatorStack);
 
                 // Discard the start parenthesis from the stack.
-                if (operatorStack.Count > 0) operatorStack.Pop();
+                var openingBracket = operatorStack.Pop();
+                
+                if (openingBracket.RequirementLevel.Equals(RequirementLevel.Required))
+                    MarkLastOperatorAsRequired(postFixResults);
             }
-            else if (IsLogicalOperator(token))
+            else if (currTokenIsLogicalOperator)
             {
                 int currentOperatorValue = GetPrecedenceValue(token.Token);
 
                 while (NextPopDoesNotHavePrecedence(operatorStack, currentOperatorValue))
-                    outputQueue.Enqueue(operatorStack.Pop());
+                    postFixResults.Add(operatorStack.Pop());
 
                 operatorStack.Push(token);
             }
@@ -71,11 +92,48 @@ public class SearchQueryShuntingYardParser : IShuntingYardParser<ExtractedQueryT
 
             HandleMismatchingStartParentheses(remainingToken);
 
-            outputQueue.Enqueue(remainingToken);
+            postFixResults.Add(remainingToken);
         }
 
-        return outputQueue;
+        return new Queue<ExtractedQueryToken>(postFixResults);
 	}
+
+    private void MarkLastOperatorAsRequired(List<ExtractedQueryToken> outputQueue)
+    {
+        if (outputQueue.Count > 0)
+        {
+            var lastToken = outputQueue[^1];
+            var requiredOperatorTokenVersion = new ExtractedQueryToken(
+                tokenType: lastToken.TokenType,
+                token: lastToken.Token,
+                language: lastToken.Language,
+                requirementLevel: RequirementLevel.Required
+            ); 
+
+            outputQueue[^1] = requiredOperatorTokenVersion;
+        }
+
+    }
+
+    private static bool CanVerifyRequirementLookahead(
+        List<ExtractedQueryToken> tokenList, 
+        int index, 
+        bool isLogicalOperator)
+    {
+        return isLogicalOperator && (index + 1 < tokenList.Count);
+    }
+    
+
+    private void HandleRequiredRequirement(ExtractedQueryToken operatorToken, ExtractedQueryToken nextToken)
+    {
+        if (IsANotOperator(operatorToken) && nextToken.RequirementLevel.Equals(RequirementLevel.Required))
+        {
+            throw new FormatException(
+                $"Invalid query format: The NOT operator cannot be applied to a required term or group. " +
+                $"Found '{operatorToken.Token}' followed by a '+' requirement on '{nextToken.Token}'."
+            );
+        }
+    }
 
     private void HandleMismatchingStartParentheses(ExtractedQueryToken remainingToken)
     {

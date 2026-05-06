@@ -62,9 +62,9 @@ public class QueryTokenizerTests
 		// Arrange
 		var input = "apple orange banana";
 		
-		var apple = new ExtractedQueryToken(QueryTokenType.Term, "apple", "en");
-		var orange = new ExtractedQueryToken(QueryTokenType.Term, "orange", "en");
-		var banana = new ExtractedQueryToken(QueryTokenType.Term, "banana", "en");
+		var apple = new ExtractedQueryToken(QueryTokenType.Term, "apple", RequirementLevel.Optional, "en");
+		var orange = new ExtractedQueryToken(QueryTokenType.Term, "orange", RequirementLevel.Optional, "en");
+		var banana = new ExtractedQueryToken(QueryTokenType.Term, "banana", RequirementLevel.Optional, "en");
 
 		var expected = new List<ExtractedQueryToken> { apple, orange, banana };
 
@@ -81,9 +81,9 @@ public class QueryTokenizerTests
 		// Arrange
 		var input = "cat \"hello dolly\" dog";
 
-		var cat = new ExtractedQueryToken(QueryTokenType.Term, "cat", "en");
-		var helloDolly = new ExtractedQueryToken(QueryTokenType.Phrase, "hello dolly", "en");
-		var dog = new ExtractedQueryToken(QueryTokenType.Term, "dog", "en");
+		var cat = new ExtractedQueryToken(QueryTokenType.Term, "cat", RequirementLevel.Optional, "en");
+		var helloDolly = new ExtractedQueryToken(QueryTokenType.Phrase, "hello dolly", RequirementLevel.Optional, "en");
+		var dog = new ExtractedQueryToken(QueryTokenType.Term, "dog", RequirementLevel.Optional, "en");
 
 		// Act 
 		var result = _sut.Tokenize(input, "en");
@@ -101,8 +101,8 @@ public class QueryTokenizerTests
 	{
 		// Arrange
 		var input = "  word1    word2  ";
-		var word1 = new ExtractedQueryToken(QueryTokenType.Term, "word1", "en");
-		var word2 = new ExtractedQueryToken(QueryTokenType.Term, "word2", "en");
+		var word1 = new ExtractedQueryToken(QueryTokenType.Term, "word1", RequirementLevel.Optional, "en");
+		var word2 = new ExtractedQueryToken(QueryTokenType.Term, "word2", RequirementLevel.Optional, "en");
 
 		// Act
 		var result = _sut.Tokenize(input, "en");
@@ -127,10 +127,10 @@ public class QueryTokenizerTests
 		// Arrange
 		var input = "start \"unclosed phrase";
 
-		var start = new ExtractedQueryToken(QueryTokenType.Term, "start", "en");
-		var unclosed = new ExtractedQueryToken(QueryTokenType.Term, "\"unclosed", "en");
-		var phrase = new ExtractedQueryToken(QueryTokenType.Term, "phrase", "en");
-		var or = new ExtractedQueryToken(QueryTokenType.LogicalOperator, "OR", "en");
+		var start = new ExtractedQueryToken(QueryTokenType.Term, "start", RequirementLevel.Optional, "en");
+		var unclosed = new ExtractedQueryToken(QueryTokenType.Term, "\"unclosed", RequirementLevel.Optional, "en");
+		var phrase = new ExtractedQueryToken(QueryTokenType.Term, "phrase", RequirementLevel.Optional, "en");
+		var or = new ExtractedQueryToken(QueryTokenType.LogicalOperator, "OR", RequirementLevel.Optional);
 		// Act
 		var result = _sut.Tokenize(input, "en");
 		var resultList = result.Tokens.ToList();
@@ -188,6 +188,142 @@ public class QueryTokenizerTests
         Assert.Equal("OR", resultList[3].Token);
         Assert.Equal("orange", resultList[4].Token);
     }
+
+
+	[Theory]
+    [InlineData("+apple", "apple")]
+    [InlineData("+orange", "orange")]
+    public void Tokenize_PlusPrefixOnTerm_SetsRequirementLevelToRequired(string input, string expectedTerm)
+    {
+        // Act
+        var result = _sut.Tokenize(input, "en");
+        var token = result.Tokens.First();
+
+        // Assert
+        Assert.Equal(expectedTerm, token.Token);
+        Assert.Equal(RequirementLevel.Required, token.RequirementLevel);
+        Assert.Equal(QueryTokenType.Term, token.TokenType);
+    }
+
+
+	[Fact]
+    public void Tokenize_PlusPrefixOnPhrase_SetsRequirementLevelToRequired()
+    {
+        // Arrange
+        var input = "+\"mandatory phrase\"";
+
+        // Act
+        var result = _sut.Tokenize(input, "en");
+        var token = result.Tokens.First();
+
+        // Assert
+        Assert.Equal("mandatory phrase", token.Token);
+        Assert.Equal(RequirementLevel.Required, token.RequirementLevel);
+        Assert.Equal(QueryTokenType.Phrase, token.TokenType);
+    }
+
+
+	[Theory]
+	[InlineData("+apple +banana")]
+	[InlineData("+\"apple pie\" +\"banana split\"")]
+    public void Tokenize_MultipleRequiredTerms_InsertsImplicitAND(string input)
+    {
+        // Act
+        var result = _sut.Tokenize(input, "en");
+        var resultList = result.Tokens.ToList();
+
+        // Assert (required, AND, required)
+        Assert.Equal(3, resultList.Count);
+        Assert.Equal(RequirementLevel.Required, resultList[0].RequirementLevel);
+        Assert.Equal(RequirementLevel.Required, resultList[2].RequirementLevel);
+        Assert.Equal("AND", resultList[1].Token);
+    }
+
+
+	[Theory]
+	[InlineData("\\+apple", "+apple")]
+	[InlineData("\\+\"apple banana\"", "+apple banana")]
+	public void Tokenize_EscapedPlusAtStart_ShouldBeOptional(string input, string expected)
+    {
+        // Act
+        var result = _sut.Tokenize(input, "en");
+        var token = result.Tokens.First();
+
+        // Assert
+        Assert.Equal(expected, token.Token);
+        Assert.Equal(RequirementLevel.Optional, token.RequirementLevel);
+    }
+	
+	
+	[Theory]
+	[InlineData("\"apple \\+ banana\"", "apple + banana")]
+	[InlineData("\"\\+apple  banana\"", "+apple banana")]
+	[InlineData("\"apple \\+banana\"", "apple +banana")]
+	[InlineData("\"apple banana\\+\"", "apple banana+")]
+	public void Tokenize_EscapedPlusInPhrase_ShouldNotInsertRequired(string input, string expected)
+    {
+        // Act
+        var result = _sut.Tokenize(input, "en");
+        var token = result.Tokens.First();
+
+        // Assert
+        Assert.Equal(expected, token.Token);
+        Assert.Equal(RequirementLevel.Optional, token.RequirementLevel);
+    }
+
+
+	[Fact]
+	public void Tokenize_RequiredGrouping_StartGroupingOperatorTaggedAsRequired()
+    {
+		// Arrange
+		string input = "+(term1 AND term2)";
+		
+        // Act
+        var result = _sut.Tokenize(input, "en");
+        var token = result.Tokens.First();
+
+        // Assert
+        Assert.Equal("(", token.Token);
+        Assert.Equal(RequirementLevel.Required, token.RequirementLevel);
+    }
+
+
+	[Fact]
+	public void Tokenize_NestedRequiredGrouping_InnerAndOuterParenthesesTaggedAsRequired()
+	{
+		// Arrange
+		// Logic: +( term1 AND +( term1 OR term2 ) )
+		string input = "+(term1 AND +(term1 OR term2))";
+		
+		// Act
+		var result = _sut.Tokenize(input, "en");
+		var tokens = result.Tokens.ToList();
+
+		// Assert
+		// 1. Check Outer Parenthesis: +(
+		var outerParen = tokens[0];
+		Assert.Equal("(", outerParen.Token);
+		Assert.Equal(RequirementLevel.Required, outerParen.RequirementLevel);
+
+		// 2. Check Inner Parenthesis: Sequence should be: 0:+(  1:term1, 2:AND, 3:+(
+		var innerParen = tokens[3];
+		Assert.Equal("(", innerParen.Token);
+		Assert.Equal(RequirementLevel.Required, innerParen.RequirementLevel);
+	}
+
+
+	[Fact]
+	public void Tokenize_DeeplyNestedRequired_AllOpeningBracketsAreRequired()
+	{
+		string input = "+(+(+(term)))"; // Triple nested required
+		var result = _sut.Tokenize(input, "en");
+
+		var openBrackets = result.Tokens.Where(t => t.Token == "(").ToList();
+
+		Assert.Equal(3, openBrackets.Count);
+		Assert.All(openBrackets, t => Assert.Equal(RequirementLevel.Required, t.RequirementLevel));
+	}
+
 
     [Fact]
     public void Tokenize_TermFollowedByExplicitOperator_DoesNotInsertImplicitOr()
@@ -250,7 +386,7 @@ public class QueryTokenizerTests
     [Theory]
 	[InlineData("!")]
 	[InlineData("-")]
-	[InlineData("+")]
+	// [InlineData("+")]
 	[InlineData("&&")]
 	[InlineData("||")]
 	[InlineData("AND")]
@@ -261,9 +397,9 @@ public class QueryTokenizerTests
 		// Arrange
 		var input = $"start {operatorInput} phrase";
 
-		var start = new ExtractedQueryToken(QueryTokenType.Term, "start", "en");
-		var expectedOperator = new ExtractedQueryToken(QueryTokenType.LogicalOperator, operatorInput, "en");
-		var phrase = new ExtractedQueryToken(QueryTokenType.Term, "phrase", "en");
+		var start = new ExtractedQueryToken(QueryTokenType.Term, "start", RequirementLevel.Optional, "en");
+		var expectedOperator = new ExtractedQueryToken(QueryTokenType.LogicalOperator, operatorInput, RequirementLevel.Optional);
+		var phrase = new ExtractedQueryToken(QueryTokenType.Term, "phrase", RequirementLevel.Optional, "en");
 
 		// Act
 		var result = _sut.Tokenize(input, "en");
@@ -285,9 +421,11 @@ public class QueryTokenizerTests
 		// Arrange
 		var input = $"first {operatorInput}second";
 
-		var first = new ExtractedQueryToken(QueryTokenType.Term, "first", "en");
-		var expectedOperator = new ExtractedQueryToken(QueryTokenType.LogicalOperator, operatorInput, "en");
-		var second = new ExtractedQueryToken(QueryTokenType.Term, "second", "en");
+		var first = new ExtractedQueryToken(QueryTokenType.Term, "first", RequirementLevel.Optional, "en");
+		var expectedOperator = new ExtractedQueryToken(
+			QueryTokenType.LogicalOperator, operatorInput, RequirementLevel.Optional, "Unknown"
+		);
+		var second = new ExtractedQueryToken(QueryTokenType.Term, "second", RequirementLevel.Optional, "en");
 
 		// Act
 		var result = _sut.Tokenize(input, "en");
@@ -311,9 +449,15 @@ public class QueryTokenizerTests
 		// Arrange
 		var input = $"{operator1}\"start phrase\"{operator2}";
 
-		var expectedOperator1 = new ExtractedQueryToken(QueryTokenType.GroupingOperator, operator1, "en");
-		var expectedPhrase = new ExtractedQueryToken(QueryTokenType.Phrase, "start phrase", "en");
-		var expectedOperator2 = new ExtractedQueryToken(QueryTokenType.GroupingOperator, operator2, "en");
+		var expectedOperator1 = new ExtractedQueryToken(
+			QueryTokenType.GroupingOperator, operator1, RequirementLevel.Optional
+		);
+		var expectedPhrase = new ExtractedQueryToken(
+			QueryTokenType.Phrase, "start phrase", RequirementLevel.Optional, "en"
+		);
+		var expectedOperator2 = new ExtractedQueryToken(
+			QueryTokenType.GroupingOperator, operator2, RequirementLevel.Optional
+		);
 
 		// Act
 		var result = _sut.Tokenize(input, "en");
@@ -348,13 +492,13 @@ public class QueryTokenizerTests
     }
 
     [Theory]
+    // [InlineData("+")]
     [InlineData("AND")]
     [InlineData("OR")]
     [InlineData("NOT")]
     [InlineData("!")]
     [InlineData("||")]
     [InlineData("&&")]
-    [InlineData("+")]
     [InlineData("-")]
     public void Tokenize_Should_Not_Normalize_LogicalOperators(string input)
     {
@@ -411,9 +555,8 @@ public class QueryTokenizerTests
 	[Theory]
 	[InlineData("term1", 1)]
 	[InlineData("\"term1 term2\"", 1)]
-	[InlineData("term1 \"term2 term3\"", 3)] // implicit OR +1
-	[InlineData("term1 en:AND term3", 2)]
-	[InlineData("term1 AND term3", 3)]
+	[InlineData("term1 \"term2 term3\"", 2)] 
+	[InlineData("term1 AND term3", 2)] 
 	public void Tokenize_IsLanguagePreFix_FindsNoLanguage_UsesDefault(string input, int instances)
 	{
 		// Act 

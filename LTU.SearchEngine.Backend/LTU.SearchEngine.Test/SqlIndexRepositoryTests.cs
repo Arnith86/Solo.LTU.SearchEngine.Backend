@@ -239,9 +239,9 @@ public class SqlIndexRepositoryTests : IDisposable
         // Create the PhraseNode to search for "quick brown fox"
         var tokens = new List<ExtractedQueryToken>
         {
-            new ExtractedQueryToken(QueryTokenType.Phrase, "quick", "en"),
-            new ExtractedQueryToken(QueryTokenType.Phrase, "brown", "en"),
-            new ExtractedQueryToken(QueryTokenType.Phrase, "fox", "en")
+            new ExtractedQueryToken(QueryTokenType.Phrase, "quick", RequirementLevel.Optional, "en"),
+            new ExtractedQueryToken(QueryTokenType.Phrase, "brown", RequirementLevel.Optional, "en"),
+            new ExtractedQueryToken(QueryTokenType.Phrase, "fox", RequirementLevel.Optional, "en")
         };
         
         var phraseNode = new PhraseNode<HashSet<int>>(tokens);
