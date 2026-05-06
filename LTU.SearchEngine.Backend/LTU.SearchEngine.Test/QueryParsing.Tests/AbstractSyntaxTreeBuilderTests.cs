@@ -131,6 +131,120 @@ public class AbstractSyntaxTreeBuilderTests
 		Assert.Equal("world", phraseNode.Phrase[1].Token);
 	}
 
+
+	[Fact]
+	public void BuildTree_RequiredTerm_CreatesNodeWithIsRequiredTrue()
+	{
+		// Arrange
+		var postfix = new Queue<ExtractedQueryToken>(new[]
+		{
+			new ExtractedQueryToken(QueryTokenType.Term, "cat", RequirementLevel.Required)
+		});
+
+		_parserMock
+			.Setup(p => p.ConvertToPostfix(It.IsAny<IEnumerable<ExtractedQueryToken>>()))
+			.Returns(postfix);
+
+		var sut = CreateBuilder();
+
+		// Act
+		var result = sut.BuildTree(new List<ExtractedQueryToken>());
+
+		// Assert
+		var termNode = Assert.IsType<TermNode<HashSet<int>>>(result);
+		Assert.True(termNode.IsRequired()); 
+	}
+
+
+	[Fact]
+	public void BuildTree_RequiredPhrase_CreatesNodeWithIsRequiredTrue()
+	{
+		// Arrange
+		var postfix = new Queue<ExtractedQueryToken>(new[]
+		{
+			new ExtractedQueryToken(QueryTokenType.Phrase, "luleå ltu", RequirementLevel.Required)
+		});
+
+		_parserMock
+			.Setup(p => p.ConvertToPostfix(It.IsAny<IEnumerable<ExtractedQueryToken>>()))
+			.Returns(postfix);
+
+		var sut = CreateBuilder();
+
+		// Act
+		var result = sut.BuildTree(new List<ExtractedQueryToken>());
+
+		// Assert
+		var phraseNode = Assert.IsType<PhraseNode<HashSet<int>>>(result);
+		Assert.True(phraseNode.IsRequired());
+	}
+
+
+	[Fact]
+	public void BuildTree_RequiredLogicalOperator_CreatesLogicNodeWithIsRequiredTrue()
+	{
+		// Arrange: Postfix for "cat dog AND" where AND is tagged as Required
+		var postfix = new Queue<ExtractedQueryToken>(new[]
+		{
+			new ExtractedQueryToken(QueryTokenType.Term, "cat"),
+			new ExtractedQueryToken(QueryTokenType.Term, "dog"),
+			new ExtractedQueryToken(QueryTokenType.LogicalOperator, "AND", RequirementLevel.Required)
+		});
+
+		_parserMock
+			.Setup(p => p.ConvertToPostfix(It.IsAny<IEnumerable<ExtractedQueryToken>>()))
+			.Returns(postfix);
+
+		var sut = CreateBuilder();
+
+		// Act
+		var result = sut.BuildTree(new List<ExtractedQueryToken>());
+
+		// Assert
+		var logicNode = Assert.IsType<LogicOperationNode<HashSet<int>>>(result);
+		Assert.True(logicNode.IsRequired());
+		
+		// Child nodes should still be optional unless they were specifically tagged
+		var left = Assert.IsType<TermNode<HashSet<int>>>(logicNode.LeftNode);
+		Assert.False(left!.IsRequired());
+		
+		var right = Assert.IsType<TermNode<HashSet<int>>>(logicNode.RightNode);
+		Assert.False(right!.IsRequired());
+	}
+
+
+	[Fact]
+	public void BuildTree_MixedRequirements_AssignsPropertiesCorrectly()
+	{
+		// Arrange: +cat dog OR (Optional OR, but 'cat' is required)
+		var postfix = new Queue<ExtractedQueryToken>(new[]
+		{
+			new ExtractedQueryToken(QueryTokenType.Term, "cat", RequirementLevel.Required),
+			new ExtractedQueryToken(QueryTokenType.Term, "dog", RequirementLevel.Optional),
+			new ExtractedQueryToken(QueryTokenType.LogicalOperator, "OR", RequirementLevel.Optional)
+		});
+
+		_parserMock
+			.Setup(p => p.ConvertToPostfix(It.IsAny<IEnumerable<ExtractedQueryToken>>()))
+			.Returns(postfix);
+
+		var sut = CreateBuilder();
+
+		// Act
+		var result = sut.BuildTree(new List<ExtractedQueryToken>());
+
+		// Assert
+		var logicNode = Assert.IsType<LogicOperationNode<HashSet<int>>>(result);
+		Assert.False(logicNode.IsRequired()); // The OR itself is optional
+		
+		var left = Assert.IsType<TermNode<HashSet<int>>>(logicNode.LeftNode);
+		Assert.True(left.IsRequired()); // cat is required
+		
+		var right = Assert.IsType<TermNode<HashSet<int>>>(logicNode.RightNode);
+		Assert.False(right.IsRequired()); // dog is optional
+	}
+
+
 	[Fact]
 	public void BuildTree_InvalidStructure_Throws()
 	{

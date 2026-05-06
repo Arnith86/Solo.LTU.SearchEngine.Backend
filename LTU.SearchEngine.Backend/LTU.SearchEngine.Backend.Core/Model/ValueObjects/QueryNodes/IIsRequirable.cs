@@ -18,5 +18,5 @@ public interface IIsRequirable
     /// <see langword="true"/> if the node associated with the prefix requirement operator (e.g., '+') 
     /// indicating it must be present; <see langword="false"/> if the node is optional (should-match).
     /// </returns>
-    bool IsRequirable();
+    bool IsRequired();
 }

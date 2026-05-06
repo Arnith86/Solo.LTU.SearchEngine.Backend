@@ -36,7 +36,7 @@ public class TermNode<T> : QueryNode<T>, IIsVoidable, IIsRequirable
 	public bool IsVoid() => string.IsNullOrWhiteSpace(Term);
     
 	/// <inheritdoc/>
-	public bool IsRequirable() => _isRequired;
+	public bool IsRequired() => _isRequired;
 
 	/// <summary>
 	/// Used for debugging and visualization purposes, returns the term string contained in this node.

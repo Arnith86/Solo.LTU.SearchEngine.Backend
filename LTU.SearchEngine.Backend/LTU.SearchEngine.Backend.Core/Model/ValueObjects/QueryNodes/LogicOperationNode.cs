@@ -47,7 +47,7 @@ public class LogicOperationNode<T> : QueryNode<T>, IIsRequirable
 		=> visitor.VisitAsync(this);
 
 	/// <inheritdoc/>
-	public bool IsRequirable() => _isRequired;
+	public bool IsRequired() => _isRequired;
 
 	/// <summary>
 	/// Used for debugging and visualization purposes, returns the logical expression <br/>

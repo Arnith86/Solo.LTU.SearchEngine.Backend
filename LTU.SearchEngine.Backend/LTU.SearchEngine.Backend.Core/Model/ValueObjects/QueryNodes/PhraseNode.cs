@@ -11,7 +11,7 @@ namespace LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 /// A PhraseNode is used to represent quoted strings from the user input, ensuring that the <br />
 /// included tokens are treated as a single, ordered unit during the search process.
 /// </remarks>
-public class PhraseNode<T> : QueryNode<T>, IIsVoidable
+public class PhraseNode<T> : QueryNode<T>, IIsVoidable, IIsRequirable
 {
 	private bool _isRequired; 
 	public List<ExtractedQueryToken> Phrase { get; }
@@ -34,7 +34,7 @@ public class PhraseNode<T> : QueryNode<T>, IIsVoidable
 		=>  Phrase == null || Phrase.Count == 0 || Phrase.All( t => string.IsNullOrWhiteSpace(t.Token));
 
 	/// <inheritdoc/>
-	public bool IsRequirable() => _isRequired;
+	public bool IsRequired() => _isRequired;
 
 	/// <summary>
 	/// Used for debugging and visualization purposes, returns the phrase as a <br/>
