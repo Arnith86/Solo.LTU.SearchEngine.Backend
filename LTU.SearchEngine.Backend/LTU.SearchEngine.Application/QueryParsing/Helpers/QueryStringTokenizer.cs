@@ -214,7 +214,7 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 		private bool ShouldBreakTerm(char character, int index)
         {
 			if (IsGroupingOperator(character)) return true;
-			if ("!+-&|".Contains(character) && IsAtStartOfWordOrAfterColon(index)) return true;
+			if ("!-&|".Contains(character) && IsAtStartOfWordOrAfterColon(index)) return true;
 
 			return false;
         }
@@ -236,6 +236,18 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 			if (_index + 1 < _input.Length)
 			{
 				char next = _input[_index + 1];
+
+				// Sequential + have implicit AND relation 
+				if (next.Equals('+'))
+				{
+					_tokens.Add(new ExtractedQueryToken(
+						QueryTokenType.LogicalOperator, 
+						"AND", 
+						RequirementLevel.Required, 
+						_globalLanguage)
+					);
+					return;	
+				}
 
 				// Do not insert OR before operators
 				if ("!+-&|".Contains(next) ||

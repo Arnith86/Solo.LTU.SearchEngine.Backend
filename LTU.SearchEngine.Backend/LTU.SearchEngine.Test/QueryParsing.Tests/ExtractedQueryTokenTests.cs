@@ -74,7 +74,7 @@ public class ExtractedQueryTokenTests
         var language = "en";
 
         // Act
-        var result = new ExtractedQueryToken(type, token, language);
+        var result = new ExtractedQueryToken(type, token, RequirementLevel.Optional, language);
 
         // Assert
         Assert.Equal(language, result.Language);
