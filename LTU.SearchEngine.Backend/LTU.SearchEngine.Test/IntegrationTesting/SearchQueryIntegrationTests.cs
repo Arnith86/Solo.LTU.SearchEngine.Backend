@@ -555,7 +555,7 @@ public class SearchQueryIntegrationTests : IClassFixture<WebApplicationFactory<P
         var result = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
         
         // Assert
-        Assert.Equal(result!.searchResults.Count(), expected);
+        Assert.Equal(expected, result!.searchResults.Count());
     }
     
     
@@ -629,7 +629,75 @@ public class SearchQueryIntegrationTests : IClassFixture<WebApplicationFactory<P
         var result = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
         
         // Assert
-        Assert.Equal(result!.searchResults.Count(), expected);
+        Assert.Equal(expected, result!.searchResults.Count());
+    }
+    
+    
+    [Theory]
+    [InlineData("test AND page", 2)]                // AND
+    [InlineData("test && wonder", 1)]               // && 
+    [InlineData("+test OR +page", 2)]               // (Required OR Required)
+    [InlineData("+test || +wonder", 1)]             // (Required || Required)
+    [InlineData("+test +page", 2)]                  // Required (implicit OR) Required
+    [InlineData("test AND +(page OR NotEXIST)", 2)] // AND Required(OR) only one of OR exist
+    [InlineData("test && +(page OR NotEXIST)",2)]   // && Required(OR) only one of OR exist
+    [InlineData("test AND page AND wonder", 1)]     // AND AND 
+    [InlineData("test AND page && wonder", 1)]      // AND && 
+    [InlineData("test AND +page OR +wonder", 2)]    // AND && (Required OR Required) 
+    [InlineData("test AND +(page OR wonder)", 2)]   // AND Required(OR) Both OR exist
+    [InlineData("test && page && wonder", 1)]       // && && 
+    [InlineData("test && page AND wonder", 1)]      // && AND 
+    [InlineData("page && +test OR +wonder", 2)]     // && (Required OR Required) 
+    [InlineData("page && +(test OR wonder)", 3)]    // && Required(OR) Both OR exist
+    [Trait("TestCase", "TC-FRQ-3006")]
+    public async Task Search_AllAndOperatorFindMatchingDocuments_Correctly(string query, int expected)
+    {
+        // Arrange
+        var httpClient = _webHostBuilder.CreateFakeInternetClient();
+        using var testFactory = CreateTestFactory<Indexer>(httpClient: httpClient);
+        using var scope = testFactory.Services.CreateScope();
+        
+        var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<SearchDbContext>>();
+        using var db = dbFactory.CreateDbContext();
+        await db.Database.EnsureCreatedAsync();
+
+        // Seed Documents A, B, and C
+        var docA = new Page { Url = "http://localhost/a", Title = "Doc A", LastCrawled = DateTime.UtcNow }; // page, test
+        var docB = new Page { Url = "http://localhost/b", Title = "Doc B", LastCrawled = DateTime.UtcNow }; // page, wonder 
+        var docC = new Page { Url = "http://localhost/c", Title = "Doc C", LastCrawled = DateTime.UtcNow }; // page, wonder, test
+        
+        var termTest = new Term { Word = "test", LanguageCode = "en" };
+        var termPage = new Term { Word = "page", LanguageCode = "en" };
+        var termWonder = new Term { Word = "wonder", LanguageCode = "en" };
+        
+        db.Pages.AddRange(docA, docB, docC);
+        db.Terms.AddRange(termTest, termPage, termWonder);
+        await db.SaveChangesAsync();
+
+        // Map terms to pages
+        db.PageWordFrequencies.AddRange(
+            // page, test
+            new PageWordFrequency { Page = docA, Term = termPage, HeaderFrequency = 1 }, 
+            new PageWordFrequency { Page = docA, Term = termTest, HeaderFrequency = 1 }, 
+            // page, wonder
+            new PageWordFrequency { Page = docB, Term = termPage, HeaderFrequency = 1 },
+            new PageWordFrequency { Page = docB, Term = termWonder, HeaderFrequency = 1 },
+            // page, wonder, test
+            new PageWordFrequency { Page = docC, Term = termPage, HeaderFrequency = 1 },
+            new PageWordFrequency { Page = docC, Term = termWonder, HeaderFrequency = 1 },
+            new PageWordFrequency { Page = docC, Term = termTest, HeaderFrequency = 1 }
+        );
+
+        await db.SaveChangesAsync();
+
+        var apiClient = testFactory.CreateClient();
+
+        // Act 
+        var url = SearchUrlGenerator.QueryUrlBuilder(query, language: "en");
+        var result = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
+        
+        // Assert
+        Assert.Equal(expected, result!.searchResults.Count());
     }
 
 
