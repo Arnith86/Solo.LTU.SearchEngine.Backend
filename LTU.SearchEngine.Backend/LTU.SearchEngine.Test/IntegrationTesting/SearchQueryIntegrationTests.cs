@@ -475,6 +475,88 @@ public class SearchQueryIntegrationTests : IClassFixture<WebApplicationFactory<P
         Assert.DoesNotContain(result!.searchResults, r => r.Url.Contains("/a"));
         Assert.DoesNotContain(result.ignoredTokens!, r => r.Token.Contains(expectedIgnored));
     }
+    
+
+    [Theory]
+    [InlineData("test fish", 1)]
+    [InlineData("fish page", 1)]
+    [InlineData("wonder page", 2)]
+    [InlineData("wonder fish test", 2)]
+    [InlineData("fish wonder test", 2)]
+    [InlineData("fish test wonder", 2)]
+    [InlineData("page test wonder", 3)]
+    [InlineData("test OR fish", 1)]
+    [InlineData("fish OR page", 1)]
+    [InlineData("wonder OR page", 2)]
+    [InlineData("wonder OR fish OR test", 2)]
+    [InlineData("fish OR wonder OR test", 2)]
+    [InlineData("fish OR test OR wonder", 2)]
+    [InlineData("page OR test OR wonder", 3)]
+    [InlineData("test || fish", 1)]
+    [InlineData("fish || page", 1)]
+    [InlineData("wonder || page", 2)]
+    [InlineData("wonder || fish || test", 2)]
+    [InlineData("fish || wonder || test", 2)]
+    [InlineData("fish || test || wonder", 2)]
+    [InlineData("page || test || wonder", 3)]
+    [InlineData("wonder || fish OR test", 2)]
+    [InlineData("wonder OR fish || test", 2)]
+    [InlineData("fish wonder || test", 2)]
+    [InlineData("fish || wonder test", 2)]
+    [InlineData("fish OR test wonder", 2)]
+    [InlineData("fish test OR wonder", 2)]
+    [InlineData("page OR test || wonder", 3)]
+    [InlineData("page || test OR wonder", 3)]
+    [InlineData("page || test wonder", 3)]
+    [InlineData("page test || wonder", 3)]
+    [InlineData("page test OR wonder", 3)]
+    [InlineData("page OR test wonder", 3)]
+    [Trait("TestCase", "TC-FRQ-3005")]
+    public async Task Search_AllOrOperatorMatchesDocuments_Correctly(string query, int expected)
+    {
+        // Arrange
+        var httpClient = _webHostBuilder.CreateFakeInternetClient();
+        using var testFactory = CreateTestFactory<Indexer>(httpClient: httpClient);
+        using var scope = testFactory.Services.CreateScope();
+        
+        var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<SearchDbContext>>();
+        using var db = dbFactory.CreateDbContext();
+        await db.Database.EnsureCreatedAsync();
+
+        // Seed Documents A, B, and C
+        var docA = new Page { Url = "http://localhost/a", Title = "Doc A", LastCrawled = DateTime.UtcNow }; // test 
+        var docB = new Page { Url = "http://localhost/b", Title = "Doc B", LastCrawled = DateTime.UtcNow }; // page
+        var docC = new Page { Url = "http://localhost/c", Title = "Doc C", LastCrawled = DateTime.UtcNow }; // wonder
+        
+        var termTest = new Term { Word = "test", LanguageCode = "en" };
+        var termPage = new Term { Word = "page", LanguageCode = "en" };
+        var termWonder = new Term { Word = "wonder", LanguageCode = "en" };
+        
+        db.Pages.AddRange(docA, docB, docC);
+        db.Terms.AddRange(termTest, termPage, termWonder);
+        await db.SaveChangesAsync();
+
+        // Map terms to pages
+        db.PageWordFrequencies.AddRange(
+            // test
+            new PageWordFrequency { Page = docA, Term = termTest, HeaderFrequency = 1 }, 
+            // page 
+            new PageWordFrequency { Page = docB, Term = termPage, HeaderFrequency = 1 },
+            // wonder
+            new PageWordFrequency { Page = docC, Term = termWonder, HeaderFrequency = 1 } 
+        );
+
+        await db.SaveChangesAsync();
+
+        var apiClient = testFactory.CreateClient();
+
+        // Act 
+        var url = SearchUrlGenerator.QueryUrlBuilder(query, language: "en");
+        var result = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
+        
+        // Assert
+        Assert.Equal(result!.searchResults.Count(), expected);
+    }
 
 
     public void Dispose()
