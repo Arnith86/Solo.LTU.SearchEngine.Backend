@@ -347,53 +347,22 @@ public class HapHtmlParser : IHtmlParser
         }
     }
 
-    private void ExtractTextWithSpaces(HtmlNode node, StringBuilder sb)
+    private string GetCleanText(HtmlNode node)
     {
-        foreach (var child in node.ChildNodes)
-        {
-            if (child.NodeType.Equals(HtmlNodeType.Text))
-            {
-                sb.Append(child.InnerText);
-            }
-            else
-            {
-                ExtractTextWithSpaces(child, sb);
-                if (IsBlockElement(child.Name)) sb.Append(" ");
-            }
-        }
+        var sb = new StringBuilder();
+        HtmlTextExtractor.ExtractTextWithSpaces(node, sb);
+        return sb.ToString();
     }
-
-    private bool IsBlockElement(string name)
-    {
-        string[] blockElements = { 
-            "p", "div", "li", "br", 
-            "tr", "h1", "h2", "h3", 
-            "h4", "h5", "h6", 
-            "section", "article", "aside" 
-        };
-
-        return blockElements.Contains(name.ToLower());
-    }
+    
 
     private void HandleBodyText(HtmlDocument doc, List<IndexedTerm> terms)
     {
         // At this stage, scripts, titles, and headers have been removed.
-        // InnerText now contains only the remaining "Body" content (paragraphs, lists, divs).
-        
-        // var bodyText = doc.DocumentNode.InnerText;
         string bodyText = GetCleanText(doc.DocumentNode);
         AddTerms(terms, bodyText, TermSource.Body);
     }
 
-    private string GetCleanText(HtmlNode node)
-    {
-        var sb = new StringBuilder();
-        ExtractTextWithSpaces(node, sb);
-        return sb.ToString();
-        
-    }
-    
-
+  
     // Add space to prevent word concatenation after removal
     private void ReplaceChildWithSpaceNode(HtmlDocument doc, HtmlNode childNode)
     {
