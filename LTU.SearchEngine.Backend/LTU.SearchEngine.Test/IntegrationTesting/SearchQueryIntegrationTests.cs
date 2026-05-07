@@ -557,6 +557,80 @@ public class SearchQueryIntegrationTests : IClassFixture<WebApplicationFactory<P
         // Assert
         Assert.Equal(result!.searchResults.Count(), expected);
     }
+    
+    
+    
+    
+    [Theory]
+    [InlineData("test -page", 2)]                   // -
+    [InlineData("test -wonder", 2)]                 // -
+    [InlineData("test !page", 2)]                   // !
+    [InlineData("test !wonder", 2)]                 // !
+    [InlineData("test NOT page", 2)]                // NOT
+    [InlineData("test NOT wonder", 2)]              // NOT
+    [InlineData("test -page -wonder", 1)]           // - - 
+    [InlineData("test !page !wonder", 1)]           // ! !
+    [InlineData("test NOT page NOT wonder", 1)]     // NOT NOT
+    [InlineData("test -page !wonder", 1)]           // - !
+    [InlineData("test -page NOT wonder", 1)]        // - NOT
+    [InlineData("test !page -wonder", 1)]           // ! - 
+    [InlineData("test !page NOT wonder", 1)]        // ! NOT
+    [InlineData("test NOT page -wonder", 1)]        // NOT -
+    [InlineData("test NOT page !wonder", 1)]        // NOT !
+    [InlineData("test NOT page !wonder -test", 0)]  // NOT, !, -
+    [InlineData("test NOT page -wonder !test", 0)]  // NOT, -, !
+    [InlineData("test !page NOT wonder -test", 0)]  // !, NOT, -
+    [InlineData("test !page -wonder NOT test", 0)]  // !, -, NOT
+    [InlineData("test -page NOT wonder !test", 0)]  // -, NOT, !
+    [InlineData("test -page !wonder NOT test", 0)]  // -, !, NOT
+    [Trait("TestCase", "TC-FRQ-3008")]
+    public async Task Search_AllNotOperatorExcludeMatchingDocuments_Correctly(string query, int expected)
+    {
+        // Arrange
+        var httpClient = _webHostBuilder.CreateFakeInternetClient();
+        using var testFactory = CreateTestFactory<Indexer>(httpClient: httpClient);
+        using var scope = testFactory.Services.CreateScope();
+        
+        var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<SearchDbContext>>();
+        using var db = dbFactory.CreateDbContext();
+        await db.Database.EnsureCreatedAsync();
+
+        // Seed Documents A, B, and C
+        var docA = new Page { Url = "http://localhost/a", Title = "Doc A", LastCrawled = DateTime.UtcNow }; // test  
+        var docB = new Page { Url = "http://localhost/b", Title = "Doc B", LastCrawled = DateTime.UtcNow }; // page test
+        var docC = new Page { Url = "http://localhost/c", Title = "Doc C", LastCrawled = DateTime.UtcNow }; // wonder test
+        
+        var termTest = new Term { Word = "test", LanguageCode = "en" };
+        var termPage = new Term { Word = "page", LanguageCode = "en" };
+        var termWonder = new Term { Word = "wonder", LanguageCode = "en" };
+        
+        db.Pages.AddRange(docA, docB, docC);
+        db.Terms.AddRange(termTest, termPage, termWonder);
+        await db.SaveChangesAsync();
+
+        // Map terms to pages
+        db.PageWordFrequencies.AddRange(
+            // test
+            new PageWordFrequency { Page = docA, Term = termTest, HeaderFrequency = 1 }, 
+            // page test
+            new PageWordFrequency { Page = docB, Term = termPage, HeaderFrequency = 1 },
+            new PageWordFrequency { Page = docB, Term = termTest, HeaderFrequency = 1 },
+            // wonder tets
+            new PageWordFrequency { Page = docC, Term = termWonder, HeaderFrequency = 1 }, 
+            new PageWordFrequency { Page = docC, Term = termTest, HeaderFrequency = 1 } 
+        );
+
+        await db.SaveChangesAsync();
+
+        var apiClient = testFactory.CreateClient();
+
+        // Act 
+        var url = SearchUrlGenerator.QueryUrlBuilder(query, language: "en");
+        var result = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
+        
+        // Assert
+        Assert.Equal(result!.searchResults.Count(), expected);
+    }
 
 
     public void Dispose()
