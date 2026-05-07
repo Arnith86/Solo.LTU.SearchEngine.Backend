@@ -177,15 +177,8 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 
                 foreach (var word in words)
                 {
-                    var normalizedWord = _textNormalizer.Normalize(word, languageCode);
-
-                    foreach (var token in normalizedWord)
-                    {
-                        if (!string.IsNullOrWhiteSpace(token))
-                            normalizedWords.Add(token);
-                        else
-                            _ignoredTokens.Add(new IgnoredTermsDTO { Token = word, Language = languageCode });
-                    }
+                    var normalizedResult = _textNormalizer.Normalize(word, languageCode).ToList();
+					DistributeTokensByValidity(languageCode, normalizedWords, word, normalizedResult);
                 }
 
                 finalToken = string.Join(' ', normalizedWords);
@@ -202,6 +195,26 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 
             _stringBuilder.Clear();
             _isRequired = false;
+        }
+
+        private void DistributeTokensByValidity(
+			string languageCode, 
+			List<string> normalizedWords, 
+			string word, 
+			IEnumerable<string> normalizedResult)
+        {
+			if (!normalizedResult.Any())
+			{
+				_ignoredTokens.Add(new IgnoredTermsDTO { Token = word.ToLowerInvariant(), Language = languageCode });
+			}	
+
+			foreach (var token in normalizedResult)
+            {
+                if (!string.IsNullOrWhiteSpace(token))
+                    normalizedWords.Add(token);
+                else
+                    _ignoredTokens.Add(new IgnoredTermsDTO { Token = word.ToLowerInvariant(), Language = languageCode });
+            }
         }
 
         private RequirementLevel GetRequirementLevel() =>

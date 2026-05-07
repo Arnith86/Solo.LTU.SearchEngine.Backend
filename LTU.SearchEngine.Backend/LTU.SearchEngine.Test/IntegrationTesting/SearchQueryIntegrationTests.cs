@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using LTU.SearchEngine.Application.QueryParsing;
 using LTU.SearchEngine.Backend.Api;
 using LTU.SearchEngine.Backend.Core.Entities;
 using LTU.SearchEngine.Backend.Core.Model.DTOs;
@@ -9,7 +10,6 @@ using LTU.SearchEngine.Infrastructure.Data;
 using LTU.SearchEngine.Infrastructure.Indexing;
 using LTU.SearchEngine.Test.HelperClasses;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -237,7 +237,63 @@ public class SearchQueryIntegrationTests : IClassFixture<WebApplicationFactory<P
         Assert.DoesNotContain(testResult.searchResults, r => r.Url.Contains("/b"));
     }
    
-   
+
+    [Theory]
+    [InlineData("+")]
+    [InlineData("!")]
+    [InlineData("%")]
+    [InlineData("#")]
+    [InlineData("&")]
+    [InlineData("|")]
+    [InlineData("@")]
+    [InlineData("(")]
+    [InlineData(")")]
+    [InlineData("{")]
+    [InlineData("}")]
+    [InlineData("[")]
+    [InlineData("]")]
+    [InlineData("\"")]
+    [Trait("TestCase", "TC-FRQ-3002")]
+    public async Task Search_ShouldHandleEscapedCharacters_Correctly(string character)
+    {
+        // Arrange
+        var httpClient = _webHostBuilder.CreateFakeInternetClient();
+        using var testFactory = CreateTestFactory<Indexer>(httpClient: httpClient);
+        using var scope = testFactory.Services.CreateScope();
+        
+        var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<SearchDbContext>>();
+        using var db = dbFactory.CreateDbContext();
+        await db.Database.EnsureCreatedAsync();
+
+        // Seed Documents A
+        var docA = new Page { Url = "http://localhost/a", Title = "Doc A", LastCrawled = DateTime.UtcNow };
+        
+        // term will look like this ex: te!rm
+        var term = new Term { Word = $"te{character}rm", LanguageCode = "en" };
+        
+        db.Pages.AddRange(docA);
+        db.Terms.AddRange(term);
+        await db.SaveChangesAsync();
+
+        // Map terms to pages
+        db.PageWordFrequencies.AddRange(
+            new PageWordFrequency { Page = docA, Term = term, HeaderFrequency = 1 }
+        );
+
+        await db.SaveChangesAsync();
+
+        var apiClient = testFactory.CreateClient();
+
+        // Act - query will look like this ex: te\!rm
+        var url = SearchUrlGenerator.QueryUrlBuilder(query: $"te\\{character}rm", language: "en");
+        var helloResult = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
+        
+        // Assert
+        Assert.Contains(helloResult!.searchResults, r => r.Url.Contains("/a"));
+    }
+    
+
+
     [Theory]
     [InlineData("\"hello from page\"")]
     [InlineData("\"hello from\"")]
@@ -312,60 +368,115 @@ public class SearchQueryIntegrationTests : IClassFixture<WebApplicationFactory<P
         Assert.DoesNotContain(helloResult.searchResults, r => r.Url.Contains("/c"));
     }
 
-    [Theory]
-    [InlineData("+")]
-    [InlineData("!")]
-    [InlineData("%")]
-    [InlineData("#")]
-    [InlineData("&")]
-    [InlineData("|")]
-    [InlineData("@")]
-    [InlineData("(")]
-    [InlineData(")")]
-    [InlineData("{")]
-    [InlineData("}")]
-    [InlineData("[")]
-    [InlineData("]")]
-    [InlineData("\"")]
-    [Trait("TestCase", "TC-FRQ-3002")]
-    public async Task Search_ShouldHandleEscapedCharacters_Correctly(string character)
+    private async Task<HttpClient> SetupSearchBooleanOperatorAreCaseSensitiveDatabase(WebApplicationFactory<Program> testFactory)
     {
-        // Arrange
-        var httpClient = _webHostBuilder.CreateFakeInternetClient();
-        using var testFactory = CreateTestFactory<Indexer>(httpClient: httpClient);
         using var scope = testFactory.Services.CreateScope();
         
         var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<SearchDbContext>>();
         using var db = dbFactory.CreateDbContext();
         await db.Database.EnsureCreatedAsync();
 
-        // Seed Documents A
-        var docA = new Page { Url = "http://localhost/a", Title = "Doc A", LastCrawled = DateTime.UtcNow };
+        // Seed Documents A, B, and C
+        var docA = new Page { Url = "http://localhost/a", Title = "Doc A", LastCrawled = DateTime.UtcNow }; // term1 term2
         
-        // term will look like this ex: te!rm
-        var term = new Term { Word = $"te{character}rm", LanguageCode = "en" };
+        var term1 = new Term { Word = "term1", LanguageCode = "en" };
+        var term2 = new Term { Word = "term2", LanguageCode = "en" };
         
         db.Pages.AddRange(docA);
-        db.Terms.AddRange(term);
+        db.Terms.AddRange(term1, term2);
         await db.SaveChangesAsync();
 
         // Map terms to pages
         db.PageWordFrequencies.AddRange(
-            new PageWordFrequency { Page = docA, Term = term, HeaderFrequency = 1 }
+            new PageWordFrequency { Page = docA, Term = term1, HeaderFrequency = 1 }, 
+            new PageWordFrequency { Page = docA, Term = term2, HeaderFrequency = 1 } 
         );
 
         await db.SaveChangesAsync();
 
-        var apiClient = testFactory.CreateClient();
+        return testFactory.CreateClient();
+    }
 
-        // Act - query will look like this ex: te\!rm
-        var url = SearchUrlGenerator.QueryUrlBuilder(query: $"te\\{character}rm", language: "en");
-        var helloResult = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
+
+    [Theory]
+    [InlineData("and", "and", "AND")]
+    [InlineData("And", "and", "AND")]
+    [InlineData("ANd", "and", "AND")]
+    [InlineData("aND", "and", "AND")]
+    [InlineData("anD", "and", "AND")]
+    [InlineData("or", "or", "OR")]
+    [InlineData("Or", "or", "OR")]
+    [InlineData("oR", "or", "OR")]
+    [Trait("TestCase", "TC-FRQ-3004")]
+    public async Task Search_BooleanOperatorAreCaseSensitiveAndOr_Correctly(
+        string input, 
+        string expectedIgnored, 
+        string correctOperator
+        )
+    {
+        // Arrange
+        var httpClient = _webHostBuilder.CreateFakeInternetClient();
+        using var testFactory = CreateTestFactory<QueryParser>(httpClient: httpClient);
+        var apiClient = await SetupSearchBooleanOperatorAreCaseSensitiveDatabase(testFactory);
+
+        // Act - Step 1 - Not capital letters 
+        string query = $"term1 {input} term2";
+        var url = SearchUrlGenerator.QueryUrlBuilder(query, language: "en");
+        var result = await apiClient .GetFromJsonAsync<SearchResponseDTO>(url);
         
         // Assert
-        Assert.Contains(helloResult!.searchResults, r => r.Url.Contains("/a"));
+        Assert.Contains(result!.searchResults, r => r.Url.Contains("/a"));
+        Assert.Contains(result.ignoredTokens!, r => r.Token.Contains(expectedIgnored));
+        
+        // Act - Step 2 - Capital letters 
+        query = $"term1 {correctOperator} term2";
+        url = SearchUrlGenerator.QueryUrlBuilder(query, language: "en");
+        result = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
+        
+        // Assert
+        Assert.Contains(result!.searchResults, r => r.Url.Contains("/a"));
+        Assert.DoesNotContain(result.ignoredTokens!, r => r.Token.Contains(expectedIgnored));    
     }
-    
+
+
+    [Theory]
+    [InlineData("not", "not", "NOT")]
+    [InlineData("Not", "not", "NOT")]
+    [InlineData("NOt", "not", "NOT")]
+    [InlineData("nOT", "not", "NOT")]
+    [InlineData("noT", "not", "NOT")]
+    [Trait("TestCase", "TC-FRQ-3004")]
+    public async Task Search_BooleanOperatorAreCaseSensitiveNot_Correctly(
+        string input, 
+        string expectedIgnored, 
+        string correctOperator
+        )
+    {
+        // Arrange
+        var httpClient = _webHostBuilder.CreateFakeInternetClient();
+        using var testFactory = CreateTestFactory<QueryParser>(httpClient: httpClient);
+        var apiClient = await SetupSearchBooleanOperatorAreCaseSensitiveDatabase(testFactory);
+
+        // Act - Step 1 - Not capital letters 
+        string query = $"term1 {input} term2";
+        var url = SearchUrlGenerator.QueryUrlBuilder(query, language: "en");
+        var result = await apiClient .GetFromJsonAsync<SearchResponseDTO>(url);
+        
+        // Assert
+        Assert.Contains(result!.searchResults, r => r.Url.Contains("/a"));
+        Assert.Contains(result.ignoredTokens!, r => r.Token.Contains(expectedIgnored));
+        
+        // Act - Step 2 - Capital letters 
+        query = $"term1 {correctOperator} term2";
+        url = SearchUrlGenerator.QueryUrlBuilder(query, language: "en");
+        result = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
+        
+        // Assert
+        Assert.DoesNotContain(result!.searchResults, r => r.Url.Contains("/a"));
+        Assert.DoesNotContain(result.ignoredTokens!, r => r.Token.Contains(expectedIgnored));
+    }
+
+
     public void Dispose()
     {
         if (File.Exists(_tempSettingsPath)) File.Delete(_tempSettingsPath);
