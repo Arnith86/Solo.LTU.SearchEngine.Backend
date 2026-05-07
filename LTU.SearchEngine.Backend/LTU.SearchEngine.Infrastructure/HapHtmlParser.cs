@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Text;
+using System.Text.RegularExpressions;
 using HtmlAgilityPack;
 using LTU.SearchEngine.Backend.Core;
 using LTU.SearchEngine.Backend.Core.Exceptions;
@@ -320,7 +321,8 @@ public class HapHtmlParser : IHtmlParser
         {
             foreach (var node in footerNodes)
             {
-                AddTerms(terms, node.InnerText, TermSource.Body);
+                string footerText = GetCleanText(node);
+                AddTerms(terms, footerText, TermSource.Body);
                 ReplaceChildWithSpaceNode(doc, node);
             }
         } 
@@ -345,17 +347,22 @@ public class HapHtmlParser : IHtmlParser
         }
     }
 
+    private string GetCleanText(HtmlNode node)
+    {
+        var sb = new StringBuilder();
+        HtmlTextExtractor.ExtractTextWithSpaces(node, sb);
+        return sb.ToString();
+    }
+    
 
     private void HandleBodyText(HtmlDocument doc, List<IndexedTerm> terms)
     {
         // At this stage, scripts, titles, and headers have been removed.
-        // InnerText now contains only the remaining "Body" content (paragraphs, lists, divs).
-        var bodyText = doc.DocumentNode.InnerText;
+        string bodyText = GetCleanText(doc.DocumentNode);
         AddTerms(terms, bodyText, TermSource.Body);
-        
     }
-    
 
+  
     // Add space to prevent word concatenation after removal
     private void ReplaceChildWithSpaceNode(HtmlDocument doc, HtmlNode childNode)
     {
