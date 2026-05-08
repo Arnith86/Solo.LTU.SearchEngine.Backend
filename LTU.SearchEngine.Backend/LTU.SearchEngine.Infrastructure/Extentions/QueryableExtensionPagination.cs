@@ -4,12 +4,34 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LTU.SearchEngine.Infrastructure.Extensions;
 
+/// <summary>
+/// Provides extension methods for <see cref="IQueryable{T}"/> to facilitate asynchronous pagination.
+/// </summary>
 public static class QueryableExtensionPagination
 {
-    public static async Task<PaginatedResult<T>> ToPaginatedResultAsync<T>(
+
+	/// <summary>
+	/// Executes a query asynchronously and wraps the results in a <see cref="PaginatedResult{T}"/>.
+	/// </summary>
+	/// <typeparam name="T">The type of the elements in the source query.</typeparam>
+	/// <param name="source">The <see cref="IQueryable{T}"/> to paginate.</param>
+	/// <param name="paginationParameters">The parameters defining the requested page and size.</param>
+	/// <returns>
+	/// A task that represents the asynchronous operation. The task result contains a 
+	/// <see cref="PaginatedResult{T}"/> including the subset of items and the calculated metadata.
+	/// </returns>
+	/// <remarks>
+	/// This method performs two database operations:
+	/// <list type="number">
+	///     <item><description>A count operation to determine the total number of matching records.</description></item>
+	///     <item><description>A filtered fetch using <c>Skip</c> and <c>Take</c> logic.</description></item>
+	/// </list>
+	/// </remarks>
+	/// <exception cref="PaginationOutOfRangeException">
+	/// Thrown if <paramref name="paginationParameters"/> contains a page number or page size less than 1.
+	/// </exception>
+	public static async Task<PaginatedResult<T>> ToPaginatedResultAsync<T>(
         this IQueryable<T> source, 
-        // int pageNumber, 
-        // int pageSize
         PaginationRequestParameters paginationParameters
         )
     {
