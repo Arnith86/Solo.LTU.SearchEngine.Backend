@@ -152,15 +152,16 @@ public class SqlIndexRepositoryTests : IDisposable
         await setupContext.SaveChangesAsync();
 
         var idsToFetch = new List<int> { page1.Id, page3.Id }; // We only want 1 and 3
+        var pageParam = PaginationRequestParametersBuilder.BuildPaginationParameters();
 
         // Act
-        var resultPages = await _sut.GetDocumentsByIdAsync(idsToFetch);
+        var paginatedResult = await _sut.GetDocumentsByIdAsync(idsToFetch, pageParam);
 
         // Assert
-        Assert.Equal(2, resultPages.Count);
-        Assert.Contains(resultPages, p => p.Url == "https://test1.com");
-        Assert.Contains(resultPages, p => p.Url == "https://test3.com");
-        Assert.DoesNotContain(resultPages, p => p.Url == "https://test2.com"); // We didn't ask for this one!
+        Assert.Equal(2, paginatedResult.Items.Count());
+        Assert.Contains(paginatedResult.Items, p => p.Url == "https://test1.com");
+        Assert.Contains(paginatedResult.Items, p => p.Url == "https://test3.com");
+        Assert.DoesNotContain(paginatedResult.Items, p => p.Url == "https://test2.com"); // We didn't ask for this one!
     }
 
 

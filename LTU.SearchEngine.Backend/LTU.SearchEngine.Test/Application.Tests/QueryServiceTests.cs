@@ -4,6 +4,7 @@ using LTU.SearchEngine.Backend.Core.Enums;
 using LTU.SearchEngine.Backend.Core.Model.DTOs;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
+using LTU.SearchEngine.Backend.Core.RequestParameters;
 using LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
 using LTU.SearchEngine.Infrastructure.Repositories;
 using LTU.SearchEngine.Test.HelperClasses;
@@ -16,7 +17,12 @@ public class QueryServiceTests
     private readonly Mock<IIndexRepository> _mockIndexRepository; 
     private readonly Mock<IQueryParser> _mockQueryParser; 
     private readonly Mock<IQueryVisitor<HashSet<int>>> _mockQueryEvaluatorVisitor; 
+    private SearchQueryRequestParameters _searchParam;
+    private PaginationRequestParameters _pageParam;
     private readonly IQueryService _sut;
+    private IPaginatedResult<Page> _paginatedResult;
+
+
     
     public QueryServiceTests()
     {
@@ -63,18 +69,25 @@ public class QueryServiceTests
     {
         var fakeQueryParsingResult = 
             QueryParsingResultBuilder.BuildQueryParsingResult(rootNode: fakeOperatorNode);
-        
+
+        _searchParam = SearchQueryRequestParametersBuilder.BuildParameters(rawQuery, languageCode);
+        _pageParam = PaginationRequestParametersBuilder.BuildPaginationParameters();
+        _paginatedResult = PaginatedResultBuilder<Page>.BuildPaginatedResult(fakeDocumentList);
+
+
         _mockQueryParser
-            .Setup(p => p.Parse(rawQuery, languageCode))
+            .Setup(p => p.Parse(It.Is<SearchQueryRequestParameters>(s => s.Query == rawQuery)))
             .Returns(fakeQueryParsingResult);
 
         _mockQueryEvaluatorVisitor
             .Setup(qe => qe.ExecuteAsync(fakeOperatorNode))
             .ReturnsAsync(fakeResultIds);
 
-        _mockIndexRepository.
-            Setup(ir => ir.GetDocumentsByIdAsync(fakeResultIds.ToList()))
-            .ReturnsAsync(fakeDocumentList);
+        _mockIndexRepository
+            .Setup(ir => ir.GetDocumentsByIdAsync(
+                It.Is<List<int>>(l => l.SequenceEqual(fakeResultIds.ToList())), 
+                It.IsAny<PaginationRequestParameters>()))
+            .ReturnsAsync(_paginatedResult);
     }
 
    
@@ -96,16 +109,16 @@ public class QueryServiceTests
         SetupMocks(rawQuery, "sv", fakeOperatorNode, fakeResultIds, fakeDocumentList);
 
         // Act
-        var result = await _sut.GetSearchResultsAsync(rawQuery);
+        var result = await _sut.GetSearchResultsAsync(_searchParam, _pageParam);
 
         // Assert
         Assert.NotNull(result);
         Assert.IsType<SearchResponseDTO>(result);
         Assert.Equal(fakePage.Title, result.searchResults.First().Title);
 
-        _mockQueryParser.Verify(p => p.Parse(rawQuery), Times.Once);
+        _mockQueryParser.Verify(p => p.Parse(_searchParam), Times.Once);
         _mockQueryEvaluatorVisitor.Verify(qe => qe.ExecuteAsync(fakeOperatorNode), Times.Once);
-        _mockIndexRepository.Verify(ir => ir.GetDocumentsByIdAsync(fakeResultIds.ToList()), Times.Once);
+        _mockIndexRepository.Verify(ir => ir.GetDocumentsByIdAsync(fakeResultIds.ToList(), _pageParam), Times.Once);
     }
 
    
@@ -127,7 +140,7 @@ public class QueryServiceTests
         SetupMocks(rawQuery, "sv", fakeOperatorNode, fakeResultIds, fakeDocumentList);
 
         // Act
-        var result = await _sut.GetSearchResultsAsync(rawQuery);
+        var result = await _sut.GetSearchResultsAsync(_searchParam, _pageParam);
 
         // Assert
         Assert.NotNull(result.message);
@@ -152,16 +165,18 @@ public class QueryServiceTests
 
         SetupMocks(rawQuery, expected, fakeOperatorNode, fakeResultIds, fakeDocumentList);
 
-        Func<Task<SearchResponseDTO>> act = input switch
-        {
-            "NO_INPUT"  => () => _sut.GetSearchResultsAsync(rawQuery),
-            _           => () => _sut.GetSearchResultsAsync(rawQuery, languageCode: input)
-        };
+
+        var searchParam = input.Equals("NO_INPUT") 
+            ? SearchQueryRequestParametersBuilder.BuildParameters(rawQuery)
+            : SearchQueryRequestParametersBuilder.BuildParameters(rawQuery, input);
+ 
 
         // Act 
-        var result = await act();
-            
-        // Assert
-        _mockQueryParser.Verify(qp => qp.Parse(It.IsAny<string>(), expected));    
+        var result = _sut.GetSearchResultsAsync(searchParam, _pageParam);
+
+        _mockQueryParser.Verify(qp => 
+            qp.Parse(It.Is<SearchQueryRequestParameters>(sqrp => sqrp.Language == expected)),
+            Times.Once
+        );
     }
 }
