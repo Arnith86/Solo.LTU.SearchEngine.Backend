@@ -2,6 +2,7 @@
 using System.Globalization;
 using LTU.SearchEngine.Backend.Core.Model.DTOs;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
+using LTU.SearchEngine.Backend.Core.RequestParameters;
 using LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
 using LTU.SearchEngine.Infrastructure.Repositories;
 
@@ -25,12 +26,17 @@ public class QueryService : IQueryService
 	}
 
 	/// <inheritdoc/>
-	public async Task<SearchResponseDTO> GetSearchResultsAsync(string rawQuery, string languageCode = "sv")
+	// public async Task<SearchResponseDTO> GetSearchResultsAsync(string rawQuery, string languageCode = "sv")
+	public async Task<SearchResponseDTO> GetSearchResultsAsync(
+		SearchQueryRequestParameters searchParameters,
+        PaginationRequestParameters paginationParameters
+		)
 	{
 		
 		var stopWatch = Stopwatch.StartNew();
 
-		var (queryNode, ignoredTokens) = _queryParser.Parse(rawQuery, languageCode);
+		// var (queryNode, ignoredTokens) = _queryParser.Parse(rawQuery, languageCode);
+		var (queryNode, ignoredTokens) = _queryParser.Parse(searchParameters);
 		
 		HashSet<int> resultIds;
 		
@@ -40,8 +46,10 @@ public class QueryService : IQueryService
 			resultIds = await _queryEvaluatorVisitor.ExecuteAsync(queryNode);
 		
 		
+		// var documentResults = await _indexRepository
+		// 	.GetDocumentsByIdAsync(resultIds.ToList());
 		var documentResults = await _indexRepository
-			.GetDocumentsByIdAsync(resultIds.ToList());
+			.GetDocumentsByIdAsync(resultIds.ToList(), paginationParameters);
 
 		stopWatch.Stop();
 		var elapsedTime = stopWatch.Elapsed.TotalMilliseconds;
@@ -50,16 +58,32 @@ public class QueryService : IQueryService
 			$"Search completed in {elapsedTime:F2} ms!"
 		);
 
+
+
+		// return new SearchResponseDTO(
+		// 	searchResults: documentResults.Select(doc => new DocumentDTO(
+		// 		Id : doc.Id,
+		// 		Url : doc.Url,
+		// 		Title : doc.Title,
+		// 		Language : doc.Language)
+		// 	),
+		// 	currentPage: 1,
+		// 	pageSize: 1,
+		// 	totalResults: documentResults.Count(),
+		// 	message: timingMessage,
+		// 	ignoredTokens: ignoredTokens
+		// );
 		return new SearchResponseDTO(
-			searchResults: documentResults.Select(doc => new DocumentDTO(
+			searchResults: documentResults.Items.Select(doc => new DocumentDTO(
 				Id : doc.Id,
 				Url : doc.Url,
 				Title : doc.Title,
 				Language : doc.Language)
 			),
-			currentPage: 1,
-			pageSize: 1,
-			totalResults: documentResults.Count(),
+			// currentPage: 1,
+			// pageSize: 1,
+			// totalResults: documentResults.Count(),
+			metaData: documentResults.MetaData,
 			message: timingMessage,
 			ignoredTokens: ignoredTokens
 		);

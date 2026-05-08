@@ -2,6 +2,7 @@
 using LTU.SearchEngine.Backend.Core.Model.DTOs;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
+using LTU.SearchEngine.Backend.Core.RequestParameters;
 using LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
 
 namespace LTU.SearchEngine.Application.QueryParsing;
@@ -41,9 +42,11 @@ public class QueryParser : IQueryParser
 	}
 
 	/// <inheritdoc/>
-	public QueryParsingResult<HashSet<int>, IgnoredTermsDTO> Parse(string rawQuery, string languageCode = "sv")
+	// public QueryParsingResult<HashSet<int>, IgnoredTermsDTO> Parse(string rawQuery, string languageCode = "sv")
+	public QueryParsingResult<HashSet<int>, IgnoredTermsDTO> Parse(SearchQueryRequestParameters searchParameters)
 	{
-		var tokenizerResult = _stringTokenizer.Tokenize(rawQuery, languageCode);
+		// var tokenizerResult = _stringTokenizer.Tokenize(rawQuery, languageCode);
+		var tokenizerResult = _stringTokenizer.Tokenize(searchParameters);
 
 		QueryNode<HashSet<int>> rootNode = _treeBuilder.BuildTree(tokenizerResult.Tokens);
 

@@ -4,7 +4,9 @@ using LTU.SearchEngine.Backend.Core.Model;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
+using LTU.SearchEngine.Backend.Core.RequestParameters;
 using LTU.SearchEngine.Infrastructure.Data;
+using LTU.SearchEngine.Infrastructure.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 
@@ -64,14 +66,19 @@ public class SqlIndexRepository : IIndexRepository
 
 
     // Retrieves a list of documents based on their unique IDs
-    public async Task<List<Page>> GetDocumentsByIdAsync(List<int> pageIds)
+    // public async Task<List<Page>> GetDocumentsByIdAsync(List<int> pageIds)
+    public async Task<IPaginatedResult<Page>> GetDocumentsByIdAsync(
+        List<int> pageIds, 
+        PaginationRequestParameters paginationParameters
+        )
 	{
 		//Creates a new database context based on their unique IDs
 		await using var context = await _factory.CreateDbContextAsync();
 
 		return await context.Pages
 			.Where(p => pageIds.Contains(p.Id))
-			.ToListAsync();
+            .ToPaginatedResultAsync(paginationParameters);
+			// .ToListAsync();
 	}
 
 	public async Task<HashSet<int>> GetDocumentIdsForPhraseAsync(PhraseNode<HashSet<int>> phraseNode)

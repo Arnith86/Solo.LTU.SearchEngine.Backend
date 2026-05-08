@@ -1,4 +1,5 @@
 ﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using LTU.SearchEngine.Backend.Core.RequestParameters;
 
 namespace LTU.SearchEngine.Backend.Core.Model.DTOs;
 
@@ -14,9 +15,10 @@ namespace LTU.SearchEngine.Backend.Core.Model.DTOs;
 /// <param name="ignoredTokens">An optional collection of <see cref="IgnoredTermsDTO"/> representing any tokens that were ignored during query parsing.</param>
 public record SearchResponseDTO(
 	IEnumerable<DocumentDTO> searchResults,
-	int currentPage,
-	int pageSize,
-	int totalResults,
+	// int currentPage,
+	// int pageSize,
+	// int totalResults,
+	IPaginationMetaData metaData,
 	string? message,
 	IEnumerable<IgnoredTermsDTO>? ignoredTokens = null
 );

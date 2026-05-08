@@ -1,5 +1,6 @@
 ﻿using LTU.SearchEngine.Backend.Core.Entities;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
+using LTU.SearchEngine.Backend.Core.RequestParameters;
 
 
 namespace LTU.SearchEngine.Infrastructure.Repositories;
@@ -23,7 +24,11 @@ public interface IIndexRepository
     Task AddDocumentAsync(IndexDocument document);
 	Task<HashSet<int>> GetDocumentIdsForTermAsync(string term);
 	Task<HashSet<int>> GetDocumentIdsForPhraseAsync(PhraseNode<HashSet<int>> phrase); 
-	Task<List<Page>> GetDocumentsByIdAsync(List<int> pageIds);
+	// Task<List<Page>> GetDocumentsByIdAsync(List<int> pageIds);
+	Task<IPaginatedResult<Page>> GetDocumentsByIdAsync(
+        List<int> pageIds, 
+        PaginationRequestParameters paginationParameters
+    );
 	Task<int?> GetExistingDocumentByHashAsync(string hash);
 	Task UpdateLastCrawledAsync(int id, DateTime newCrawl);
 }

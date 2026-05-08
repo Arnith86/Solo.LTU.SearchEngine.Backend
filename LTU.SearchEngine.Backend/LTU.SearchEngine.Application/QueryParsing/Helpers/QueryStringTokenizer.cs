@@ -2,6 +2,7 @@
 using LTU.SearchEngine.Backend.Core.Enums;
 using LTU.SearchEngine.Backend.Core.Model.DTOs;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using LTU.SearchEngine.Backend.Core.RequestParameters;
 using System.Text;
 
 namespace LTU.SearchEngine.Application.QueryParsing.Helpers;
@@ -25,9 +26,16 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 
 
 	/// <inheritdoc/>
-	public QueryStringTokenizingResult<ExtractedQueryToken, IgnoredTermsDTO> Tokenize(string input, string languageCode)
+	// public QueryStringTokenizingResult<ExtractedQueryToken, IgnoredTermsDTO> Tokenize(string input, string languageCode)
+	public QueryStringTokenizingResult<ExtractedQueryToken, IgnoredTermsDTO> Tokenize(SearchQueryRequestParameters searchParameters)
 	{
-		var session = new QueryStringTokenizationSession(input, languageCode, _syntaxHelper, _normalizer);
+		// var session = new QueryStringTokenizationSession(input, languageCode, _syntaxHelper, _normalizer);
+		var session = new QueryStringTokenizationSession(
+			searchParameters.Query, 
+			searchParameters.Language, 
+			_syntaxHelper, 
+			_normalizer
+		);
 		return session.Execute();
 	}
 

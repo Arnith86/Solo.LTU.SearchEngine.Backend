@@ -1,8 +1,6 @@
 ﻿using LTU.SearchEngine.Backend.Core.Model.DTOs;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using LTU.SearchEngine.Backend.Core.RequestParameters;
 
 namespace LTU.SearchEngine.Application.QueryParsing
 {
@@ -17,6 +15,10 @@ namespace LTU.SearchEngine.Application.QueryParsing
         /// <param name="query">The search expression to evaluate (e.g., "cats AND dogs").</param>
         /// <param name="languageCode">The main language of the given query.</param> 
         /// <returns>A task representing the asynchronous operation, containing a collection of <see cref="SearchResultItem"/>.</returns>
-        Task<SearchResponseDTO> GetSearchResultsAsync(string query, string languageCode = "sv");
+        // Task<SearchResponseDTO> GetSearchResultsAsync(string query, string languageCode = "sv");
+        Task<SearchResponseDTO> GetSearchResultsAsync(
+            SearchQueryRequestParameters searchParameters,
+            PaginationRequestParameters paginationParameters
+        );
     }
 }

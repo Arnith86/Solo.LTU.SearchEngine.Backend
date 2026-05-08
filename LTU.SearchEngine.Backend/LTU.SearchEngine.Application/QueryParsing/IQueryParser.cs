@@ -1,5 +1,6 @@
 ﻿using LTU.SearchEngine.Backend.Core.Model.DTOs;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using LTU.SearchEngine.Backend.Core.RequestParameters;
 
 namespace LTU.SearchEngine.Application.QueryParsing;
 
@@ -34,5 +35,6 @@ public interface IQueryParser
     /// <exception cref="Backend.Core.Exceptions.InvalidQueryStringException">
     /// Thrown when the query contains syntax errors that prevent a valid tree from being constructed (e.g., mismatched grouping operators).
     /// </exception>
-	QueryParsingResult<HashSet<int>, IgnoredTermsDTO> Parse(string rawQuery, string languageCode = "sv");
+	// QueryParsingResult<HashSet<int>, IgnoredTermsDTO> Parse(string rawQuery, string languageCode = "sv");
+	QueryParsingResult<HashSet<int>, IgnoredTermsDTO> Parse(SearchQueryRequestParameters searchParameters);
 }

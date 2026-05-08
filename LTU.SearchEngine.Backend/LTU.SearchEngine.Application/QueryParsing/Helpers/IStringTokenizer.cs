@@ -1,4 +1,5 @@
 ﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using LTU.SearchEngine.Backend.Core.RequestParameters;
 
 namespace LTU.SearchEngine.Application.QueryParsing.Helpers;
 
@@ -29,5 +30,6 @@ public interface IStringTokenizer<TToken, TIgnoredToken>
     /// and a collection of ignored elements of type <typeparamref name="TIgnoredToken"/>.
     /// </returns>
     /// <exception cref="ArgumentNullException">Thrown if the input string is null.</exception>
-	QueryStringTokenizingResult<TToken, TIgnoredToken> Tokenize(string input, string languageCode = "sv");
+	// QueryStringTokenizingResult<TToken, TIgnoredToken> Tokenize(string input, string languageCode = "sv");
+	QueryStringTokenizingResult<TToken, TIgnoredToken> Tokenize(SearchQueryRequestParameters searchParameters);
 }

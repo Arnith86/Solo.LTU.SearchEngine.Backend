@@ -1,5 +1,6 @@
 ﻿using LTU.SearchEngine.Application;
 using LTU.SearchEngine.Backend.Core.Model.DTOs;
+using LTU.SearchEngine.Backend.Core.RequestParameters;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Swashbuckle.AspNetCore.Annotations;
@@ -41,16 +42,22 @@ namespace LTU.SearchEngine.Api
         [SwaggerResponse(400, "Invalid query syntax or query too long")]
         [SwaggerResponse(429, "Rate limit exceeded. Please wait before searching again.")]
         public async Task<ActionResult<SearchResponseDTO>> GetSearchResponses(
-            [FromQuery] string query,
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] string language = "sv")
+            [FromQuery] SearchQueryRequestParameters searchParameters,
+            [FromQuery] PaginationRequestParameters paginationParameters
+            // [FromQuery] string query,
+            // [FromQuery] int pageNumber = 1,
+            // [FromQuery] string language = "sv"
+            )
         {
-            if (string.IsNullOrWhiteSpace(query)) return BadRequest("Search query cannot be empty."); 
-            if (query.Length > 500) return BadRequest("Query length is limited to 500 characters!");
-            if (pageNumber < 1) return BadRequest("Page number must be 1 or greater.");
-            if (pageNumber > 100) return BadRequest("Deep pagination is restricted. Please refine your query!");
+            // if (string.IsNullOrWhiteSpace(query)) return BadRequest("Search query cannot be empty."); 
+            // if (query.Length > 500) return BadRequest("Query length is limited to 500 characters!");
+            // if (pageNumber < 1) return BadRequest("Page number must be 1 or greater.");
+            // if (pageNumber > 100) return BadRequest("Deep pagination is restricted. Please refine your query!");
 
-            var responseDto = await _serviceManager.QueryService.GetSearchResultsAsync(query.Trim(), language);
+            // var responseDto = await _serviceManager.QueryService
+            //     .GetSearchResultsAsync(requestParameters.Query.Trim(), requestParameters.Language);
+            var responseDto = await _serviceManager.QueryService
+                .GetSearchResultsAsync(searchParameters, paginationParameters);
 
             return Ok(responseDto);
         }
