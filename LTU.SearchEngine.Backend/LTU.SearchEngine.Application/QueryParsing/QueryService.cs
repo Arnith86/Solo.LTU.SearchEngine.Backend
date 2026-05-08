@@ -8,12 +8,31 @@ using LTU.SearchEngine.Infrastructure.Repositories;
 
 namespace LTU.SearchEngine.Application.QueryParsing;
 
+/// <summary>
+/// Provides a concrete implementation of <see cref="IQueryService"/> that orchestrates the 
+/// end-to-end search process, from query parsing to database retrieval.
+/// </summary>
+/// <remarks>
+/// The service follows a strict execution pipeline:
+/// <list type="number">
+///     <item><description><b>Parsing:</b> Converts the raw request into a logical query tree.</description></item>
+///     <item><description><b>Evaluation:</b> Uses a Visitor pattern to resolve the tree into a set of document IDs.</description></item>
+///     <item><description><b>Retrieval:</b> Fetches the actual document content and metadata using paginated repository calls.</description></item>
+/// </list>
+/// Performance is tracked via <see cref="Stopwatch"/> and included in the final response.
+/// </remarks>
 public class QueryService : IQueryService
 {
 	private readonly IIndexRepository _indexRepository;
 	private readonly IQueryParser _queryParser;
 	private readonly IQueryVisitor<HashSet<int>> _queryEvaluatorVisitor;
 
+	/// <summary>
+	/// Initializes a new instance of the <see cref="QueryService"/> class with required infrastructure and domain services.
+	/// </summary>
+	/// <param name="indexRepository">The repository used for fetching physical document data.</param>
+	/// <param name="queryParser">The parser used to transform raw input into a logical tree.</param>
+	/// <param name="queryEvaluatorVisitor">The visitor implementation used to evaluate boolean logic across the index.</param>
 	public QueryService(
 		IIndexRepository indexRepository,
 		IQueryParser queryParser,
@@ -25,17 +44,15 @@ public class QueryService : IQueryService
 		_queryEvaluatorVisitor = queryEvaluatorVisitor;
 	}
 
+	
 	/// <inheritdoc/>
-	// public async Task<SearchResponseDTO> GetSearchResultsAsync(string rawQuery, string languageCode = "sv")
 	public async Task<SearchResponseDTO> GetSearchResultsAsync(
 		SearchQueryRequestParameters searchParameters,
         PaginationRequestParameters paginationParameters
 		)
 	{
-		
 		var stopWatch = Stopwatch.StartNew();
 
-		// var (queryNode, ignoredTokens) = _queryParser.Parse(rawQuery, languageCode);
 		var (queryNode, ignoredTokens) = _queryParser.Parse(searchParameters);
 		
 		HashSet<int> resultIds;
@@ -46,8 +63,6 @@ public class QueryService : IQueryService
 			resultIds = await _queryEvaluatorVisitor.ExecuteAsync(queryNode);
 		
 		
-		// var documentResults = await _indexRepository
-		// 	.GetDocumentsByIdAsync(resultIds.ToList());
 		var documentResults = await _indexRepository
 			.GetDocumentsByIdAsync(resultIds.ToList(), paginationParameters);
 
@@ -59,20 +74,6 @@ public class QueryService : IQueryService
 		);
 
 
-
-		// return new SearchResponseDTO(
-		// 	searchResults: documentResults.Select(doc => new DocumentDTO(
-		// 		Id : doc.Id,
-		// 		Url : doc.Url,
-		// 		Title : doc.Title,
-		// 		Language : doc.Language)
-		// 	),
-		// 	currentPage: 1,
-		// 	pageSize: 1,
-		// 	totalResults: documentResults.Count(),
-		// 	message: timingMessage,
-		// 	ignoredTokens: ignoredTokens
-		// );
 		return new SearchResponseDTO(
 			searchResults: documentResults.Items.Select(doc => new DocumentDTO(
 				Id : doc.Id,
@@ -80,9 +81,6 @@ public class QueryService : IQueryService
 				Title : doc.Title,
 				Language : doc.Language)
 			),
-			// currentPage: 1,
-			// pageSize: 1,
-			// totalResults: documentResults.Count(),
 			metaData: documentResults.MetaData,
 			message: timingMessage,
 			ignoredTokens: ignoredTokens
