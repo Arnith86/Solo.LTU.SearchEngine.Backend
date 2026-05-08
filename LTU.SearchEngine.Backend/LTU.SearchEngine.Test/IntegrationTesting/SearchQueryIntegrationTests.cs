@@ -768,7 +768,71 @@ public class SearchQueryIntegrationTests : IClassFixture<WebApplicationFactory<P
     }
 
 
+    [Fact]
+    [Trait("TestCase", "TC-FRQ-3009")]
+    public async Task Search_ParenthesesOperatorControlsPrecedenceFindMatchingDocuments_Correctly()
+    {
+        // Arrange
+        var httpClient = _webHostBuilder.CreateFakeInternetClient();
+        using var testFactory = CreateTestFactory<Indexer>(httpClient: httpClient);
+        using var scope = testFactory.Services.CreateScope();
+        
+        var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<SearchDbContext>>();
+        using var db = dbFactory.CreateDbContext();
+        await db.Database.EnsureCreatedAsync();
 
+        // Seed Documents A, B, and C
+        var docA = new Page { Url = "http://localhost/a", Title = "Doc A", LastCrawled = DateTime.UtcNow }; // cat dog
+        var docB = new Page { Url = "http://localhost/b", Title = "Doc B", LastCrawled = DateTime.UtcNow }; // fish  
+        var docC = new Page { Url = "http://localhost/c", Title = "Doc C", LastCrawled = DateTime.UtcNow }; // cat
+        var docD = new Page { Url = "http://localhost/d", Title = "Doc D", LastCrawled = DateTime.UtcNow }; // dog
+    
+        var termCat = new Term { Word = "cat", LanguageCode = "en" };
+        var termDog = new Term { Word = "dog", LanguageCode = "en" };
+        var termFish = new Term { Word = "fish", LanguageCode = "en" };
+
+        db.Pages.AddRange(docA, docB, docC, docD);
+        db.Terms.AddRange(termCat, termDog, termFish);
+        await db.SaveChangesAsync();
+
+        db.PageWordFrequencies.AddRange(
+            // DocA: cat dog
+            new PageWordFrequency { Page = docA, Term = termCat, HeaderFrequency = 1 },
+            new PageWordFrequency { Page = docA, Term = termDog, HeaderFrequency = 1 },
+            // DocB: fish
+            new PageWordFrequency { Page = docB, Term = termFish, HeaderFrequency = 1 },
+            // DocC: cat
+            new PageWordFrequency { Page = docC, Term = termCat, HeaderFrequency = 1 },
+            // DocD: dog
+            new PageWordFrequency { Page = docD, Term = termDog, HeaderFrequency = 1 }
+        );
+
+        await db.SaveChangesAsync();
+        var apiClient = testFactory.CreateClient();
+
+        // Act - 1
+        var url = SearchUrlGenerator.QueryUrlBuilder("(Cat AND dog) OR fish", language: "en");
+        var result = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
+
+        // Assert - 1
+        Assert.Equal(2, result!.searchResults.Count());
+        Assert.Contains(result.searchResults, r => r.Title.Equals("Doc A"));
+        Assert.Contains(result.searchResults, r => r.Title.Equals("Doc B"));
+        Assert.DoesNotContain(result.searchResults, r => r.Title.Equals("Doc C"));
+        Assert.DoesNotContain(result.searchResults, r => r.Title.Equals("Doc D"));
+
+        // Act - 2
+        url = SearchUrlGenerator.QueryUrlBuilder("Cat AND (dog OR fish)", language: "en");
+        result = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
+
+        // Assert - 2
+        Assert.Single(result!.searchResults);
+        Assert.Contains(result.searchResults, r => r.Title.Equals("Doc A"));
+        Assert.DoesNotContain(result.searchResults, r => r.Title.Equals("Doc B"));
+        Assert.DoesNotContain(result.searchResults, r => r.Title.Equals("Doc C"));
+        Assert.DoesNotContain(result.searchResults, r => r.Title.Equals("Doc D"));
+    }
+    
     public void Dispose()
     {
         if (File.Exists(_tempSettingsPath)) File.Delete(_tempSettingsPath);
