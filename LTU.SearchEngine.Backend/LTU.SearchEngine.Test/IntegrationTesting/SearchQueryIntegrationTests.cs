@@ -700,6 +700,74 @@ public class SearchQueryIntegrationTests : IClassFixture<WebApplicationFactory<P
         Assert.Equal(expected, result!.searchResults.Count());
     }
 
+    [Fact]
+    [Trait("TestCase", "TC-FRQ-3007")]
+    public async Task Search_RequiredOperatorFindMatchingDocuments_Correctly()
+    {
+        // Arrange
+        var httpClient = _webHostBuilder.CreateFakeInternetClient();
+        using var testFactory = CreateTestFactory<Indexer>(httpClient: httpClient);
+        using var scope = testFactory.Services.CreateScope();
+        
+        var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<SearchDbContext>>();
+        using var db = dbFactory.CreateDbContext();
+        await db.Database.EnsureCreatedAsync();
+
+        // Seed Documents A, B, and C
+        var docA = new Page { Url = "http://localhost/a", Title = "Doc A", LastCrawled = DateTime.UtcNow }; // fat cat dog
+        var docB = new Page { Url = "http://localhost/b", Title = "Doc B", LastCrawled = DateTime.UtcNow }; // fat cat  
+        var docC = new Page { Url = "http://localhost/c", Title = "Doc C", LastCrawled = DateTime.UtcNow }; // dog
+        var docD = new Page { Url = "http://localhost/d", Title = "Doc D", LastCrawled = DateTime.UtcNow }; // cat
+        
+        var termFat = new Term { Word = "fat", LanguageCode = "en" };
+        var termCat = new Term { Word = "cat", LanguageCode = "en" };
+        var termDog = new Term { Word = "dog", LanguageCode = "en" };
+        
+        db.Pages.AddRange(docA, docB, docC, docD);
+        db.Terms.AddRange(termFat, termCat, termDog);
+        await db.SaveChangesAsync();
+
+        // Map terms to pages
+        db.PageWordFrequencies.AddRange(
+            // DocA: fat cat dog
+            new PageWordFrequency { Page = docA, Term = termFat, HeaderFrequency = 1 }, 
+            new PageWordFrequency { Page = docA, Term = termCat, HeaderFrequency = 1 }, 
+            new PageWordFrequency { Page = docA, Term = termDog, HeaderFrequency = 1 }, 
+            // DocB: fat cat 
+            new PageWordFrequency { Page = docB, Term = termFat, HeaderFrequency = 1 },
+            new PageWordFrequency { Page = docB, Term = termCat, HeaderFrequency = 1 },
+            // DocC: dog
+            new PageWordFrequency { Page = docC, Term = termDog, HeaderFrequency = 1 },
+            // DocD: cat 
+            new PageWordFrequency { Page = docD, Term = termDog, HeaderFrequency = 1 }
+        );
+
+        db.PageWordPositions.AddRange(
+            // DocA: fat cat dog
+            new PageWordPosition { Page = docA, Term = termFat, Position = 0 },
+            new PageWordPosition { Page = docA, Term = termCat, Position = 1 },
+            new PageWordPosition { Page = docA, Term = termDog, Position = 2 },
+            // DocB: fat cat 
+            new PageWordPosition { Page = docB, Term = termFat, Position = 0 },
+            new PageWordPosition { Page = docB, Term = termCat, Position = 1 },
+            // DocC: dog
+            new PageWordPosition { Page = docC, Term = termDog, Position = 0 },
+            // DocD: cat 
+            new PageWordPosition { Page = docD, Term = termCat, Position = 0 }
+        );
+        await db.SaveChangesAsync();
+
+        var apiClient = testFactory.CreateClient();
+
+        // Act 
+        var url = SearchUrlGenerator.QueryUrlBuilder("+\"fat cats\" OR dog", language: "en");
+        var result = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
+        
+        // Assert
+        Assert.Equal(2, result!.searchResults.Count());
+    }
+
+
 
     public void Dispose()
     {
