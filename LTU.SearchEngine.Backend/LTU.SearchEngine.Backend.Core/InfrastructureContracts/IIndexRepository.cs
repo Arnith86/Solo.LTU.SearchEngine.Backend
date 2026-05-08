@@ -25,7 +25,7 @@ public interface IIndexRepository
 	Task<HashSet<int>> GetDocumentIdsForTermAsync(string term);
 	Task<HashSet<int>> GetDocumentIdsForPhraseAsync(PhraseNode<HashSet<int>> phrase); 
 	// Task<List<Page>> GetDocumentsByIdAsync(List<int> pageIds);
-	Task<IPaginatedResult<Page>> GetDocumentsByIdAsync(
+	Task<PaginatedResult<Page>> GetDocumentsByIdAsync(
         List<int> pageIds, 
         PaginationRequestParameters paginationParameters
     );

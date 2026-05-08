@@ -67,7 +67,7 @@ public class SqlIndexRepository : IIndexRepository
 
     // Retrieves a list of documents based on their unique IDs
     // public async Task<List<Page>> GetDocumentsByIdAsync(List<int> pageIds)
-    public async Task<IPaginatedResult<Page>> GetDocumentsByIdAsync(
+    public async Task<PaginatedResult<Page>> GetDocumentsByIdAsync(
         List<int> pageIds, 
         PaginationRequestParameters paginationParameters
         )

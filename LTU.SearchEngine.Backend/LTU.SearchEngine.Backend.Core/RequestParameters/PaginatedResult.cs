@@ -1,11 +1,11 @@
 namespace LTU.SearchEngine.Backend.Core.RequestParameters;
 
-public class PaginatedResult<T> : IPaginatedResult<T>
+public class PaginatedResult<T>
 {
     public IEnumerable<T> Items { get; }
-    public IPaginationMetaData MetaData { get; }
+    public PaginationMetaData MetaData { get; }
 
-    public PaginatedResult(IEnumerable<T> items, IPaginationMetaData metaData)
+    public PaginatedResult(IEnumerable<T> items, PaginationMetaData metaData)
     {
         Items = items;
         MetaData = metaData;

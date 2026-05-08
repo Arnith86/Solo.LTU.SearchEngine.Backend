@@ -6,7 +6,7 @@ namespace LTU.SearchEngine.Infrastructure.Extensions;
 
 public static class QueryableExtensionPagination
 {
-    public static async Task<IPaginatedResult<T>> ToPaginatedResultAsync<T>(
+    public static async Task<PaginatedResult<T>> ToPaginatedResultAsync<T>(
         this IQueryable<T> source, 
         // int pageNumber, 
         // int pageSize

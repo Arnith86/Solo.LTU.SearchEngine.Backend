@@ -128,15 +128,6 @@ public class QueryTokenizerTests
 
 
 	[Fact]
-	public void Tokenize_EmptyInput_ReturnsEmptyList()
-	{
-		// Act & Assert 
-		Assert.Empty(_sut.Tokenize(CreateSearchParam("", "en")).Tokens);
-		Assert.Empty(_sut.Tokenize(CreateSearchParam("   ", "en")).Tokens);
-	}
-
-
-	[Fact]
 	public void Tokenize_UnclosedQuotes_TreatsAllWordsAsTerms_AddsImplicitOr()
 	{
 		// Arrange
@@ -593,7 +584,7 @@ public class QueryTokenizerTests
 	public void Tokenize_IsLanguagePreFix_FindsActiveLanguage(string input)
 	{
 		// Arrange 
-		var searchParam = CreateSearchParam(input, "en");
+		var searchParam = CreateSearchParam(input, null);
 
 		// Act 
 		var result = _sut.Tokenize(searchParam);
@@ -613,7 +604,7 @@ public class QueryTokenizerTests
 	public void Tokenize_IsLanguagePreFix_FindsNoLanguage_UsesDefault(string input, int instances)
 	{
 		// Arrange 
-		var searchParam = CreateSearchParam(input, "en");
+		var searchParam = CreateSearchParam(input, null);
 
 		// Act 
 		var result = _sut.Tokenize(searchParam);

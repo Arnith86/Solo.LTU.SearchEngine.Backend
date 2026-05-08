@@ -18,7 +18,7 @@ public record SearchResponseDTO(
 	// int currentPage,
 	// int pageSize,
 	// int totalResults,
-	IPaginationMetaData metaData,
+	PaginationMetaData metaData,
 	string? message,
 	IEnumerable<IgnoredTermsDTO>? ignoredTokens = null
 );

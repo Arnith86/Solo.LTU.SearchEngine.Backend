@@ -20,7 +20,6 @@ public class QueryServiceTests
     private SearchQueryRequestParameters _searchParam;
     private PaginationRequestParameters _pageParam;
     private readonly IQueryService _sut;
-    private IPaginatedResult<Page> _paginatedResult;
 
 
     
@@ -72,7 +71,7 @@ public class QueryServiceTests
 
         _searchParam = SearchQueryRequestParametersBuilder.BuildParameters(rawQuery, languageCode);
         _pageParam = PaginationRequestParametersBuilder.BuildPaginationParameters();
-        _paginatedResult = PaginatedResultBuilder<Page>.BuildPaginatedResult(fakeDocumentList);
+        var paginatedResult = PaginatedResultBuilder<Page>.BuildPaginatedResult(fakeDocumentList);
 
 
         _mockQueryParser
@@ -87,7 +86,7 @@ public class QueryServiceTests
             .Setup(ir => ir.GetDocumentsByIdAsync(
                 It.Is<List<int>>(l => l.SequenceEqual(fakeResultIds.ToList())), 
                 It.IsAny<PaginationRequestParameters>()))
-            .ReturnsAsync(_paginatedResult);
+            .ReturnsAsync(paginatedResult);
     }
 
    
