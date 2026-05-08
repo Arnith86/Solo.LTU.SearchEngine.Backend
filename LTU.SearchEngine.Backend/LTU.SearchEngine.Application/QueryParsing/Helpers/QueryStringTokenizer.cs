@@ -26,10 +26,8 @@ public class QueryStringTokenizer : IStringTokenizer<ExtractedQueryToken, Ignore
 
 
 	/// <inheritdoc/>
-	// public QueryStringTokenizingResult<ExtractedQueryToken, IgnoredTermsDTO> Tokenize(string input, string languageCode)
 	public QueryStringTokenizingResult<ExtractedQueryToken, IgnoredTermsDTO> Tokenize(SearchQueryRequestParameters searchParameters)
 	{
-		// var session = new QueryStringTokenizationSession(input, languageCode, _syntaxHelper, _normalizer);
 		var session = new QueryStringTokenizationSession(
 			searchParameters.Query, 
 			searchParameters.Language, 
