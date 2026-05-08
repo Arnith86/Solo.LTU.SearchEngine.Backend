@@ -160,25 +160,25 @@ public class SearchQueryIntegrationTests : IClassFixture<WebApplicationFactory<P
         var url = SearchUrlGenerator.QueryUrlBuilder(query: "cats", language: "en");
         var catsResult = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
         
-        Assert.NotNull(catsResult!.searchResults);
-        Assert.Contains(catsResult.searchResults, r => r.Url.Contains("/a"));
-        Assert.Contains(catsResult.searchResults, r => r.Url.Contains("/c"));
-        Assert.DoesNotContain(catsResult.searchResults, r => r.Url.Contains("/b"));
+        Assert.NotNull(catsResult!.SearchResults);
+        Assert.Contains(catsResult.SearchResults, r => r.Url.Contains("/a"));
+        Assert.Contains(catsResult.SearchResults, r => r.Url.Contains("/c"));
+        Assert.DoesNotContain(catsResult.SearchResults, r => r.Url.Contains("/b"));
 
         // Act & Assert: Step 2 - Multiple Terms ("cats dogs") implicit OR
         url = SearchUrlGenerator.QueryUrlBuilder(query: "cats dogs", language: "en");
         var multipleResult = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
         
-        Assert.Equal(3, multipleResult!.searchResults.Count());
+        Assert.Equal(3, multipleResult!.SearchResults.Count());
 
         // Act & Assert: Step 3 - Boolean AND ("cats AND dogs") 
         url = SearchUrlGenerator.QueryUrlBuilder(query: "cats AND dogs", language: "en");
         var andResult = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
 
         // Expected: Only Document C
-        Assert.Single(andResult!.searchResults);
-        Assert.Equal("Doc C", andResult.searchResults.First().Title);
-        Assert.Contains("/c", andResult.searchResults.First().Url);
+        Assert.Single(andResult!.SearchResults);
+        Assert.Equal("Doc C", andResult.SearchResults.First().Title);
+        Assert.Contains("/c", andResult.SearchResults.First().Url);
     }
   
   
@@ -223,18 +223,18 @@ public class SearchQueryIntegrationTests : IClassFixture<WebApplicationFactory<P
         var helloResult = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
         
         
-        Assert.Contains(helloResult!.searchResults, r => r.Url.Contains("/b"));
-        Assert.DoesNotContain(helloResult.searchResults, r => r.Url.Contains("/c"));
-        Assert.DoesNotContain(helloResult.searchResults, r => r.Url.Contains("/a"));
+        Assert.Contains(helloResult!.SearchResults, r => r.Url.Contains("/b"));
+        Assert.DoesNotContain(helloResult.SearchResults, r => r.Url.Contains("/c"));
+        Assert.DoesNotContain(helloResult.SearchResults, r => r.Url.Contains("/a"));
 
         // Act & Assert: Step 2 - ("test")
         url = SearchUrlGenerator.QueryUrlBuilder(query: "test", language: "en");
         var testResult = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
         
-        Assert.Equal(2, testResult!.searchResults.Count());
-        Assert.Contains(testResult.searchResults, r => r.Url.Contains("/a"));
-        Assert.Contains(testResult.searchResults, r => r.Url.Contains("/c"));
-        Assert.DoesNotContain(testResult.searchResults, r => r.Url.Contains("/b"));
+        Assert.Equal(2, testResult!.SearchResults.Count());
+        Assert.Contains(testResult.SearchResults, r => r.Url.Contains("/a"));
+        Assert.Contains(testResult.SearchResults, r => r.Url.Contains("/c"));
+        Assert.DoesNotContain(testResult.SearchResults, r => r.Url.Contains("/b"));
     }
    
 
@@ -289,7 +289,7 @@ public class SearchQueryIntegrationTests : IClassFixture<WebApplicationFactory<P
         var helloResult = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
         
         // Assert
-        Assert.Contains(helloResult!.searchResults, r => r.Url.Contains("/a"));
+        Assert.Contains(helloResult!.SearchResults, r => r.Url.Contains("/a"));
     }
     
 
@@ -363,9 +363,9 @@ public class SearchQueryIntegrationTests : IClassFixture<WebApplicationFactory<P
         var url = SearchUrlGenerator.QueryUrlBuilder(query: input, language: "en");
         var helloResult = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
         
-        Assert.Contains(helloResult!.searchResults, r => r.Url.Contains("/a"));
-        Assert.DoesNotContain(helloResult.searchResults, r => r.Url.Contains("/b"));
-        Assert.DoesNotContain(helloResult.searchResults, r => r.Url.Contains("/c"));
+        Assert.Contains(helloResult!.SearchResults, r => r.Url.Contains("/a"));
+        Assert.DoesNotContain(helloResult.SearchResults, r => r.Url.Contains("/b"));
+        Assert.DoesNotContain(helloResult.SearchResults, r => r.Url.Contains("/c"));
     }
 
     private async Task<HttpClient> SetupSearchBooleanOperatorAreCaseSensitiveDatabase(WebApplicationFactory<Program> testFactory)
@@ -425,8 +425,8 @@ public class SearchQueryIntegrationTests : IClassFixture<WebApplicationFactory<P
         var result = await apiClient .GetFromJsonAsync<SearchResponseDTO>(url);
         
         // Assert
-        Assert.Contains(result!.searchResults, r => r.Url.Contains("/a"));
-        Assert.Contains(result.ignoredTokens!, r => r.Token.Contains(expectedIgnored));
+        Assert.Contains(result!.SearchResults, r => r.Url.Contains("/a"));
+        Assert.Contains(result.IgnoredTokens!, r => r.Token.Contains(expectedIgnored));
         
         // Act - Step 2 - Capital letters 
         query = $"term1 {correctOperator} term2";
@@ -434,8 +434,8 @@ public class SearchQueryIntegrationTests : IClassFixture<WebApplicationFactory<P
         result = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
         
         // Assert
-        Assert.Contains(result!.searchResults, r => r.Url.Contains("/a"));
-        Assert.DoesNotContain(result.ignoredTokens!, r => r.Token.Contains(expectedIgnored));    
+        Assert.Contains(result!.SearchResults, r => r.Url.Contains("/a"));
+        Assert.DoesNotContain(result.IgnoredTokens!, r => r.Token.Contains(expectedIgnored));    
     }
 
 
@@ -463,8 +463,8 @@ public class SearchQueryIntegrationTests : IClassFixture<WebApplicationFactory<P
         var result = await apiClient .GetFromJsonAsync<SearchResponseDTO>(url);
         
         // Assert
-        Assert.Contains(result!.searchResults, r => r.Url.Contains("/a"));
-        Assert.Contains(result.ignoredTokens!, r => r.Token.Contains(expectedIgnored));
+        Assert.Contains(result!.SearchResults, r => r.Url.Contains("/a"));
+        Assert.Contains(result.IgnoredTokens!, r => r.Token.Contains(expectedIgnored));
         
         // Act - Step 2 - Capital letters 
         query = $"term1 {correctOperator} term2";
@@ -472,8 +472,8 @@ public class SearchQueryIntegrationTests : IClassFixture<WebApplicationFactory<P
         result = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
         
         // Assert
-        Assert.DoesNotContain(result!.searchResults, r => r.Url.Contains("/a"));
-        Assert.DoesNotContain(result.ignoredTokens!, r => r.Token.Contains(expectedIgnored));
+        Assert.DoesNotContain(result!.SearchResults, r => r.Url.Contains("/a"));
+        Assert.DoesNotContain(result.IgnoredTokens!, r => r.Token.Contains(expectedIgnored));
     }
     
 
@@ -555,7 +555,7 @@ public class SearchQueryIntegrationTests : IClassFixture<WebApplicationFactory<P
         var result = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
         
         // Assert
-        Assert.Equal(expected, result!.searchResults.Count());
+        Assert.Equal(expected, result!.SearchResults.Count());
     }
     
     
@@ -629,7 +629,7 @@ public class SearchQueryIntegrationTests : IClassFixture<WebApplicationFactory<P
         var result = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
         
         // Assert
-        Assert.Equal(expected, result!.searchResults.Count());
+        Assert.Equal(expected, result!.SearchResults.Count());
     }
     
     
@@ -697,7 +697,7 @@ public class SearchQueryIntegrationTests : IClassFixture<WebApplicationFactory<P
         var result = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
         
         // Assert
-        Assert.Equal(expected, result!.searchResults.Count());
+        Assert.Equal(expected, result!.SearchResults.Count());
     }
 
     [Fact]
@@ -764,7 +764,7 @@ public class SearchQueryIntegrationTests : IClassFixture<WebApplicationFactory<P
         var result = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
         
         // Assert
-        Assert.Equal(2, result!.searchResults.Count());
+        Assert.Equal(2, result!.SearchResults.Count());
     }
 
 
@@ -815,22 +815,22 @@ public class SearchQueryIntegrationTests : IClassFixture<WebApplicationFactory<P
         var result = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
 
         // Assert - 1
-        Assert.Equal(2, result!.searchResults.Count());
-        Assert.Contains(result.searchResults, r => r.Title.Equals("Doc A"));
-        Assert.Contains(result.searchResults, r => r.Title.Equals("Doc B"));
-        Assert.DoesNotContain(result.searchResults, r => r.Title.Equals("Doc C"));
-        Assert.DoesNotContain(result.searchResults, r => r.Title.Equals("Doc D"));
+        Assert.Equal(2, result!.SearchResults.Count());
+        Assert.Contains(result.SearchResults, r => r.Title.Equals("Doc A"));
+        Assert.Contains(result.SearchResults, r => r.Title.Equals("Doc B"));
+        Assert.DoesNotContain(result.SearchResults, r => r.Title.Equals("Doc C"));
+        Assert.DoesNotContain(result.SearchResults, r => r.Title.Equals("Doc D"));
 
         // Act - 2
         url = SearchUrlGenerator.QueryUrlBuilder("Cat AND (dog OR fish)", language: "en");
         result = await apiClient.GetFromJsonAsync<SearchResponseDTO>(url);
 
         // Assert - 2
-        Assert.Single(result!.searchResults);
-        Assert.Contains(result.searchResults, r => r.Title.Equals("Doc A"));
-        Assert.DoesNotContain(result.searchResults, r => r.Title.Equals("Doc B"));
-        Assert.DoesNotContain(result.searchResults, r => r.Title.Equals("Doc C"));
-        Assert.DoesNotContain(result.searchResults, r => r.Title.Equals("Doc D"));
+        Assert.Single(result!.SearchResults);
+        Assert.Contains(result.SearchResults, r => r.Title.Equals("Doc A"));
+        Assert.DoesNotContain(result.SearchResults, r => r.Title.Equals("Doc B"));
+        Assert.DoesNotContain(result.SearchResults, r => r.Title.Equals("Doc C"));
+        Assert.DoesNotContain(result.SearchResults, r => r.Title.Equals("Doc D"));
     }
     
     public void Dispose()

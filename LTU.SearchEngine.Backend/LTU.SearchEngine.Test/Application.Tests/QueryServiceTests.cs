@@ -113,7 +113,7 @@ public class QueryServiceTests
         // Assert
         Assert.NotNull(result);
         Assert.IsType<SearchResponseDTO>(result);
-        Assert.Equal(fakePage.Title, result.searchResults.First().Title);
+        Assert.Equal(fakePage.Title, result.SearchResults.First().Title);
 
         _mockQueryParser.Verify(p => p.Parse(_searchParam), Times.Once);
         _mockQueryEvaluatorVisitor.Verify(qe => qe.ExecuteAsync(fakeOperatorNode), Times.Once);
@@ -142,8 +142,8 @@ public class QueryServiceTests
         var result = await _sut.GetSearchResultsAsync(_searchParam, _pageParam);
 
         // Assert
-        Assert.NotNull(result.message);
-        Assert.Matches(@"Search completed in \d+\.\d{2} ms", result.message);
+        Assert.NotNull(result.Message);
+        Assert.Matches(@"Search completed in \d+\.\d{2} ms", result.Message);
     }
 
 

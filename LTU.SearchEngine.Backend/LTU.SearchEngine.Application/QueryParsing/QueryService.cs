@@ -75,15 +75,15 @@ public class QueryService : IQueryService
 
 
 		return new SearchResponseDTO(
-			searchResults: documentResults.Items.Select(doc => new DocumentDTO(
+			SearchResults: documentResults.Items.Select(doc => new DocumentDTO(
 				Id : doc.Id,
 				Url : doc.Url,
 				Title : doc.Title,
 				Language : doc.Language)
 			),
-			metaData: documentResults.MetaData,
-			message: timingMessage,
-			ignoredTokens: ignoredTokens
+			MetaData: documentResults.MetaData,
+			Message: timingMessage,
+			IgnoredTokens: ignoredTokens
 		);
 	}
 }

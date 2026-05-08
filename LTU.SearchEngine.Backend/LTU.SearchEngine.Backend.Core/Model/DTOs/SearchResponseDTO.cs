@@ -1,24 +1,25 @@
-﻿using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
-using LTU.SearchEngine.Backend.Core.RequestParameters;
+﻿using LTU.SearchEngine.Backend.Core.RequestParameters;
 
 namespace LTU.SearchEngine.Backend.Core.Model.DTOs;
 
 /// <summary>
-/// Represents a paginated search response containing a collection of results and execution metadata. <br/>
-/// This DTO is used to deliver search data and pagination state to the client.
+/// Represents the final paginated search response delivered to the client.
 /// </summary>
-/// <param name="searchResults">A collection of <see cref="SearchResultItem"/> matching the query for the current page.</param>
-/// <param name="currentPage">The one-based index of the current result page.</param>
-/// <param name="pageSize">The maximum number of items requested per page.</param>
-/// <param name="totalResults">The total number of documents matching the search criteria across all pages.</param>
-/// <param name="message">An optional status or warning message (e.g., "No results found" or "Query expanded").</param>
-/// <param name="ignoredTokens">An optional collection of <see cref="IgnoredTermsDTO"/> representing any tokens that were ignored during query parsing.</param>
+/// <remarks>
+/// This DTO aggregates the actual matching documents with critical execution metadata, 
+/// such as pagination state (total pages, current offset), performance messages, 
+/// and information regarding query preprocessing (e.g., stop-words removed).
+/// </remarks>
+/// <param name="SearchResults">A collection of <see cref="DocumentDTO"/> containing the hydrated data of matching web pages.</param>
+/// <param name="MetaData">The pagination state, including total item counts and page boundaries.</param>
+/// <param name="Message">A status or telemetry message, typically containing the search execution time.</param>
+/// <param name="IgnoredTokens">
+/// An optional collection of <see cref="IgnoredTermsDTO"/> detailing terms that were 
+/// stripped from the query during parsing (e.g., stop-words or invalid characters).
+/// </param>
 public record SearchResponseDTO(
-	IEnumerable<DocumentDTO> searchResults,
-	// int currentPage,
-	// int pageSize,
-	// int totalResults,
-	PaginationMetaData metaData,
-	string? message,
-	IEnumerable<IgnoredTermsDTO>? ignoredTokens = null
+	IEnumerable<DocumentDTO> SearchResults,
+	PaginationMetaData MetaData,
+	string? Message,
+	IEnumerable<IgnoredTermsDTO>? IgnoredTokens = null
 );

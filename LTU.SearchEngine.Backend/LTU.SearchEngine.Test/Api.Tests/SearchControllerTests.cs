@@ -38,9 +38,9 @@ public class SearchControllerTests
         };
 
         var expectedDto = new SearchResponseDTO(
-            searchResults: fakeItems,
-            metaData: new PaginationMetaData(1,1,1,1),
-            message: "Success"
+            SearchResults: fakeItems,
+            MetaData: new PaginationMetaData(1,1,1,1),
+            Message: "Success"
         );
 
         var searchParam = SearchQueryRequestParametersBuilder.BuildParameters(validQuery);
@@ -57,9 +57,9 @@ public class SearchControllerTests
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var responseDto = Assert.IsType<SearchResponseDTO>(okResult.Value);
 
-        Assert.NotEmpty(responseDto.searchResults);
-        Assert.Equal(1, responseDto.metaData.TotalItemCount);
-        Assert.Equal("Success", responseDto.message);
+        Assert.NotEmpty(responseDto.SearchResults);
+        Assert.Equal(1, responseDto.MetaData.TotalItemCount);
+        Assert.Equal("Success", responseDto.Message);
 
         // Verify that the call reached the service layer 
         _mockQueryService.Verify(s => s.GetSearchResultsAsync(searchParam, pageParam), Times.Once);
@@ -106,9 +106,9 @@ public class SearchControllerTests
         var pageParam = PaginationRequestParametersBuilder.BuildPaginationParameters();
 
         var emptyDto = new SearchResponseDTO(
-            searchResults: new List<DocumentDTO>(),
+            SearchResults: new List<DocumentDTO>(),
             new PaginationMetaData(0,0,0,0),
-            message: "No results found"
+            Message: "No results found"
         );
 
         _mockQueryService
@@ -122,9 +122,9 @@ public class SearchControllerTests
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var responseDto = Assert.IsType<SearchResponseDTO>(okResult.Value);
 
-        Assert.Empty(responseDto.searchResults);
-        Assert.Equal(0, responseDto.metaData.TotalItemCount);
-        Assert.Equal("No results found", responseDto.message);
+        Assert.Empty(responseDto.SearchResults);
+        Assert.Equal(0, responseDto.MetaData.TotalItemCount);
+        Assert.Equal("No results found", responseDto.Message);
     }
 
     [Theory]
@@ -140,9 +140,9 @@ public class SearchControllerTests
                 : SearchQueryRequestParametersBuilder.BuildParameters(query, input);
 
         var emptyDto = new SearchResponseDTO(
-            searchResults: new List<DocumentDTO>(),
+            SearchResults: new List<DocumentDTO>(),
             It.IsAny<PaginationMetaData>(),
-            message: "No results found"
+            Message: "No results found"
         );
 
         var pageParam = PaginationRequestParametersBuilder.BuildPaginationParameters();

@@ -1,6 +1,5 @@
 ﻿using LTU.SearchEngine.Application.QueryParsing.Helpers;
 using LTU.SearchEngine.Backend.Core;
-using LTU.SearchEngine.Backend.Core.Entities;
 using LTU.SearchEngine.Backend.Core.Enums;
 using LTU.SearchEngine.Backend.Core.Exceptions;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
@@ -29,8 +28,7 @@ public class QueryTokenizerTests
 
 	public SearchQueryRequestParameters CreateSearchParam(string? input, string? language)
 	{
-		// if (input != null && language != null)
-		return SearchQueryRequestParametersBuilder.BuildParameters(input, language);
+		return SearchQueryRequestParametersBuilder.BuildParameters(input!, language);
 	}
 
 	[Fact]
