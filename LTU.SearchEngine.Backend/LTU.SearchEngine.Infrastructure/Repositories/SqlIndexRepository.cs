@@ -13,23 +13,33 @@ using Microsoft.EntityFrameworkCore;
 namespace LTU.SearchEngine.Infrastructure.Repositories;
 
 /// <summary>
-/// Handles database operations for the search engine´s indexing against a SQL database.
-/// Uses IDbContextFactory to ensure thread safety during parallel web crawling.
+/// Handles database operations for the search engine's indexing against a SQL database using Entity Framework Core.
 /// </summary>
+/// <remarks>
+/// This implementation uses <see cref="IDbContextFactory{TContext}"/> to ensure thread safety during 
+/// parallel web crawling and utilizes a <see cref="SemaphoreProvider"/> to prevent race conditions 
+/// during term and page synchronization.
+/// </remarks>
 public class SqlIndexRepository : IIndexRepository
 {
     private readonly IDbContextFactory<SearchDbContext> _factory;
     private readonly SemaphoreProvider _semaphoreProvider;
 
-    public SqlIndexRepository(IDbContextFactory<SearchDbContext> factory, SemaphoreProvider semaphoreProvider)
+
+	/// <summary>
+	/// Initializes a new instance of the <see cref="SqlIndexRepository"/> class.
+	/// </summary>
+	/// <param name="factory">The factory used to create new <see cref="SearchDbContext"/> instances.</param>
+	/// <param name="semaphoreProvider">Provider for synchronization primitives to handle concurrent database access.</param>
+	public SqlIndexRepository(IDbContextFactory<SearchDbContext> factory, SemaphoreProvider semaphoreProvider)
     {
         _factory = factory;
         _semaphoreProvider = semaphoreProvider;
     }
 
-    // Saves a fully processed document from the pipeline to the database.
-    // Merge words from the title, headers and body content.
-    public async Task AddDocumentAsync(IndexDocument document)
+
+	/// <inheritdoc/>
+	public async Task AddDocumentAsync(IndexDocument document)
     {
         var allUniqueTerms = document.TitleTerms.Keys
             .Union(document.HeaderTerms.Keys)
@@ -65,10 +75,9 @@ public class SqlIndexRepository : IIndexRepository
     }
 
 
-    // Retrieves a list of documents based on their unique IDs
-    // public async Task<List<Page>> GetDocumentsByIdAsync(List<int> pageIds)
+	/// <inheritdoc/>
     public async Task<PaginatedResult<Page>> GetDocumentsByIdAsync(
-        List<int> pageIds, 
+	List<int> pageIds, 
         PaginationRequestParameters paginationParameters
         )
 	{
@@ -78,9 +87,10 @@ public class SqlIndexRepository : IIndexRepository
 		return await context.Pages
 			.Where(p => pageIds.Contains(p.Id))
             .ToPaginatedResultAsync(paginationParameters);
-			// .ToListAsync();
 	}
 
+
+	/// <inheritdoc/>
 	public async Task<HashSet<int>> GetDocumentIdsForPhraseAsync(PhraseNode<HashSet<int>> phraseNode)
 	{
         await using var context = await _factory.CreateDbContextAsync();
@@ -114,7 +124,9 @@ public class SqlIndexRepository : IIndexRepository
 		return result;
 	}
 
-    public async Task<int?> GetExistingDocumentByHashAsync(string hash)
+
+	/// <inheritdoc/>
+	public async Task<int?> GetExistingDocumentByHashAsync(string hash)
     {
         await using var context = await _factory.CreateDbContextAsync();
         
@@ -124,7 +136,9 @@ public class SqlIndexRepository : IIndexRepository
             .FirstOrDefaultAsync();
     }
 
-    public async Task UpdateLastCrawledAsync(int id, DateTime newCrawl)
+
+	/// <inheritdoc/>
+	public async Task UpdateLastCrawledAsync(int id, DateTime newCrawl)
     {
         await using var context = await _factory.CreateDbContextAsync();
         await context.Pages
@@ -135,10 +149,8 @@ public class SqlIndexRepository : IIndexRepository
     }
 
 
-    /// <summary>
-    /// Finds the IDs of all pages containing a specific word.
-    /// </summary>
-    public async Task<HashSet<int>> GetDocumentIdsForTermAsync(string term)
+	/// <inheritdoc/>
+	public async Task<HashSet<int>> GetDocumentIdsForTermAsync(string term)
     {
         await using var context = await _factory.CreateDbContextAsync();
 
