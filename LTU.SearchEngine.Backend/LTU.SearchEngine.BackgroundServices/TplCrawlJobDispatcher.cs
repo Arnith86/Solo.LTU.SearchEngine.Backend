@@ -72,23 +72,32 @@ public class TplCrawlJobDispatcher : ICrawlJobDispatcher
 	{
 		return new ActionBlock<CrawlJob>(async job =>
 		{
-			string domain = new Uri(job.Url).Host.ToLowerInvariant();
-			var semaphore = _semaphoreProvider.GetOrAddSemaphore(
-				domain, 
-				_crawlerSettingsLoader.Load().MaxConcurrencyPerDomain
-			);
-
-			// This will limit concurrent processing of jobs from the same domain to the configured maximum.
-			await semaphore.WaitAsync();
-			
 			try
 			{
-				await HandleUseCaseAsync(job);
+				string domain = new Uri(job.Url).Host.ToLowerInvariant();
+				var semaphore = _semaphoreProvider.GetOrAddSemaphore(
+					domain, 
+					_crawlerSettingsLoader.Load().MaxConcurrencyPerDomain
+				);
+
+				// This will limit concurrent processing of jobs from the same domain to the configured maximum.
+				await semaphore.WaitAsync();
+				
+				try
+				{
+					await HandleUseCaseAsync(job);
+				}
+				finally 
+				{
+					semaphore.Release();
+				}	
 			}
-			finally 
+			catch (Exception ex)
 			{
-				semaphore.Release();
+				_logger.LogError(ex, $"Critical error in worker thread while processing {job.Url}");
 			}
+
+			
 
 		}, 
 		new ExecutionDataflowBlockOptions
