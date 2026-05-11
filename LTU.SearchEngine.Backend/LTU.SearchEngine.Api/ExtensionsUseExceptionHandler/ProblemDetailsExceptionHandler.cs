@@ -1,4 +1,5 @@
 ﻿using LTU.SearchEngine.Api.ExtensionsUseExceptionHandler.CustomExceptions;
+using LTU.SearchEngine.Backend.Core.Exceptions;
 using LTU.SearchEngine.Backend.Core.Exceptions.SearchQueryExceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
@@ -58,16 +59,16 @@ public static class ProblemDetailsExceptionHandler
 								instance: context.Request.Path
 							);
 							break;
-						//case PaginationArgumentOutOfRangeException argumentOutOfRangeException: // Paging parameters out of range
-						//	statusCode = StatusCodes.Status400BadRequest;
-						//	problemDetails = problemDetailsFactory.CreateProblemDetails(
-						//		context,
-						//		statusCode,
-						//		title: argumentOutOfRangeException.Title,
-						//		detail: argumentOutOfRangeException.Message,
-						//		instance: context.Request.Path
-						//	);
-						//	break;
+						case PaginationOutOfRangeException argumentOutOfRangeException: // Paging parameters out of range
+							statusCode = StatusCodes.Status400BadRequest;
+							problemDetails = problemDetailsFactory.CreateProblemDetails(
+								context,
+								statusCode,
+								title: argumentOutOfRangeException.Title,
+								detail: argumentOutOfRangeException.Message,
+								instance: context.Request.Path
+							);
+							break;
 						default:
 							statusCode = StatusCodes.Status500InternalServerError;  // General server error
 							problemDetails = problemDetailsFactory.CreateProblemDetails(

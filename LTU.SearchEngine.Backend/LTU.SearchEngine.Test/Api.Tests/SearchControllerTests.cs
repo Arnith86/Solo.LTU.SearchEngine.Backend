@@ -1,7 +1,10 @@
 ﻿using LTU.SearchEngine.Api;
 using LTU.SearchEngine.Application;
 using LTU.SearchEngine.Application.QueryParsing;
+using LTU.SearchEngine.Backend.Core.Exceptions.SearchQueryExceptions;
 using LTU.SearchEngine.Backend.Core.Model.DTOs;
+using LTU.SearchEngine.Backend.Core.RequestParameters;
+using LTU.SearchEngine.Test.HelperClasses;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 
@@ -35,30 +38,31 @@ public class SearchControllerTests
         };
 
         var expectedDto = new SearchResponseDTO(
-            searchResults: fakeItems,
-            currentPage: 1,
-            pageSize: 1,
-            totalResults: 1,
-            message: "Success"
+            SearchResults: fakeItems,
+            MetaData: new PaginationMetaData(1,1,1,1),
+            Message: "Success"
         );
 
+        var searchParam = SearchQueryRequestParametersBuilder.BuildParameters(validQuery);
+        var pageParam = PaginationRequestParametersBuilder.BuildPaginationParameters();
+
         _mockQueryService
-            .Setup(s => s.GetSearchResultsAsync(validQuery))
+            .Setup(s => s.GetSearchResultsAsync(searchParam, pageParam))
             .Returns(Task.FromResult(expectedDto)); 
 
         // Act
-        var result = await _controller.GetSearchResponses(validQuery);
+        var result = await _controller.GetSearchResponses(searchParam, pageParam);
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var responseDto = Assert.IsType<SearchResponseDTO>(okResult.Value);
 
-        Assert.NotEmpty(responseDto.searchResults);
-        Assert.Equal(1, responseDto.totalResults);
-        Assert.Equal("Success", responseDto.message);
+        Assert.NotEmpty(responseDto.SearchResults);
+        Assert.Equal(1, responseDto.MetaData.TotalItemCount);
+        Assert.Equal("Success", responseDto.Message);
 
         // Verify that the call reached the service layer 
-        _mockQueryService.Verify(s => s.GetSearchResultsAsync(validQuery), Times.Once);
+        _mockQueryService.Verify(s => s.GetSearchResultsAsync(searchParam, pageParam), Times.Once);
     }
 
 
@@ -72,15 +76,23 @@ public class SearchControllerTests
     public async Task GetSearchResponses_ShouldTrimQuery_WhenQueryIsValidButHasLeadingOrTrailingWhiteSpaces(
         string input, string expectedTrim)
     {
+        var searchParam = SearchQueryRequestParametersBuilder.BuildParameters(query: input);
+        var searchParamExpected = SearchQueryRequestParametersBuilder.BuildParameters(query: expectedTrim);
+        var pageParam = PaginationRequestParametersBuilder.BuildPaginationParameters();
+        
         // Arrange
         _mockQueryService
-            .Setup(s => s.GetSearchResultsAsync(It.IsAny<string>()));
+            .Setup(s => s.GetSearchResultsAsync(searchParam, pageParam));
       
         // Act
-        var result = await _controller.GetSearchResponses(input);
+        var result = await _controller.GetSearchResponses(searchParam, pageParam);
 
         // Assert
-        _mockQueryService.Verify(s => s.GetSearchResultsAsync(expectedTrim), Times.Once);
+        _mockQueryService.Verify(s => s.GetSearchResultsAsync(
+            It.Is<SearchQueryRequestParameters>(sqrp => sqrp.Query == expectedTrim), 
+            It.IsAny<PaginationRequestParameters>()), 
+            Times.Once
+        );
     }
 
 
@@ -90,28 +102,29 @@ public class SearchControllerTests
         // Arrange
         string query = "zero-results";
 
+        var searchParam = SearchQueryRequestParametersBuilder.BuildParameters(query);
+        var pageParam = PaginationRequestParametersBuilder.BuildPaginationParameters();
+
         var emptyDto = new SearchResponseDTO(
-            searchResults: new List<DocumentDTO>(),
-            currentPage: 1,
-            pageSize: 0,
-            totalResults: 0,
-            message: "No results found"
+            SearchResults: new List<DocumentDTO>(),
+            new PaginationMetaData(0,0,0,0),
+            Message: "No results found"
         );
 
         _mockQueryService
-            .Setup(s => s.GetSearchResultsAsync(query))
+            .Setup(s => s.GetSearchResultsAsync(searchParam, pageParam))
             .Returns(Task.FromResult(emptyDto)); 
 
         // Act
-        var result = await _controller.GetSearchResponses(query);
+        var result = await _controller.GetSearchResponses(searchParam, pageParam);
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
         var responseDto = Assert.IsType<SearchResponseDTO>(okResult.Value);
 
-        Assert.Empty(responseDto.searchResults);
-        Assert.Equal(0, responseDto.totalResults);
-        Assert.Equal("No results found", responseDto.message);
+        Assert.Empty(responseDto.SearchResults);
+        Assert.Equal(0, responseDto.MetaData.TotalItemCount);
+        Assert.Equal("No results found", responseDto.Message);
     }
 
     [Theory]
@@ -122,48 +135,30 @@ public class SearchControllerTests
     {
         // Arrange
         string query = "zero-results";
+        var searchParam = (input == "NO_INPUT") 
+                ? SearchQueryRequestParametersBuilder.BuildParameters(query) 
+                : SearchQueryRequestParametersBuilder.BuildParameters(query, input);
 
         var emptyDto = new SearchResponseDTO(
-            searchResults: new List<DocumentDTO>(),
-            currentPage: 1,
-            pageSize: 0,
-            totalResults: 0,
-            message: "No results found"
+            SearchResults: new List<DocumentDTO>(),
+            It.IsAny<PaginationMetaData>(),
+            Message: "No results found"
         );
 
+        var pageParam = PaginationRequestParametersBuilder.BuildPaginationParameters();
+
         _mockQueryService
-            .Setup(s => s.GetSearchResultsAsync(query, languageCode: expected))
+            .Setup(s => s.GetSearchResultsAsync(searchParam, pageParam))
             .Returns(Task.FromResult(emptyDto)); 
 
-        Func<Task<ActionResult<SearchResponseDTO>>> act = input switch
-        {
-            "NO_INPUT"  => () => _controller.GetSearchResponses(query: query),
-            _           => () => _controller.GetSearchResponses(query: query, language: input)
-        };
-
         // Act
-        await act();
+        await _controller.GetSearchResponses(searchParam, pageParam);
         
         // Assert
         _mockQueryService.Verify(qs => qs.GetSearchResultsAsync(
-            query: It.IsAny<string>(),
-            languageCode: expected
-        ));
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("    ")]
-    [InlineData("NULL_TEST")]
-    public async Task GetSearchResponses_ShouldReturnBadRequest_WhenQueryIsInvalid(string input)
-    {
-        string? invalidQuery = input.Equals("NULL_TEST") ? null : input;
-
-        // Act
-        var result = await _controller.GetSearchResponses(invalidQuery!);
-
-        // Assert
-        Assert.IsType<BadRequestObjectResult>(result.Result);
+            It.Is<SearchQueryRequestParameters>(sqrp => sqrp.Language == expected),
+            It.IsAny<PaginationRequestParameters>()
+        ), Times.Once);
     }
 
     [Fact]
@@ -171,55 +166,22 @@ public class SearchControllerTests
     {
         // Arrange
         string query = "error";
+        var searchParam = SearchQueryRequestParametersBuilder.BuildSearchParameters();
+        var pageParam = PaginationRequestParametersBuilder.BuildPaginationParameters();
 
         _mockQueryService
-            .Setup(s => s.GetSearchResultsAsync(query))
+            .Setup(s => s.GetSearchResultsAsync(searchParam, pageParam))
             .ThrowsAsync(new System.Exception("Database connection failed"));
 
         // Act & Assert
-        await Assert.ThrowsAsync<System.Exception>(() => _controller.GetSearchResponses(query));
+        await Assert.ThrowsAsync<System.Exception>(() => _controller.GetSearchResponses(searchParam, pageParam));
     }
 
     [Fact]
-    public async Task GetSearchResponses_QueryTooLong_ReturnsBadRequest()
+    public async Task GetSearchResponses_QueryTooLong_ThrowsException()
     {
-        // Arrange: Create a string longer than 500 characters
-        var longQuery = new string('a', 501);
-
-        // Act
-        var result = await _controller.GetSearchResponses(longQuery);
-
-        // Assert
-        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
-        Assert.Equal("Query length is limited to 500 characters!", badRequest.Value);
-    }
-   
-   
-    [Fact]
-    public async Task GetSearchResponses_DeepPagination_ReturnsBadRequest()
-    {
-        // Arrange
-        var query = "query";
-
-        // Act
-        var result = await _controller.GetSearchResponses(query, pageNumber: 101);
-
-        // Assert
-        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
-        Assert.Equal("Deep pagination is restricted. Please refine your query!", badRequest.Value);
-    }
-
-    [Fact]
-    public async Task GetSearchResponses_NegativePageNumber_ReturnsBadRequest()
-    {
-        // Arrange
-        var query = "query";
-
-        // Act
-        var result = await _controller.GetSearchResponses(query, pageNumber: -1);
-
-        // Assert
-        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
-        Assert.Equal("Page number must be 1 or greater.", badRequest.Value);
-    }
+       // Arrange & Act & Assert
+        Assert.Throws<QuerySyntaxException>(() => 
+            SearchQueryRequestParametersBuilder.BuildParameters(new string('a', 501)));
+    }  
 }

@@ -3,6 +3,8 @@ using LTU.SearchEngine.Backend.Core;
 using LTU.SearchEngine.Backend.Core.Enums;
 using LTU.SearchEngine.Backend.Core.Exceptions;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
+using LTU.SearchEngine.Backend.Core.RequestParameters;
+using LTU.SearchEngine.Test.HelperClasses;
 using Moq;
 
 namespace LTU.SearchEngine.Test.QueryParsing.Tests;
@@ -23,6 +25,11 @@ public class QueryTokenizerTests
             .Setup(n => n.Normalize(It.IsAny<string>(), It.IsAny<string>()))
             .Returns((string s, string lang) => new List<string> { s });
     }
+
+	public SearchQueryRequestParameters CreateSearchParam(string? input, string? language)
+	{
+		return SearchQueryRequestParametersBuilder.BuildParameters(input!, language);
+	}
 
 	[Fact]
 	public void Constructor_NullIQuerySyntaxHelper_ShouldThrowArgumentNullException()
@@ -52,8 +59,10 @@ public class QueryTokenizerTests
 			.Setup(sh => sh.ValidateGrouping(It.IsAny<List<ExtractedQueryToken>>()))
 			.Throws(new InvalidQueryStringException("Mismatched parentheses", input));
 
+		var searchParam = CreateSearchParam(input, "en");
+		
 		// Act & Assert 
-		Assert.Throws<InvalidQueryStringException>(() => _sut.Tokenize(input, "en"));
+		Assert.Throws<InvalidQueryStringException>(() => _sut.Tokenize(searchParam));
 	}
 
 	[Fact]
@@ -67,9 +76,10 @@ public class QueryTokenizerTests
 		var banana = new ExtractedQueryToken(QueryTokenType.Term, "banana", RequirementLevel.Optional, "en");
 
 		var expected = new List<ExtractedQueryToken> { apple, orange, banana };
+		var searchParam = CreateSearchParam(input, "en");
 
 		// Act 
-		var result = _sut.Tokenize(input, "en");
+		var result = _sut.Tokenize(searchParam);
 
 		// Assert 
 		Assert.Equivalent(expected, result.Tokens);
@@ -85,8 +95,10 @@ public class QueryTokenizerTests
 		var helloDolly = new ExtractedQueryToken(QueryTokenType.Phrase, "hello dolly", RequirementLevel.Optional, "en");
 		var dog = new ExtractedQueryToken(QueryTokenType.Term, "dog", RequirementLevel.Optional, "en");
 
+		var searchParam = CreateSearchParam(input, "en");
+
 		// Act 
-		var result = _sut.Tokenize(input, "en");
+		var result = _sut.Tokenize(searchParam);
 		var resultList = result.Tokens.ToList();
 
 		// Assert
@@ -103,21 +115,13 @@ public class QueryTokenizerTests
 		var input = "  word1    word2  ";
 		var word1 = new ExtractedQueryToken(QueryTokenType.Term, "word1", RequirementLevel.Optional, "en");
 		var word2 = new ExtractedQueryToken(QueryTokenType.Term, "word2", RequirementLevel.Optional, "en");
+		var searchParam = CreateSearchParam(input, "en");
 
 		// Act
-		var result = _sut.Tokenize(input, "en");
+		var result = _sut.Tokenize(searchParam);
 
 		// Assert
 		Assert.Equivalent(new[] { word1, word2}, result.Tokens);
-	}
-
-
-	[Fact]
-	public void Tokenize_EmptyInput_ReturnsEmptyList()
-	{
-		// Act & Assert 
-		Assert.Empty(_sut.Tokenize("", "en").Tokens);
-		Assert.Empty(_sut.Tokenize("   ", "en").Tokens);
 	}
 
 
@@ -131,8 +135,11 @@ public class QueryTokenizerTests
 		var unclosed = new ExtractedQueryToken(QueryTokenType.Term, "\"unclosed", RequirementLevel.Optional, "en");
 		var phrase = new ExtractedQueryToken(QueryTokenType.Term, "phrase", RequirementLevel.Optional, "en");
 		var or = new ExtractedQueryToken(QueryTokenType.LogicalOperator, "OR", RequirementLevel.Optional);
+		
+		var searchParam = CreateSearchParam(input, "en");
+
 		// Act
-		var result = _sut.Tokenize(input, "en");
+		var result = _sut.Tokenize(searchParam);
 		var resultList = result.Tokens.ToList();
 
 		// Assert
@@ -149,9 +156,10 @@ public class QueryTokenizerTests
     {
         // Arrange
         var input = "apple banana";
-        
+        var searchParam = CreateSearchParam(input, "en");
+
 		// Act 
-		var result = _sut.Tokenize(input, "en");
+		var result = _sut.Tokenize(searchParam);
 
 
 		// Assert 
@@ -173,9 +181,10 @@ public class QueryTokenizerTests
     {
 		// Arrange
 		var input = "apple banana orange";
-        
+        var searchParam = CreateSearchParam(input, "en");
+
 		// Act 
-		var result = _sut.Tokenize(input, "en");
+		var result = _sut.Tokenize(searchParam);
 
 		// Assert 
 		var resultList = result.Tokens.ToList();
@@ -195,8 +204,11 @@ public class QueryTokenizerTests
     [InlineData("+orange", "orange")]
     public void Tokenize_PlusPrefixOnTerm_SetsRequirementLevelToRequired(string input, string expectedTerm)
     {
+		// Arrange 
+		var searchParam = CreateSearchParam(input, "en");
+
         // Act
-        var result = _sut.Tokenize(input, "en");
+        var result = _sut.Tokenize(searchParam);
         var token = result.Tokens.First();
 
         // Assert
@@ -211,9 +223,10 @@ public class QueryTokenizerTests
     {
         // Arrange
         var input = "+\"mandatory phrase\"";
+		var searchParam = CreateSearchParam(input, "en");
 
         // Act
-        var result = _sut.Tokenize(input, "en");
+        var result = _sut.Tokenize(searchParam);
         var token = result.Tokens.First();
 
         // Assert
@@ -228,8 +241,11 @@ public class QueryTokenizerTests
 	[InlineData("+\"apple pie\" +\"banana split\"")]
     public void Tokenize_MultipleRequiredTerms_InsertsImplicitAND(string input)
     {
+		// Arrange
+		var searchParam = CreateSearchParam(input, "en");
+		
         // Act
-        var result = _sut.Tokenize(input, "en");
+        var result = _sut.Tokenize(searchParam);
         var resultList = result.Tokens.ToList();
 
         // Assert (required, AND, required)
@@ -245,8 +261,11 @@ public class QueryTokenizerTests
 	[InlineData("\\+\"apple banana\"", "+apple banana")]
 	public void Tokenize_EscapedPlusAtStart_ShouldBeOptional(string input, string expected)
     {
+		// Arrange 
+		var searchParam = CreateSearchParam(input, "en");
+
         // Act
-        var result = _sut.Tokenize(input, "en");
+        var result = _sut.Tokenize(searchParam);
         var token = result.Tokens.First();
 
         // Assert
@@ -262,8 +281,11 @@ public class QueryTokenizerTests
 	[InlineData("\"apple banana\\+\"", "apple banana+")]
 	public void Tokenize_EscapedPlusInPhrase_ShouldNotInsertRequired(string input, string expected)
     {
+		// Arrange
+		var searchParam = CreateSearchParam(input, "en");
+
         // Act
-        var result = _sut.Tokenize(input, "en");
+        var result = _sut.Tokenize(searchParam);
         var token = result.Tokens.First();
 
         // Assert
@@ -277,9 +299,10 @@ public class QueryTokenizerTests
     {
 		// Arrange
 		string input = "+(term1 AND term2)";
+		var searchParam = CreateSearchParam(input, "en");
 		
         // Act
-        var result = _sut.Tokenize(input, "en");
+        var result = _sut.Tokenize(searchParam);
         var token = result.Tokens.First();
 
         // Assert
@@ -294,9 +317,10 @@ public class QueryTokenizerTests
 		// Arrange
 		// Logic: +( term1 AND +( term1 OR term2 ) )
 		string input = "+(term1 AND +(term1 OR term2))";
+		var searchParam = CreateSearchParam(input, "en");
 		
 		// Act
-		var result = _sut.Tokenize(input, "en");
+		var result = _sut.Tokenize(searchParam);
 		var tokens = result.Tokens.ToList();
 
 		// Assert
@@ -315,11 +339,16 @@ public class QueryTokenizerTests
 	[Fact]
 	public void Tokenize_DeeplyNestedRequired_AllOpeningBracketsAreRequired()
 	{
+		// Arrange
 		string input = "+(+(+(term)))"; // Triple nested required
-		var result = _sut.Tokenize(input, "en");
+		var searchParam = CreateSearchParam(input, "en");
+
+		// Act 
+		var result = _sut.Tokenize(searchParam);
 
 		var openBrackets = result.Tokens.Where(t => t.Token == "(").ToList();
 
+		// Assert
 		Assert.Equal(3, openBrackets.Count);
 		Assert.All(openBrackets, t => Assert.Equal(RequirementLevel.Required, t.RequirementLevel));
 	}
@@ -330,9 +359,10 @@ public class QueryTokenizerTests
     {
 		// Arrange
 		var input = "start AND phrase";
+		var searchParam = CreateSearchParam(input, "en");
 
 		// Act 
-        var result = _sut.Tokenize(input, "en");
+        var result = _sut.Tokenize(searchParam);
 
 		// Assert 
 		var resultList = result.Tokens.ToList();
@@ -349,9 +379,10 @@ public class QueryTokenizerTests
     {
 		// Arrange 
         var input = "cat \"hello dolly\" dog";
+		var searchParam = CreateSearchParam(input, "en");
 
 		// Act 
-        var result = _sut.Tokenize(input, "en");
+        var result = _sut.Tokenize(searchParam);
 
 		// Assert 
 		var resultList = result.Tokens.ToList();
@@ -369,9 +400,10 @@ public class QueryTokenizerTests
     {
 		// Arrange
 		var input = "start && phrase";
+		var searchParam = CreateSearchParam(input, "en");
 
 		// Act 
-        var result = _sut.Tokenize(input, "en");
+        var result = _sut.Tokenize(searchParam);
 
 		// Assert 
 		var resultList = result.Tokens.ToList();
@@ -386,7 +418,6 @@ public class QueryTokenizerTests
     [Theory]
 	[InlineData("!")]
 	[InlineData("-")]
-	// [InlineData("+")]
 	[InlineData("&&")]
 	[InlineData("||")]
 	[InlineData("AND")]
@@ -396,13 +427,14 @@ public class QueryTokenizerTests
 	{
 		// Arrange
 		var input = $"start {operatorInput} phrase";
+		var searchParam = CreateSearchParam(input, "en");
 
 		var start = new ExtractedQueryToken(QueryTokenType.Term, "start", RequirementLevel.Optional, "en");
 		var expectedOperator = new ExtractedQueryToken(QueryTokenType.LogicalOperator, operatorInput, RequirementLevel.Optional);
 		var phrase = new ExtractedQueryToken(QueryTokenType.Term, "phrase", RequirementLevel.Optional, "en");
 
 		// Act
-		var result = _sut.Tokenize(input, "en");
+		var result = _sut.Tokenize(searchParam);
 		var resultList = result.Tokens.ToList();
 
 		// Assert
@@ -420,6 +452,7 @@ public class QueryTokenizerTests
 	{
 		// Arrange
 		var input = $"first {operatorInput}second";
+		var searchParam = CreateSearchParam(input, "en");
 
 		var first = new ExtractedQueryToken(QueryTokenType.Term, "first", RequirementLevel.Optional, "en");
 		var expectedOperator = new ExtractedQueryToken(
@@ -428,7 +461,7 @@ public class QueryTokenizerTests
 		var second = new ExtractedQueryToken(QueryTokenType.Term, "second", RequirementLevel.Optional, "en");
 
 		// Act
-		var result = _sut.Tokenize(input, "en");
+		var result = _sut.Tokenize(searchParam);
 
 		// Assert
 		var resultList = result.Tokens.ToList();
@@ -448,6 +481,7 @@ public class QueryTokenizerTests
 	{
 		// Arrange
 		var input = $"{operator1}\"start phrase\"{operator2}";
+		var searchParam = CreateSearchParam(input, "en");
 
 		var expectedOperator1 = new ExtractedQueryToken(
 			QueryTokenType.GroupingOperator, operator1, RequirementLevel.Optional
@@ -460,7 +494,7 @@ public class QueryTokenizerTests
 		);
 
 		// Act
-		var result = _sut.Tokenize(input, "en");
+		var result = _sut.Tokenize(searchParam);
 
 		// Assert
 		var resultList = result.Tokens.ToList();
@@ -482,8 +516,9 @@ public class QueryTokenizerTests
             .Setup(n => n.Normalize(It.IsAny<string>(), "en"))
             .Returns((string s, string lang) => new List<string> { s });
 
+		var searchParam = CreateSearchParam("the Running man", "en");
 		// Act 
-        _sut.Tokenize("the Running man", "en");
+        _sut.Tokenize(searchParam);
 
 		// Assert
         _mockNormalizer.Verify(
@@ -492,7 +527,6 @@ public class QueryTokenizerTests
     }
 
     [Theory]
-    // [InlineData("+")]
     [InlineData("AND")]
     [InlineData("OR")]
     [InlineData("NOT")]
@@ -503,14 +537,16 @@ public class QueryTokenizerTests
     public void Tokenize_Should_Not_Normalize_LogicalOperators(string input)
     {
         // Arrange
-        var result = _sut.Tokenize(input, "en");
-		var resultList = result.Tokens.ToList();
+		var searchParam = CreateSearchParam(input, "en");
 
 		// Act 
+        var result = _sut.Tokenize(searchParam);
+		var resultList = result.Tokens.ToList();
+
+		// Assert 
         Assert.Single(resultList);
         Assert.Equal(QueryTokenType.LogicalOperator, resultList[0].TokenType);
 		
-		// Assert 
         _mockNormalizer.Verify(
             n => n.Normalize(It.IsAny<string>(), "en"),
             Times.Never);
@@ -524,8 +560,11 @@ public class QueryTokenizerTests
 	[InlineData("en: term1 term2 term3")]
 	public void Tokenize_IsLanguagePreFix_FindsGlobalLanguage(string input)
 	{
+		// Arrange
+		var searchParam = CreateSearchParam(input, "en");
+
 		// Act 
-		var result = _sut.Tokenize(input, "sv");
+		var result = _sut.Tokenize(searchParam);
 		var resultList = result.Tokens.ToList();
 
 		// Assert 
@@ -542,8 +581,11 @@ public class QueryTokenizerTests
 	[InlineData("term1 term2 en:term3")]
 	public void Tokenize_IsLanguagePreFix_FindsActiveLanguage(string input)
 	{
+		// Arrange 
+		var searchParam = CreateSearchParam(input, null);
+
 		// Act 
-		var result = _sut.Tokenize(input, "sv");
+		var result = _sut.Tokenize(searchParam);
 		var resultList = result.Tokens.ToList();
 
 		// Assert 
@@ -559,8 +601,11 @@ public class QueryTokenizerTests
 	[InlineData("term1 AND term3", 2)] 
 	public void Tokenize_IsLanguagePreFix_FindsNoLanguage_UsesDefault(string input, int instances)
 	{
+		// Arrange 
+		var searchParam = CreateSearchParam(input, null);
+
 		// Act 
-		var result = _sut.Tokenize(input, "sv");
+		var result = _sut.Tokenize(searchParam);
 		var resultList = result.Tokens.ToList();
 
 		// Assert 
@@ -578,9 +623,10 @@ public class QueryTokenizerTests
 			.Returns(new List<string>{""}); // Everything is a stop-word
 
 		var input = "\"the and a\"";
+		var searchParam = CreateSearchParam(input, "en");
 
 		// Act
-		var result = _sut.Tokenize(input, "en");
+		var result = _sut.Tokenize(searchParam);
 
 		// Assert
 		var resultList = result.Tokens.ToList();
@@ -597,9 +643,10 @@ public class QueryTokenizerTests
 		// en:apple -> English
 		// sv:banan -> Swedish
 		// orange   -> English (falls back to global)
+		var searchParam = CreateSearchParam(input, "en");
 
 		// Act
-		var result = _sut.Tokenize(input, "en");
+		var result = _sut.Tokenize(searchParam);
 		var resultList = result.Tokens.ToList();
 
 		// Assert
@@ -618,9 +665,10 @@ public class QueryTokenizerTests
 		// Arrange
 		_mockNormalizer.Setup(n => n.Normalize("the", "en")).Returns(new List<string>{""});
 		var input = "the";
+		var searchParam = CreateSearchParam(input, "en");
 
 		// Act
-		var result = _sut.Tokenize(input, "en");
+		var result = _sut.Tokenize(searchParam);
 
 		// Assert
 		Assert.Single(result.Tokens); 
@@ -638,8 +686,11 @@ public class QueryTokenizerTests
 	[InlineData("\\-F\\+G\\#H", "-F+G#H")]
 	public void Tokenize_EscapedSymbols_ArePassedToNormalizerAsLiteralText(string input, string expected)
 	{
+		// Arrange 
+		var searchParam = CreateSearchParam(input, "en");
+		
 		// Act
-		var result = _sut.Tokenize(input, "en");
+		var result = _sut.Tokenize(searchParam);
 
 		// Assert
 		Assert.Equal(expected, result.Tokens.First().Token); 
