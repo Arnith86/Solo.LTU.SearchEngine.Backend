@@ -249,24 +249,51 @@ public class SqlIndexRepository : IIndexRepository
         try
         {
             var existingTerms = await context.Terms
-            .Where(t => cleanWords.Contains(t.Word) && t.LanguageCode == language)
-            .ToDictionaryAsync(t => t.Word);
+                .Where(t => cleanWords.Contains(t.Word) && t.LanguageCode == language)
+                .ToDictionaryAsync(t => t.Word);
 
-            bool hasNewTerms = false;
+            int totalNumberOfDocuments = await context.Pages.CountAsync();
+            if (totalNumberOfDocuments == 0) totalNumberOfDocuments = 1;
+
+            var existingTermsIds = existingTerms.Values.Select(t => t.Id).ToList();
+            var countsDictionary = await context.PageWordFrequencies
+                .Where(pwf => existingTermsIds.Contains(pwf.TermId))
+                .GroupBy(pwf => pwf.TermId)
+                .ToDictionaryAsync(g => g.Key, g => g.Count());
+
+
+            bool hasAnyChanges = false; 
 
             foreach (var term in cleanWords)
             {
                 // Creates new Terms if current Term did not exist. 
                 if (!existingTerms.TryGetValue(term, out var termEntity))
                 {
-                    termEntity = new Term { Word = term, LanguageCode = language };
+                    termEntity = new Term { 
+                        Word = term, 
+                        LanguageCode = language, 
+                        IdfScore = Math.Log((double)totalNumberOfDocuments)
+                    };
                     context.Terms.Add(termEntity);
                     existingTerms[term] = termEntity;
-                    hasNewTerms = true;
+					hasAnyChanges = true;
+				}
+                else
+                {
+                    countsDictionary.TryGetValue(termEntity.Id, out int historicalCount);
+                    
+                    int documentsContainingTerm = historicalCount + 1;
+                    double newIdf = Math.Log((double)totalNumberOfDocuments / documentsContainingTerm + 1);
+
+                    if (Math.Abs(termEntity.IdfScore - newIdf) > 0.0001)
+                    {
+						termEntity.IdfScore = (float)newIdf;
+                        hasAnyChanges = true;
+					}
                 }
             }
 
-            if (hasNewTerms) await context.SaveChangesAsync();    
+            if (hasAnyChanges) await context.SaveChangesAsync();    
                   
             return existingTerms;   
         }
@@ -295,7 +322,8 @@ public class SqlIndexRepository : IIndexRepository
                 TermId = terms[word].Id,
                 TitleFrequency = titleFreq,
                 HeaderFrequency = headerFreq,
-                BodyFrequency = bodyFreq
+                BodyFrequency = bodyFreq,
+                TfWeight = (titleFreq * 10) + (headerFreq * 5) + bodyFreq
             });
         }
     }
