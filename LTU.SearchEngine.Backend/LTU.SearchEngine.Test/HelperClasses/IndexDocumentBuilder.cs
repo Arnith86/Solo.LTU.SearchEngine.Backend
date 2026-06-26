@@ -39,9 +39,47 @@ public static class IndexDocumentBuilder
             lastCrawl: tempCrawl
         );
     }
-   
-    // MetaData with default values
-    public static IndexDocument BuildIndexDocument(
+
+	// Setup TF-IDF collections manually, but use default values for other properties
+	public static IndexDocument BuildIndexDocument(
+		IReadOnlyDictionary<string, int> titleTerms,
+		IReadOnlyDictionary<string, int> headerTerms,
+		IReadOnlyDictionary<string, int> contentTerms,
+		bool isMetaDataPdf = false,
+		string url = "http://test.html",
+		string title = "Test Title",
+		string language = "sv",
+		string contentHash = "x",
+		DateTime lastCrawl = default
+		)
+	{
+		var dummyOutgoingLinks = new List<string> { "dummyLink" };
+		var dummyTitleTermPositions = new List<string> { { "titleWord" } };
+		var dummyHeaderTermPositions = new List<string> { { "headerWord" } };
+		var dummyContentTermPositions = new List<string> { { "contentWord" } };
+		var tempCrawl = lastCrawl == default ? DateTime.UtcNow : lastCrawl;
+
+		return new IndexDocument(
+			url: url,
+			title: title,
+			language: language,
+			documentMetaData: isMetaDataPdf.Equals(true) ?
+				new PdfDocumentMetaData(pdfVersion: "v1", encodingType: "encoding") :
+				new HtmlDocumentMetaData(docType: "<!doctype html>", charSet: "utf-8"),
+			outgoingLinks: dummyOutgoingLinks,
+			titleTerms: titleTerms,
+			headerTerms: headerTerms,
+			contentTerms: contentTerms,
+			titleTermPositions: dummyTitleTermPositions,
+			headerTermPositions: dummyHeaderTermPositions,
+			contentTermPositions: dummyContentTermPositions,
+			contentHash: contentHash,
+			lastCrawl: tempCrawl
+		);
+	}
+
+	// MetaData with default values
+	public static IndexDocument BuildIndexDocument(
         IEnumerable<string> outgoingLinks,
         IReadOnlyDictionary<string, int> titleTerms, 
         IReadOnlyDictionary<string, int> headerTerms, 
