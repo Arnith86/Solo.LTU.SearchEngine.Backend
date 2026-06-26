@@ -647,6 +647,62 @@ public class SqlIndexRepositoryTests : IDisposable
     }
 
 
+	[Fact]
+	public async Task AddDocumentAsync_CalculatesCorrectTermTFScore()
+	{
+        // Arrange
+		var term1 = "term1";
+		var term2 = "term2";
+		var term3 = "term3";
+
+		await using var setupContext = await _factory.CreateDbContextAsync();
+
+		// TF = 
+		//  term1 ((1*10)+(2*5)+(5*1)) = 25
+		//  term2 ((2*10)+(1*5)+(3*1)) = 28
+		//  term3 ((1*10)+(1*5)+(20*1)) = 35
+        // Total terms = 36
+		IndexDocument indexDocument = IndexDocumentBuilder.BuildIndexDocument(
+			url: "https://page3.com",
+			titleTerms: new Dictionary<string, int> {
+				{term1, 1}, {term2, 2}, {term3, 1}
+			},
+			headerTerms: new Dictionary<string, int> {
+				{term1, 2}, {term2, 1}, {term3, 1}
+			},
+			contentTerms: new Dictionary<string, int> {
+				{term1, 5}, {term2, 3}, {term3, 20}
+			}
+		);
+
+		// Act 
+		await _sut.AddDocumentAsync(indexDocument);
+
+        double term1TFResult = await setupContext.PageWordFrequencies
+            .Where(pwf => pwf.Term.Word.Equals(term1))
+            .Select(pwf => pwf.TfWeight)
+            .FirstOrDefaultAsync();
+
+		double term2TFResult = await setupContext.PageWordFrequencies
+			.Where(pwf => pwf.Term.Word.Equals(term2))
+			.Select(pwf => pwf.TfWeight)
+			.FirstOrDefaultAsync();
+
+		double term3TFResult = await setupContext.PageWordFrequencies
+			.Where(pwf => pwf.Term.Word.Equals(term3))
+			.Select(pwf => pwf.TfWeight)
+			.FirstOrDefaultAsync();
+
+		// Assert
+		// TF score expected:
+		//          raw score total    
+		//  term1 =     25   /  36 = ~0.694
+		//  term2 =     28   /  36 = ~0.778
+		//  term3 =     35   /  36 = ~0.972
+		Assert.Equal(0.694, term1TFResult, precision: 3);
+		Assert.Equal(0.778, term2TFResult, precision: 3);
+		Assert.Equal(0.972, term3TFResult, precision: 3);
+	}
     public void Dispose()
     {
         _connection.Close();
