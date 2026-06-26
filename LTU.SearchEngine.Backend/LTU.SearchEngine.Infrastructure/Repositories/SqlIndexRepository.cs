@@ -253,8 +253,7 @@ public class SqlIndexRepository : IIndexRepository
                 .ToDictionaryAsync(t => t.Word);
 
             int totalNumberOfDocuments = await context.Pages.CountAsync();
-            if (totalNumberOfDocuments == 0) totalNumberOfDocuments = 1;
-
+          
             var existingTermsIds = existingTerms.Values.Select(t => t.Id).ToList();
             var countsDictionary = await context.PageWordFrequencies
                 .Where(pwf => existingTermsIds.Contains(pwf.TermId))
@@ -269,29 +268,30 @@ public class SqlIndexRepository : IIndexRepository
                 // Creates new Terms if current Term did not exist. 
                 if (!existingTerms.TryGetValue(term, out var termEntity))
                 {
-                    termEntity = new Term { 
-                        Word = term, 
-                        LanguageCode = language, 
-                        IdfScore = Math.Log((double)totalNumberOfDocuments)
+                    termEntity = new Term
+                    {
+                        Word = term,
+                        LanguageCode = language,
+                        IdfScore = CalculateIDF(totalNumberOfDocuments)
                     };
                     context.Terms.Add(termEntity);
                     existingTerms[term] = termEntity;
 					hasAnyChanges = true;
 				}
                 else
-                {
-                    countsDictionary.TryGetValue(termEntity.Id, out int historicalCount);
-                    
-                    int documentsContainingTerm = historicalCount + 1;
-                    double newIdf = Math.Log((double)totalNumberOfDocuments / documentsContainingTerm + 1);
+				{
+					countsDictionary.TryGetValue(termEntity.Id, out int historicalCount);
 
-                    if (Math.Abs(termEntity.IdfScore - newIdf) > 0.0001)
-                    {
+					int documentsContainingTerm = historicalCount + 1;
+					double newIdf = CalculateIDF(totalNumberOfDocuments, documentsContainingTerm);
+
+					if (Math.Abs(termEntity.IdfScore - newIdf) > 0.0001)
+					{
 						termEntity.IdfScore = (float)newIdf;
-                        hasAnyChanges = true;
+						hasAnyChanges = true;
 					}
-                }
-            }
+				}
+			}
 
             if (hasAnyChanges) await context.SaveChangesAsync();    
                   
@@ -303,33 +303,54 @@ public class SqlIndexRepository : IIndexRepository
         }
     }
 
+	private static double CalculateIDF(int totalNumberOfDocuments, int documentsContainingTerm = 0)
+	{
+		if (totalNumberOfDocuments == 0) totalNumberOfDocuments = 1;
 
-    private void AddWordFrequencies(
+        if (documentsContainingTerm == 0) return Math.Log((double)totalNumberOfDocuments);
+		
+        return Math.Log((double)totalNumberOfDocuments / documentsContainingTerm + 1);
+	}
+
+	private void AddWordFrequencies(
         SearchDbContext context, 
         int pageId, IndexDocument doc, 
         Dictionary<string, Term> terms
         )
     {
         foreach (var word in terms.Keys)
-        {
-            doc.TitleTerms.TryGetValue(word, out int titleFreq);
-            doc.HeaderTerms.TryGetValue(word, out int headerFreq);
-            doc.ContentTerms.TryGetValue(word, out int bodyFreq);
+		{
+			doc.TitleTerms.TryGetValue(word, out int titleFreq);
+			doc.HeaderTerms.TryGetValue(word, out int headerFreq);
+			doc.ContentTerms.TryGetValue(word, out int bodyFreq);
 
-            context.PageWordFrequencies.Add(new PageWordFrequency
-            {
-                PageId = pageId,
-                TermId = terms[word].Id,
-                TitleFrequency = titleFreq,
-                HeaderFrequency = headerFreq,
-                BodyFrequency = bodyFreq,
-                TfWeight = (titleFreq * 10) + (headerFreq * 5) + bodyFreq
-            });
-        }
+			context.PageWordFrequencies.Add(new PageWordFrequency
+			{
+				PageId = pageId,
+				TermId = terms[word].Id,
+				TitleFrequency = titleFreq,
+				HeaderFrequency = headerFreq,
+				BodyFrequency = bodyFreq,
+				TfWeight = CalculateTFWeight(doc, titleFreq, headerFreq, bodyFreq)
+			});
+		}
+	}
+
+	private static double CalculateTFWeight(
+        IndexDocument doc, 
+        int titleFreq, 
+        int headerFreq, 
+        int bodyFreq
+        )
+    {
+        if (doc.TotalWordCount.Equals(0)) return 0.0;
+        double rawScore = ((titleFreq * 10) + (headerFreq * 5) + bodyFreq);
+        
+        return rawScore / doc.TotalWordCount;
     }
 
-    
-    private void AddWordPositions(
+
+	private void AddWordPositions(
         SearchDbContext context, 
         int pageId, 
         IndexDocument doc, 
