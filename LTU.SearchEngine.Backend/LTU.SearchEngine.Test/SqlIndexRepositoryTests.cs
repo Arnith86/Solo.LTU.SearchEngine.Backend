@@ -11,6 +11,7 @@ using LTU.SearchEngine.Test.HelperClasses;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using static System.Net.WebRequestMethods;
 
 namespace LTU.SearchEngine.Test;
 
@@ -648,6 +649,34 @@ public class SqlIndexRepositoryTests : IDisposable
 
 
 	[Fact]
+	public async Task AddDocumentAsync_EmptyPageFound_ShouldReturnScoreZero()
+	{
+        // Arrange
+		await using var setupContext = await _factory.CreateDbContextAsync();
+        string testUrl = "http://test.html";
+		
+        // TF = Should be 0
+		IndexDocument indexDocument = IndexDocumentBuilder.BuildIndexDocument(
+            url: testUrl,
+			titleTerms: new Dictionary<string, int>(), 
+			headerTerms: new Dictionary<string, int>(),
+			contentTerms: new Dictionary<string, int>()
+		);
+
+		// Act 
+		await _sut.AddDocumentAsync(indexDocument);
+
+		double TFResult = await setupContext.PageWordFrequencies
+		.Where(pwf => pwf.Page.Url.Equals(testUrl))
+		.Select(pwf => pwf.TfWeight)
+		.FirstOrDefaultAsync();
+
+		// Assert
+		Assert.Equal(0.000, TFResult, precision: 3);
+	}
+	
+    
+    [Fact]
 	public async Task AddDocumentAsync_CalculatesCorrectTermTFScore()
 	{
         // Arrange
@@ -716,7 +745,7 @@ public class SqlIndexRepositoryTests : IDisposable
         
         await setupContext.SaveChangesAsync();
         	
-		IndexDocument indexDocument3 = IndexDocumentBuilder.BuildIndexDocument(
+		IndexDocument indexDocument = IndexDocumentBuilder.BuildIndexDocument(
 			titleTerms: new Dictionary<string, int> {
 				{term1, 1}, {term2, 2}, {term3, 1}
 			},
@@ -730,7 +759,7 @@ public class SqlIndexRepositoryTests : IDisposable
 
 
         // Act 
-		await _sut.AddDocumentAsync(indexDocument3);
+		await _sut.AddDocumentAsync(indexDocument);
 
         double term1IDFResult = await setupContext.Terms
             .Where(t => t.Word.Equals(term1))
@@ -755,8 +784,83 @@ public class SqlIndexRepositoryTests : IDisposable
         Assert.Equal(0.176, term2IDFResult, precision: 3);
         Assert.Equal(0.176, term3IDFResult, precision: 3);
     }
-    
-    [Fact]
+
+
+
+	[Fact]
+	public async Task AddDocumentAsync_OnlyCurrentTermsGetIDFCalculated()
+	{
+		// Arrange
+		await using var setupContext = await _factory.CreateDbContextAsync();
+
+		var page1 = new Page { Url = "https://page1.com", Title = "Page 1" };
+		var page2 = new Page { Url = "https://page2.com", Title = "Page 2" };
+
+		// IDF score expected, after second page added:
+		//  term1 = log10(1 + (1/1 + 1)) = ~0.176
+		//  term2 = log10(1 + (1/1 + 1)) = ~0.176
+		var term1 = new Term { Id = 1, Word = "term1", LanguageCode = "sv", IdfScore = 0.176 };
+		var term2 = new Term { Id = 2, Word = "term2", LanguageCode = "sv", IdfScore = 0.176 };
+
+
+		setupContext.Pages.AddRange(page1, page2);
+		setupContext.Terms.AddRange(term1, term2);
+
+		await setupContext.SaveChangesAsync();
+
+		setupContext.PageWordFrequencies.AddRange(
+			new PageWordFrequency
+			{
+				PageId = page1.Id,
+				TermId = term1.Id,
+				TitleFrequency = 1,
+				HeaderFrequency = 1,
+				BodyFrequency = 2
+			},
+			new PageWordFrequency
+			{
+				PageId = page1.Id,
+				TermId = term2.Id,
+				TitleFrequency = 1,
+				HeaderFrequency = 2,
+				BodyFrequency = 6
+			}
+		);
+
+		await setupContext.SaveChangesAsync();
+
+
+		IndexDocument indexDocument2 = IndexDocumentBuilder.BuildIndexDocument(
+			titleTerms: new Dictionary<string, int> { { term1.Word, 1 } },
+			headerTerms: new Dictionary<string, int> { { term1.Word, 3 } },
+			contentTerms: new Dictionary<string, int> { { term1.Word, 10 } }
+		);
+
+
+		// Act 
+		await _sut.AddDocumentAsync(indexDocument2);
+
+		double term1IDFResult = await setupContext.Terms
+			.Where(t => t.Id.Equals(1))
+			.Select(t => t.IdfScore)
+			.FirstOrDefaultAsync();
+
+		double term2IDFResult = await setupContext.Terms
+			.Where(t => t.Id.Equals(2))
+			.Select(t => t.IdfScore)
+			.FirstOrDefaultAsync();
+
+
+		// Assert 
+		// IDF score expected:
+		//  term1 = log10(1 + (2/1 + 1)) = ~0.301
+		//  term2 = log10(1 + (1/1 + 1)) = ~0.176  (No new calculation with new document total should be conducted)
+		Assert.Equal(0.301, term1IDFResult, precision: 3);
+		Assert.Equal(0.176, term2IDFResult, precision: 3);
+	}
+
+
+	[Fact]
     public async Task AddDocumentAsync_WithExistingTerms_CalculatesCorrectIDFScore()
     {
         // Arrange
