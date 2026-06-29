@@ -705,7 +705,59 @@ public class SqlIndexRepositoryTests : IDisposable
 
 
     [Fact]
-    public async Task AddDocumentAsync_CalculatesCorrectIDFScore()
+    public async Task AddDocumentAsync_WithNoPreviousInstancesOfTerms_CalculatesCorrectIDFScore()
+    {
+        // Arrange
+        await using var setupContext = await _factory.CreateDbContextAsync();
+
+		var term1 = "term1";
+        var term2 = "term2";
+        var term3 = "term3";
+        
+        await setupContext.SaveChangesAsync();
+        	
+		IndexDocument indexDocument3 = IndexDocumentBuilder.BuildIndexDocument(
+			titleTerms: new Dictionary<string, int> {
+				{term1, 1}, {term2, 2}, {term3, 1}
+			},
+			headerTerms: new Dictionary<string, int> {
+				{term1, 2}, {term2, 1}, {term3, 1}
+			},
+			contentTerms: new Dictionary<string, int> {
+				{term1, 5}, {term2, 3}, {term3, 20}
+			}
+		);
+
+
+        // Act 
+		await _sut.AddDocumentAsync(indexDocument3);
+
+        double term1IDFResult = await setupContext.Terms
+            .Where(t => t.Word.Equals(term1))
+            .Select(t => t.IdfScore)
+            .FirstOrDefaultAsync();
+        
+        double term2IDFResult = await setupContext.Terms
+            .Where(t => t.Id.Equals(2))
+            .Select(t => t.IdfScore)
+            .FirstOrDefaultAsync();
+        
+        double term3IDFResult = await setupContext.Terms
+            .Where(t => t.Id.Equals(3))
+            .Select(t => t.IdfScore)
+            .FirstOrDefaultAsync();
+
+
+		// Assert 
+		// IDF score expected:
+		//  term1, term2, term3 = log10(1 + (1/1 + 1)) = ~0.176
+		Assert.Equal(0.176, term1IDFResult, precision: 3);
+        Assert.Equal(0.176, term2IDFResult, precision: 3);
+        Assert.Equal(0.176, term3IDFResult, precision: 3);
+    }
+    
+    [Fact]
+    public async Task AddDocumentAsync_WithExistingTerms_CalculatesCorrectIDFScore()
     {
         // Arrange
         await using var setupContext = await _factory.CreateDbContextAsync();
