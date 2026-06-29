@@ -663,7 +663,6 @@ public class SqlIndexRepositoryTests : IDisposable
 		//  term3 ((1*10)+(1*5)+(20*1)) = 35
         // Total terms = 36
 		IndexDocument indexDocument = IndexDocumentBuilder.BuildIndexDocument(
-			url: "https://page3.com",
 			titleTerms: new Dictionary<string, int> {
 				{term1, 1}, {term2, 2}, {term3, 1}
 			},
@@ -695,7 +694,7 @@ public class SqlIndexRepositoryTests : IDisposable
 
 		// Assert
 		// TF score expected:
-		//          raw score total    
+		//          raw score   total    
 		//  term1 =     25   /  36 = ~0.694
 		//  term2 =     28   /  36 = ~0.778
 		//  term3 =     35   /  36 = ~0.972
@@ -703,6 +702,113 @@ public class SqlIndexRepositoryTests : IDisposable
 		Assert.Equal(0.778, term2TFResult, precision: 3);
 		Assert.Equal(0.972, term3TFResult, precision: 3);
 	}
+
+
+    [Fact]
+    public async Task AddDocumentAsync_CalculatesCorrectIDFScore()
+    {
+        // Arrange
+        await using var setupContext = await _factory.CreateDbContextAsync();
+		
+        var page1 = new Page { Url = "https://page1.com", Title = "Page 1" };
+		var page2 = new Page { Url = "https://page2.com", Title = "Page 2" };
+
+		// IDF score expected, after second page added:
+		//  term1 = log10(1 + (2/2 + 1)) = ~0.222
+		//  term2 = log10(1 + (2/1 + 1)) = ~0.301
+		//  term3 = log10(1 + (2/1 + 1)) = ~0.301
+		var term1 = new Term { Id = 1, Word = "term1", LanguageCode = "sv", IdfScore = 0.222 };
+		var term2 = new Term { Id = 2, Word = "term2", LanguageCode = "sv", IdfScore = 0.301 };
+		var term3 = new Term { Id = 3, Word = "term3", LanguageCode = "sv", IdfScore = 0.301 };
+		
+		
+		setupContext.Pages.AddRange(page1, page2);
+		setupContext.Terms.AddRange(term1, term2, term3);
+		
+        await setupContext.SaveChangesAsync();
+
+	    setupContext.PageWordFrequencies.AddRange(
+			new PageWordFrequency 
+            { 
+                PageId = page1.Id, 
+                TermId = term1.Id, 
+                TitleFrequency = 1,
+                HeaderFrequency = 1,
+                BodyFrequency = 2
+            },
+			new PageWordFrequency 
+            { 
+                PageId = page1.Id, 
+                TermId = term2.Id, 
+                TitleFrequency = 1,
+                HeaderFrequency = 2,
+                BodyFrequency = 6
+            }
+		);
+		setupContext.PageWordFrequencies.AddRange(
+	        new PageWordFrequency
+	        {
+		        PageId = page2.Id,
+		        TermId = term1.Id,
+		        TitleFrequency = 1,
+		        HeaderFrequency = 3,
+		        BodyFrequency = 10
+	        },
+	        new PageWordFrequency
+	        {
+		        PageId = page2.Id,
+		        TermId = term3.Id,
+		        TitleFrequency = 1,
+		        HeaderFrequency = 4,
+		        BodyFrequency = 11
+	        }
+        );
+
+     	await setupContext.SaveChangesAsync();
+
+	
+		IndexDocument indexDocument3 = IndexDocumentBuilder.BuildIndexDocument(
+			titleTerms: new Dictionary<string, int> {
+				{term1.Word, 1}, {term2.Word, 2}, {term3.Word, 1}
+			},
+			headerTerms: new Dictionary<string, int> {
+				{term1.Word, 2}, {term2.Word, 1}, {term3.Word, 1}
+			},
+			contentTerms: new Dictionary<string, int> {
+				{term1.Word, 5}, {term2.Word, 3}, {term3.Word, 20}
+			}
+		);
+
+
+        // Act 
+		await _sut.AddDocumentAsync(indexDocument3);
+
+        double term1IDFResult = await setupContext.Terms
+            .Where(t => t.Id.Equals(1))
+            .Select(t => t.IdfScore)
+            .FirstOrDefaultAsync();
+        
+        double term2IDFResult = await setupContext.Terms
+            .Where(t => t.Id.Equals(2))
+            .Select(t => t.IdfScore)
+            .FirstOrDefaultAsync();
+        
+        double term3IDFResult = await setupContext.Terms
+            .Where(t => t.Id.Equals(3))
+            .Select(t => t.IdfScore)
+            .FirstOrDefaultAsync();
+
+	
+		// Assert 
+		// IDF score expected:
+		//  term1 = log10(1 + (3/3 + 1)) = ~0.243
+		//  term2 = log10(1 + (3/2 + 1)) = ~0.301
+		//  term3 = log10(1 + (3/2 + 1)) = ~0.301
+		Assert.Equal(0.243, term1IDFResult, precision: 3);
+        Assert.Equal(0.301, term2IDFResult, precision: 3);
+        Assert.Equal(0.301, term3IDFResult, precision: 3);
+    }
+
     public void Dispose()
     {
         _connection.Close();
