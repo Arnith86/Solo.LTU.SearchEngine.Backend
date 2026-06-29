@@ -252,7 +252,7 @@ public class SqlIndexRepository : IIndexRepository
                 .Where(t => cleanWords.Contains(t.Word) && t.LanguageCode == language)
                 .ToDictionaryAsync(t => t.Word);
 
-            int totalNumberOfDocuments = await context.Pages.CountAsync();
+            int totalNumberOfDocuments = await context.Pages.CountAsync() + 1;
           
             var existingTermsIds = existingTerms.Values.Select(t => t.Id).ToList();
             var countsDictionary = await context.PageWordFrequencies
@@ -305,11 +305,12 @@ public class SqlIndexRepository : IIndexRepository
 
 	private static double CalculateIDF(int totalNumberOfDocuments, int documentsContainingTerm = 0)
 	{
-		if (totalNumberOfDocuments == 0) totalNumberOfDocuments = 1;
+        if (totalNumberOfDocuments == 0) return 0.0;
 
-        if (documentsContainingTerm == 0) return Math.Log((double)totalNumberOfDocuments);
+        double numerator = (double)totalNumberOfDocuments;
+        double denominator = (double)documentsContainingTerm + 1.0;
 		
-        return Math.Log((double)totalNumberOfDocuments / documentsContainingTerm + 1);
+        return Math.Log10(1.0 + (numerator / denominator));
 	}
 
 	private void AddWordFrequencies(
