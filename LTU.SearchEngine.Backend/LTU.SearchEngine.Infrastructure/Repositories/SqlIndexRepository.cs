@@ -303,7 +303,7 @@ public class SqlIndexRepository : IIndexRepository
         }
     }
 
-	private static double CalculateIDF(int totalNumberOfDocuments, int documentsContainingTerm = 0)
+	private static double CalculateIDF(int totalNumberOfDocuments, int documentsContainingTerm = 1)
 	{
         if (totalNumberOfDocuments == 0) return 0.0;
 
