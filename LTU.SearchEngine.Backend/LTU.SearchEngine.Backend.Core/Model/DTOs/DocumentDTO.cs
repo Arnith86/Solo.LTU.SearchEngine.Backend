@@ -5,7 +5,7 @@ public record DocumentDTO(
 	string Url, 
 	string Title, 
 	//double PageRankScore, 
-	//double TflDfScore, 
+	double TflDfScore, 
 	string Language 
 	//string Snippet
 );

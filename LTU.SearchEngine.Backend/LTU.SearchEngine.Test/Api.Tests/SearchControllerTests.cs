@@ -3,6 +3,7 @@ using LTU.SearchEngine.Application;
 using LTU.SearchEngine.Application.QueryParsing;
 using LTU.SearchEngine.Backend.Core.Exceptions.SearchQueryExceptions;
 using LTU.SearchEngine.Backend.Core.Model.DTOs;
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Backend.Core.RequestParameters;
 using LTU.SearchEngine.Test.HelperClasses;
 using Microsoft.AspNetCore.Mvc;
@@ -34,7 +35,7 @@ public class SearchControllerTests
 
         var fakeItems = new List<DocumentDTO>
         {
-            new DocumentDTO(1, "Test", "http://test.com", "sv"/*, "Test snippet"*/)
+            new DocumentDTO(1, "Test", "http://test.com", 0.0, "sv"/*, "Test snippet"*/)
         };
 
         var expectedDto = new SearchResponseDTO(

@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Globalization;
 using LTU.SearchEngine.Backend.Core.Model.DTOs;
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 using LTU.SearchEngine.Backend.Core.RequestParameters;
 using LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
@@ -54,7 +55,10 @@ public class QueryService : IQueryService
 		var stopWatch = Stopwatch.StartNew();
 
 		var (queryNode, ignoredTokens) = _queryParser.Parse(searchParameters);
-		
+
+		IScoringRankContext scoringRankContext = GetScoreRankingContext(queryNode);
+
+
 		HashSet<int> resultIds;
 		
 		if (queryNode is IIsVoidable voidableNode && voidableNode.IsVoid()) 
@@ -64,7 +68,7 @@ public class QueryService : IQueryService
 		
 		
 		var documentResults = await _indexRepository
-			.GetDocumentsByIdAsync(resultIds.ToList(), paginationParameters);
+			.GetDocumentsByIdAsync(resultIds.ToList(), paginationParameters, scoringRankContext);
 
 		stopWatch.Stop();
 		var elapsedTime = stopWatch.Elapsed.TotalMilliseconds;
@@ -79,11 +83,15 @@ public class QueryService : IQueryService
 				Id : doc.Id,
 				Url : doc.Url,
 				Title : doc.Title,
-				Language : doc.Language)
-			),
+				Language : doc.Language,
+				TflDfScore : doc.PageRankScore
+			)),
 			MetaData: documentResults.MetaData,
 			Message: timingMessage,
 			IgnoredTokens: ignoredTokens
 		);
 	}
+
+	private ScoringRankContext GetScoreRankingContext(QueryNode<HashSet<int>> queryNode)
+		=> new ScoringRankContext(queryNode);
 }

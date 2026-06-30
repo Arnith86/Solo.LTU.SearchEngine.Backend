@@ -77,16 +77,43 @@ public class SqlIndexRepository : IIndexRepository
 
 	/// <inheritdoc/>
     public async Task<PaginatedResult<Page>> GetDocumentsByIdAsync(
-	List<int> pageIds, 
-        PaginationRequestParameters paginationParameters
-        )
+	    List<int> pageIds, 
+        PaginationRequestParameters paginationParameters,
+		IScoringRankContext scoringRankContext
+		)
 	{
 		//Creates a new database context based on their unique IDs
 		await using var context = await _factory.CreateDbContextAsync();
 
-		return await context.Pages
-			.Where(p => pageIds.Contains(p.Id))
-            .ToPaginatedResultAsync(paginationParameters);
+        var searchWords = scoringRankContext.GetAllUniqueTerms().ToList();
+
+        var paginatedDBResult = context.Pages
+            .Where(p => pageIds.Contains(p.Id))
+            .Select(page => new 
+            {
+                Page = page,
+                Score = page.WordFrequencies
+                    .Where(pwf => searchWords.Contains(pwf.Term.Word))
+                    .Sum(pwf => pwf.TfWeight * pwf.Term.IdfScore)
+            })
+            .OrderByDescending(p => p.Score)
+			.ToPaginatedResultAsync(paginationParameters);
+
+        var pageWithScore = paginatedDBResult.Result.Items.Select(x =>
+        {
+            x.Page.PageRankScore = x.Score;
+            return x.Page;
+        }).ToList();
+
+        return new PaginatedResult<Page>(
+            items: pageWithScore,
+            metaData: paginatedDBResult.Result.MetaData
+        );
+			
+		//return await context.Pages
+		//	.Where(p => pageIds.Contains(p.Id))
+		//          //.OrderBy(p => p.)
+		//          .ToPaginatedResultAsync(paginationParameters);
 	}
 
 
@@ -96,8 +123,8 @@ public class SqlIndexRepository : IIndexRepository
         await using var context = await _factory.CreateDbContextAsync();
 
         var tokenStrings = phraseNode.Phrase
-            .Select(t => t.Token).ToList();
-
+            .Select(t => t.Token)
+            .ToList();
 
         var firstTerm = tokenStrings[0];
 

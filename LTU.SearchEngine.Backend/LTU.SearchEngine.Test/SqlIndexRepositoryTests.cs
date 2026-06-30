@@ -11,7 +11,7 @@ using LTU.SearchEngine.Test.HelperClasses;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using static System.Net.WebRequestMethods;
+using Moq;
 
 namespace LTU.SearchEngine.Test;
 
@@ -156,7 +156,7 @@ public class SqlIndexRepositoryTests : IDisposable
         var pageParam = PaginationRequestParametersBuilder.BuildPaginationParameters();
 
         // Act
-        var paginatedResult = await _sut.GetDocumentsByIdAsync(idsToFetch, pageParam);
+        var paginatedResult = await _sut.GetDocumentsByIdAsync(idsToFetch, pageParam, new Mock<IScoringRankContext>().Object);
 
         // Assert
         Assert.Equal(2, paginatedResult.Items.Count());

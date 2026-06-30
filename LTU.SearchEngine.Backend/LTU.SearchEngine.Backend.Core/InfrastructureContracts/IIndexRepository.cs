@@ -1,4 +1,5 @@
 ﻿using LTU.SearchEngine.Backend.Core.Entities;
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 using LTU.SearchEngine.Backend.Core.RequestParameters;
 
@@ -51,7 +52,10 @@ public interface IIndexRepository
 	/// <param name="paginationParameters">Settings for controlling page indexing and result limits.</param>
 	/// <returns>A paginated result containing the requested document entities and metadata.</returns>
 	Task<PaginatedResult<Page>> GetDocumentsByIdAsync(
-        List<int> pageIds, PaginationRequestParameters paginationParameters);
+        List<int> pageIds, 
+		PaginationRequestParameters paginationParameters,
+		IScoringRankContext scoringRankContext
+	);
 
 	/// <summary>
 	/// Performs a duplicate check by looking for an existing document with the same content hash.

@@ -3,6 +3,7 @@ using LTU.SearchEngine.Backend.Core.Entities;
 using LTU.SearchEngine.Backend.Core.Enums;
 using LTU.SearchEngine.Backend.Core.Model.DTOs;
 using LTU.SearchEngine.Backend.Core.Model.Entities;
+using LTU.SearchEngine.Backend.Core.Model.ValueObjects;
 using LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 using LTU.SearchEngine.Backend.Core.RequestParameters;
 using LTU.SearchEngine.Backend.Core.SearchQueryBuilder;
@@ -85,7 +86,8 @@ public class QueryServiceTests
         _mockIndexRepository
             .Setup(ir => ir.GetDocumentsByIdAsync(
                 It.Is<List<int>>(l => l.SequenceEqual(fakeResultIds.ToList())), 
-                It.IsAny<PaginationRequestParameters>()))
+                It.IsAny<PaginationRequestParameters>(), 
+                It.IsAny<IScoringRankContext>()))
             .ReturnsAsync(paginatedResult);
     }
 
@@ -117,7 +119,11 @@ public class QueryServiceTests
 
         _mockQueryParser.Verify(p => p.Parse(_searchParam), Times.Once);
         _mockQueryEvaluatorVisitor.Verify(qe => qe.ExecuteAsync(fakeOperatorNode), Times.Once);
-        _mockIndexRepository.Verify(ir => ir.GetDocumentsByIdAsync(fakeResultIds.ToList(), _pageParam), Times.Once);
+        _mockIndexRepository.Verify(ir => ir.GetDocumentsByIdAsync(
+            fakeResultIds.ToList(), 
+            _pageParam, 
+            new Mock<IScoringRankContext>().Object
+        ), Times.Once);
     }
 
    

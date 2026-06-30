@@ -43,7 +43,7 @@ public static class QueryableExtensionPagination
         int count = await source.CountAsync();
 
         var items = await source
-            .Skip(pageSize * (pageNumber - 1))
+	        .Skip(pageSize * (pageNumber - 1))
             .Take(pageSize)
             .ToListAsync();
 
