@@ -13,17 +13,19 @@ namespace LTU.SearchEngine.Backend.Core.Model.ValueObjects.QueryNodes;
 /// </remarks>
 public class TermNode<T> : QueryNode<T>, IIsVoidable, IIsRequirable
 {
-	private bool _isRequired; 
-	public string Term { get; }
+	private bool _isRequired;
+	//public string Term { get; }
+	public ExtractedQueryToken TermToken { get; }
 
 	/// <summary>Initializes a new instance of the <see cref="TermNode{T}"/> class.</summary>
 	/// <param name="term">The search term string. Cannot be null.</param>
 	/// <exception cref="ArgumentNullException">Thrown if the provided term is null.</exception>
-	public TermNode(string term, bool isRequired = false)
+	public TermNode(/*string term*/ExtractedQueryToken termToken, bool isRequired = false)
 	{
-		if (term is null) throw new ArgumentNullException(nameof(term), "must have a value.");
+		if (/*term*/termToken is null) throw new ArgumentNullException(nameof(/*term*/termToken), "must have a value.");
 
-		Term = term;
+		//Term = term;
+		TermToken = termToken;
 		_isRequired = isRequired;
 	}
 
@@ -31,9 +33,11 @@ public class TermNode<T> : QueryNode<T>, IIsVoidable, IIsRequirable
 	/// <inheritdoc/>
 	public override Task<T> AcceptAsync(IQueryVisitor<T> visitor)
 		=> visitor.VisitAsync(this);
-    
+
 	/// <inheritdoc/>
-	public bool IsVoid() => string.IsNullOrWhiteSpace(Term);
+	public bool IsVoid() => 
+		TermToken is null || string.IsNullOrWhiteSpace(TermToken.Token) ? true : false;
+		//=> string.IsNullOrWhiteSpace(Term);
     
 	/// <inheritdoc/>
 	public bool IsRequired() => _isRequired;
@@ -42,5 +46,5 @@ public class TermNode<T> : QueryNode<T>, IIsVoidable, IIsRequirable
 	/// Used for debugging and visualization purposes, returns the term string contained in this node.
 	/// </summary>
 	/// <returns>The currently stored term.</returns>
-	public override string ToString() => Term;
+	public override string ToString() => /*Term*/TermToken.Token;
 }
